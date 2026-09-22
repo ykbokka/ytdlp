@@ -7,3 +7,4 @@ P.S: This is coded to inject the metadata of the video off the YouTube database 
 Also, for music audio files, it actually uses Spotify's database to get the metadata of the song and inject it into the actual file - also, you can download FLAC Lossless files for high quality audio files! FLAC is also used in video downloading - it downloads an audio track of the video and an audioless track of the video, and merge them for the maximum audio + video quality!
 
 Any Collabs and Improvements are welcome! HOWEVER, SEND YOUR SUGGESTIONS AND IMPROVEMENTS ON INSTAGRAM: @ykbokka, I DON'T WANT THIS TO GO SOMEWHERE OTHER THAN THIS REPOSITORY.
+One more thing. This thing can download full - on playlists, to download your liked music playlist, use an extension called "DOWNLOAD COOKIES.TXT LOCALLY" and load the cookies.txt file into the downloader.
