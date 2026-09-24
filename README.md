@@ -8,3 +8,10 @@ Also, for music audio files, it actually uses Spotify's database to get the meta
 
 Any Collabs and Improvements are welcome! HOWEVER, SEND YOUR SUGGESTIONS AND IMPROVEMENTS ON INSTAGRAM: @ykbokka, I DON'T WANT THIS TO GO SOMEWHERE OTHER THAN THIS REPOSITORY.
 One more thing. This thing can download full - on playlists, to download your liked music playlist, use an extension called "DOWNLOAD COOKIES.TXT LOCALLY" and load the cookies.txt file into the downloader.
+
+FILES: Youtube Download.exe is the Base executable to download anything off of YouTube or YouTube Music.
+OPTIONAL FILES
+COVER.py: This script when ran inside the download directory or where your music audio files are at, it uses the file metadata to determine the exact song on YouTube music and inject the album cover at the highest resolution it finds on the internet of the album cover.
+REWRITE.py: Uses crappy existing metadata to determine the exact artist, title, album and year and rewrite them respectively in their fields.
+SHUT.pyw: the youtube downloader but as a python window
+CROP.py: optional python script that crops album covers to a 1:1 ratio if you like square album covers, without any quality loss
