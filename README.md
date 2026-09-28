@@ -1,3 +1,7 @@
+ATTENION!!!! V3.0 IS OUT NOW, GO TO THE V3 BRANCH TO ACCESS! THIS MAIN BRANCH IS FOR V1.0
+
+
+
 So honestly I didn't do anything in this project, I just vibe-coded it for personal use. I figured I could upload this to GitHub for other people to make use of it and maybe even make it better   So here's what you need to execute this:
 YT-DLP off GitHub too, shout out to the devs behind that project!
 CustomTinker for the interface and UI
