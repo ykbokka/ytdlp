@@ -9,7 +9,7 @@ import shutil
 import traceback
 import urllib.parse
 import tempfile
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from io import BytesIO
 
@@ -1100,54 +1100,90 @@ def _run_ytdlp_info_once(url, strategy, cookie_args, timeout):
 
 
 def inspect_youtube_info(url, timeout=30):
-    """Single-pass inspection: returns (data, formats, extractor_arg).
-
-    The default client is queried ONCE and its JSON is used for title,
-    thumbnail AND formats. Fallback clients are only tried (in parallel)
-    when the default result is capped at 360p or lower. Results are cached
-    so later steps (download, audio-track scan) do not re-extract.
-    """
+    """Inspect title, thumbnail, and formats, recovering if the default client fails."""
     cache_key = (url, "")
     cached = _INSPECT_CACHE.get(cache_key)
     if cached and (time.time() - cached[0]) < _INSPECT_CACHE_TTL:
         return cached[1]
 
     strategies = youtube_format_extractor_arg_sets()
+    primary_data = None
+    primary_error = None
 
-    # Pass 1: default client only.
-    data = _run_ytdlp_info(url, strategies[0], timeout)
-    best = (data, data.get("formats") or [], strategies[0])
-    best_height = max_video_height(best[1])
+    try:
+        primary_data = _run_ytdlp_info(url, strategies[0], timeout)
+    except Exception as exc:
+        if isinstance(exc, (BrowserSessionError, FileNotFoundError)):
+            raise
+        primary_error = exc
 
-    # Pass 2: only if suspiciously capped. Run fallbacks in parallel.
-    if best_height <= 360 and len(strategies) > 1:
-        outcomes = {}
+    primary_formats = (primary_data or {}).get("formats") or []
+    best = (primary_data, primary_formats, strategies[0]) if primary_data else None
+    best_height = max_video_height(primary_formats) if primary_data else 0
 
-        def worker(strategy):
-            try:
-                info = _run_ytdlp_info(url, strategy, timeout)
-                outcomes[strategy] = info
-            except Exception:
-                pass
+    # A strong default result is enough. If it errors or exposes only low
+    # resolution, try the alternate clients concurrently rather than giving up.
+    if best is not None and best_height > 360:
+        _INSPECT_CACHE[cache_key] = (time.time(), best)
+        return best
 
-        threads = [
-            threading.Thread(target=worker, args=(st,), daemon=True)
-            for st in strategies[1:]
-        ]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join(timeout + 5)
+    fallback_strategies = strategies[1:]
+    outcomes = {}
+    errors = {}
 
-        for st in strategies[1:]:
-            info = outcomes.get(st)
+    def worker(strategy):
+        return _run_ytdlp_info(url, strategy, timeout)
+
+    if fallback_strategies:
+        with ThreadPoolExecutor(max_workers=len(fallback_strategies)) as pool:
+            futures = {
+                pool.submit(worker, strategy): strategy
+                for strategy in fallback_strategies
+            }
+            for future in as_completed(futures):
+                strategy = futures[future]
+                try:
+                    outcomes[strategy] = future.result()
+                except Exception as exc:
+                    errors[strategy or "default"] = str(exc)
+
+    if best is None:
+        successful = []
+        for strategy in fallback_strategies:
+            info = outcomes.get(strategy)
+            if info:
+                fmts = info.get("formats") or []
+                successful.append((info, fmts, strategy))
+        if successful:
+            best = max(
+                successful,
+                key=lambda item: max_video_height(item[1]),
+            )
+            best_height = max_video_height(best[1])
+        else:
+            failures = []
+            if primary_error:
+                failures.append(f"default client: {primary_error}")
+            failures.extend(
+                f"{strategy or 'default'}: {error}"
+                for strategy, error in errors.items()
+            )
+            details = "; ".join(failures) or "No extractor strategy returned metadata"
+            raise RuntimeError(
+                "YouTube preview/format inspection failed for every client. " + details
+            ) from primary_error
+    else:
+        for strategy in fallback_strategies:
+            info = outcomes.get(strategy)
             if not info:
                 continue
             fmts = info.get("formats") or []
-            h = max_video_height(fmts)
-            if h > best_height:
-                best = (data, fmts, st)  # keep default-client title/thumbnail
-                best_height = h
+            height = max_video_height(fmts)
+            if height > best_height:
+                # Keep the default title/artwork but use the successful client's
+                # formats and the matching client strategy for later downloads.
+                best = (primary_data, fmts, strategy)
+                best_height = height
 
     _INSPECT_CACHE[cache_key] = (time.time(), best)
     return best
@@ -4339,12 +4375,15 @@ class YTMMusicToolkit(ctk.CTk):
                 self._stop_loading_preview()
                 self.hide_download_quality_selector()
                 self.dl_title.configure(
-                    text="Waiting For Target URL...",
+                    text="Preview Unavailable",
                     text_color="#ffffff",
                 )
                 self.dl_artist.configure(
-                    text="",
+                    text="Check Documents\\YTDLP for the preview error log.",
                     text_color="#9ca3af",
+                )
+                self.dl_status.configure(
+                    text="Status: Preview failed — see the latest silent_preview log."
                 )
                 self._dl_preview_pil = None
                 self._dl_preview_target_size = (96, 96)
@@ -7993,18 +8032,77 @@ def _v3_history(entry):
 _ORIGINAL_RESOLVER_PREVIEW_V3 = YTMResolver.preview_from_url
 
 
+def _v3_public_metadata_preview(url):
+    """Fallback title/artwork preview when yt-dlp cannot inspect YouTube formats."""
+    if is_playlist_url(url):
+        return None
+    try:
+        response = session.get(
+            "https://www.youtube.com/oembed",
+            params={"url": url, "format": "json"},
+            timeout=12,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        title = str(payload.get("title") or "").strip()
+        if not title:
+            return None
+
+        thumbnail_candidates = []
+        thumbnail = str(payload.get("thumbnail_url") or "").strip()
+        if thumbnail:
+            candidate = canonicalize_thumbnail_url(thumbnail)
+            if candidate:
+                thumbnail_candidates.append(candidate)
+        for candidate in youtube_thumbnail_candidates(url):
+            if candidate and candidate not in thumbnail_candidates:
+                thumbnail_candidates.append(candidate)
+
+        write_failure_log(
+            "preview_metadata_fallback",
+            RuntimeError("yt-dlp format inspection failed; loaded public oEmbed metadata instead"),
+            details=f"URL: {url}\nTitle: {title}",
+        )
+        return {
+            "title": title,
+            "cover_url": thumbnail_candidates[0] if thumbnail_candidates else "",
+            "thumbnail_candidates": thumbnail_candidates,
+            "quality_options": AUDIO_DOWNLOAD_OPTIONS.copy(),
+            "formats": [],
+            "youtube_extractor_arg": None,
+            "is_playlist": False,
+            "metadata_only_fallback": True,
+        }
+    except Exception as exc:
+        write_failure_log(
+            "preview_oembed_fallback",
+            exc,
+            details=f"URL: {url}",
+        )
+        return None
+
+
 def _v3_resolver_preview(url):
     preview = _ORIGINAL_RESOLVER_PREVIEW_V3(url)
     if not preview:
-        return preview
+        preview = _v3_public_metadata_preview(url)
+        if not preview:
+            return None
+
     if not preview.get("is_playlist"):
-        try:
-            _data, formats, extractor_arg = inspect_youtube_info(url, timeout=45)
-            preview["formats"] = formats
-            preview["youtube_extractor_arg"] = extractor_arg
-        except Exception as exc:
-            write_failure_log("v3_preview_format_cache", exc, details=f"URL: {url}")
+        if preview.get("metadata_only_fallback"):
             preview["formats"] = []
+            preview["quality_options"] = AUDIO_DOWNLOAD_OPTIONS.copy()
+        else:
+            try:
+                _data, formats, extractor_arg = inspect_youtube_info(url, timeout=45)
+                preview["formats"] = formats
+                preview["youtube_extractor_arg"] = extractor_arg
+            except Exception as exc:
+                write_failure_log("v3_preview_format_cache", exc, details=f"URL: {url}")
+                preview["formats"] = []
+                if not preview.get("quality_options"):
+                    preview["quality_options"] = AUDIO_DOWNLOAD_OPTIONS.copy()
     else:
         preview["formats"] = []
     return preview
@@ -8176,6 +8274,13 @@ def _v3_apply_preview(self, preview):
     self._v3_preview_formats = preview.get("formats") or []
     self._v3_preview_formats_ready = bool(self._v3_preview_formats)
     _ORIGINAL_APPLY_PREVIEW_V3(self, preview)
+    if preview.get("metadata_only_fallback"):
+        try:
+            self.dl_status.configure(
+                text="Status: Preview loaded; YouTube formats unavailable, using fallback quality choices."
+            )
+        except Exception:
+            pass
 
 
 def _v3_start_download(self):
