@@ -8728,8 +8728,6 @@ def _v3_quality_options_final(formats, file_type, mode="single"):
     return _v3_video_quality_options_final(formats, file_type, mode)
 
 # Keep the public V3 helper names pointed at the final implementations.
-_v3_video_quality_options = _v3_video_quality_options_final
-_v3_quality_options = _v3_quality_options_final
 _v3_audio_quality_options = _v3_audio_quality_options_final
 _v3_video_quality_options = _v3_video_quality_options_final
 _v3_quality_options = _v3_quality_options_final
