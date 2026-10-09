@@ -2520,7 +2520,7 @@ class YTMMusicToolkit(ctk.CTk):
         if not _is_valid_cookie_file(candidate):
             messagebox.showerror(
                 "Invalid cookie file",
-                "Please select a Netscape-format cookies.txt file.\\n\\n"
+                "Please select a Netscape-format cookies.txt file.\n\n"
                 "The file should start with '# Netscape HTTP Cookie File' "
                 "or '# HTTP Cookie File'.",
                 parent=self,
@@ -2533,7 +2533,7 @@ class YTMMusicToolkit(ctk.CTk):
             write_failure_log("cookie_file_save", exc, details=f"Selected path: {candidate}")
             messagebox.showerror(
                 "Could not save cookie selection",
-                f"The cookie file was selected, but its path could not be saved.\\n\\n{exc}",
+                f"The cookie file was selected, but its path could not be saved.\n\n{exc}",
                 parent=self,
             )
             return
