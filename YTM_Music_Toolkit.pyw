@@ -940,9 +940,27 @@ def _notify_browser_session(label, reason=""):
             pass
 
 
+def _saved_cookie_file_path():
+    """Read the user-selected cookie path from the existing app config."""
+    try:
+        config_path = Path(CONFIG_FILE)
+        if config_path.is_file():
+            data = json.loads(config_path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return str(data.get("cookie_file_path") or "").strip()
+    except Exception:
+        pass
+    return ""
+
+
 def _cookie_file_candidates():
-    """Return a few explicit file locations; never inspect browser profiles."""
+    """Return explicit file locations; never inspect browser profiles."""
     candidates = []
+
+    # The file selected in the GUI always takes priority.
+    selected = _saved_cookie_file_path()
+    if selected:
+        candidates.append(Path(os.path.expandvars(os.path.expanduser(selected))))
 
     override = os.environ.get(COOKIE_FILE_ENV, "").strip().strip('"')
     if override:
@@ -973,18 +991,46 @@ def _cookie_file_candidates():
     return result
 
 
+def _is_valid_cookie_file(candidate):
+    """Check the Netscape cookie-file signature without logging cookie values."""
+    try:
+        candidate = Path(candidate)
+        if not candidate.is_file() or not os.access(str(candidate), os.R_OK):
+            return False
+        with candidate.open("r", encoding="utf-8-sig", errors="replace") as handle:
+            first_line = handle.readline().strip()
+        return first_line in ("# HTTP Cookie File", "# Netscape HTTP Cookie File")
+    except (OSError, UnicodeError):
+        return False
+
+
+def _save_selected_cookie_file(path):
+    """Persist the chosen path without discarding other toolkit settings."""
+    config_path = Path(CONFIG_FILE)
+    if config_path.exists():
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("Toolkit configuration is not a JSON object.")
+    else:
+        data = {}
+    data["cookie_file_path"] = str(Path(path).resolve())
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = config_path.with_name(config_path.name + ".tmp")
+    temp_path.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    os.replace(str(temp_path), str(config_path))
+
+
 def get_cookie_file_path():
     """Return the first readable Netscape-format cookies.txt file."""
     for candidate in _cookie_file_candidates():
-        try:
-            if not candidate.is_file() or not os.access(str(candidate), os.R_OK):
-                continue
-            with candidate.open("r", encoding="utf-8-sig", errors="replace") as handle:
-                first_line = handle.readline().strip()
-            if first_line in ("# HTTP Cookie File", "# Netscape HTTP Cookie File"):
+        if _is_valid_cookie_file(candidate):
+            try:
+                return str(candidate.resolve())
+            except Exception:
                 return str(candidate)
-        except (OSError, UnicodeError):
-            continue
     return ""
 
 
@@ -2406,6 +2452,23 @@ class YTMMusicToolkit(ctk.CTk):
             padx=(0, 8),
         )
 
+        self.cookie_browse_button = ctk.CTkButton(
+            meta,
+            text="📁 Browse",
+            width=78,
+            height=28,
+            font=(APP_FONT, 10, "bold"),
+            fg_color="#050505",
+            hover_color="#1e293b",
+            text_color="#ffffff",
+            corner_radius=8,
+            command=self.browse_cookie_file,
+        )
+        self.cookie_browse_button.pack(
+            side="right",
+            padx=(0, 8),
+        )
+
         def _on_cookie_file_status(label, details=""):
             def apply():
                 try:
@@ -2414,9 +2477,6 @@ class YTMMusicToolkit(ctk.CTk):
                             text=f"🔐 Cookies: {label}",
                             text_color="#67e8f9",
                         )
-                        self.cookie_status.configure(
-                            tooltip_text=details,
-                        ) if hasattr(self.cookie_status, "tooltip_text") else None
                     else:
                         self.cookie_status.configure(
                             text="⚠ Missing cookies.txt",
@@ -2435,6 +2495,45 @@ class YTMMusicToolkit(ctk.CTk):
             _on_cookie_file_status(Path(cookie_path).name, cookie_path)
         else:
             _on_cookie_file_status(None, _no_session_message())
+
+    def browse_cookie_file(self):
+        """Open a file picker and remember the selected Netscape cookies file."""
+        current = get_cookie_file_path()
+        initial_dir = str(Path(current).parent) if current else str(Path.home() / "Documents")
+        selected = filedialog.askopenfilename(
+            title="Select YouTube cookies.txt",
+            initialdir=initial_dir,
+            filetypes=[
+                ("Netscape cookie files", "*.txt"),
+                ("All files", "*.*"),
+            ],
+        )
+        if not selected:
+            return
+
+        candidate = Path(selected)
+        if not _is_valid_cookie_file(candidate):
+            messagebox.showerror(
+                "Invalid cookie file",
+                "Please select a Netscape-format cookies.txt file.\\n\\n"
+                "The file should start with '# Netscape HTTP Cookie File' "
+                "or '# HTTP Cookie File'.",
+                parent=self,
+            )
+            return
+
+        try:
+            _save_selected_cookie_file(candidate)
+        except Exception as exc:
+            write_failure_log("cookie_file_save", exc, details=f"Selected path: {candidate}")
+            messagebox.showerror(
+                "Could not save cookie selection",
+                f"The cookie file was selected, but its path could not be saved.\\n\\n{exc}",
+                parent=self,
+            )
+            return
+
+        _notify_browser_session(candidate.name, str(candidate.resolve()))
 
     def build_tabs(self):
         self.tabs = ctk.CTkTabview(
