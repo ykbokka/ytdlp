@@ -2306,6 +2306,11 @@ class YTMMusicToolkit(ctk.CTk):
             payload = {
                 "paths": self.paths,
             }
+            # Preserve the cookie path selected from the GUI when saving any
+            # other settings through the legacy config wrappers.
+            saved_cookie_path = _saved_cookie_file_path()
+            if saved_cookie_path:
+                payload["cookie_file_path"] = saved_cookie_path
 
             with open(
                 CONFIG_FILE,
