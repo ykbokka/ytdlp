@@ -34,19 +34,19 @@ from ytmusicapi import YTMusic
 #   YouTube / YouTube Music via ytmusicapi
 #
 # Matching policy:
-#   1) YT Music "songs" filter
+#   1) YT Music"songs" filter
 #   2) exact contributing-artist-name match
 #   3) best title match
-#   4) YT Music "videos" fallback
+#   4) YT Music"videos" fallback
 #
 # Spotify / Deezer are intentionally not used.
 # ============================================================
 
 
-APP_NAME = "YTM Music Toolkit v3"
-APP_FONT = "Cairo"
-CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".ytm_music_toolkit.json")
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+APP_NAME ="YTM Music Toolkit v3"
+APP_FONT ="Cairo"
+CONFIG_FILE = os.path.join(os.path.expanduser("~"),".ytm_music_toolkit.json")
+USER_AGENT ="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 REQUEST_TIMEOUT = 20
 REQUEST_DELAY = 0.7
 
@@ -54,8 +54,8 @@ REQUEST_DELAY = 0.7
 # profile this resolves to: C:\Users\Souhaib Bokka\Documents\YTDLP
 FAILURE_LOG_DIR = os.path.join(
     os.path.expanduser("~"),
-    "Documents",
-    "YTDLP",
+"Documents",
+"YTDLP",
 )
 
 
@@ -68,21 +68,21 @@ def ensure_failure_log_dir():
 
 
 def write_failure_log(context, exc, details=None):
-    """Persist a detailed failure report without exposing cookie contents."""
+"""Persist a detailed failure report without exposing cookie contents."""
     try:
         directory = ensure_failure_log_dir()
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         safe_context = re.sub(
             r"[^A-Za-z0-9_.-]+",
-            "_",
-            str(context or "failure"),
-        ).strip("_") or "failure"
+"_",
+            str(context or"failure"),
+        ).strip("_") or"failure"
         unique = time.time_ns() % 1_000_000_000
         log_path = directory / f"FAILURE_{timestamp}_{unique:09d}_{safe_context}.log"
 
         lines = [
-            "YTM MUSIC TOOLKIT FAILURE LOG",
-            "=" * 72,
+"YTM MUSIC TOOLKIT FAILURE LOG",
+"=" * 72,
             f"Time: {time.strftime('%Y-%m-%d %H:%M:%S')}",
             f"Context: {context}",
             f"Exception: {type(exc).__name__}",
@@ -92,16 +92,16 @@ def write_failure_log(context, exc, details=None):
         ]
 
         if details:
-            lines.extend(["", "Details:", str(details)])
+            lines.extend(["","Details:", str(details)])
 
         lines.extend([
-            "",
-            "Traceback:",
+"",
+"Traceback:",
             traceback.format_exc(),
         ])
 
         log_path.write_text(
-            "\n".join(lines),
+"\n".join(lines),
             encoding="utf-8",
         )
         return str(log_path)
@@ -117,13 +117,13 @@ session.headers.update({"User-Agent": USER_AGENT})
 # ============================================================
 
 def get_resource_dir():
-    if hasattr(sys, "_MEIPASS"):
+    if hasattr(sys,"_MEIPASS"):
         return sys._MEIPASS
     return os.path.dirname(os.path.abspath(__file__))
 
 
 RESOURCE_DIR = get_resource_dir()
-os.environ["PATH"] = RESOURCE_DIR + os.pathsep + os.environ.get("PATH", "")
+os.environ["PATH"] = RESOURCE_DIR + os.pathsep + os.environ.get("PATH","")
 
 try:
     import pyi_splash
@@ -131,12 +131,12 @@ except ImportError:
     pyi_splash = None
 
 
-if os.name == "nt":
+if os.name =="nt":
     try:
         import ctypes
         from ctypes import wintypes
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
-            "ytm.music.toolkit.v1"
+"ytm.music.toolkit.v1"
         )
         COMTYPES_AVAILABLE = True
     except Exception:
@@ -153,41 +153,41 @@ def get_hidden_subprocess_kwargs():
     startupinfo = None
     creationflags = 0
 
-    if os.name == "nt":
+    if os.name =="nt":
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startupinfo.wShowWindow = subprocess.SW_HIDE
         creationflags = subprocess.CREATE_NO_WINDOW
 
     return {
-        "startupinfo": startupinfo,
-        "creationflags": creationflags,
+"startupinfo": startupinfo,
+"creationflags": creationflags,
     }
 
 
 def find_executable(name):
     candidates = [
         os.path.join(RESOURCE_DIR, name),
-        os.path.join(RESOURCE_DIR, name + ".exe"),
+        os.path.join(RESOURCE_DIR, name +".exe"),
         os.path.join(os.path.dirname(sys.executable), name),
-        os.path.join(os.path.dirname(sys.executable), name + ".exe"),
+        os.path.join(os.path.dirname(sys.executable), name +".exe"),
     ]
 
     for candidate in candidates:
         if os.path.isfile(candidate):
             return candidate
 
-    return shutil.which(name) or shutil.which(name + ".exe")
+    return shutil.which(name) or shutil.which(name +".exe")
 
 
 def get_ytdlp_command():
     exe = find_executable("yt-dlp")
-    return exe or "yt-dlp"
+    return exe or"yt-dlp"
 
 
 def get_ffmpeg_command():
     exe = find_executable("ffmpeg")
-    return exe or "ffmpeg"
+    return exe or"ffmpeg"
 
 
 # ============================================================
@@ -217,7 +217,7 @@ class WindowsTaskbarProgress:
             import comtypes.gen.TaskbarLib as tbl
 
             self.tbl_inst = cc.CreateObject(
-                "{56FDF344-FD6D-11d0-958A-006097C9A090}",
+"{56FDF344-FD6D-11d0-958A-006097C9A090}",
                 interface=tbl.ITaskbarList3,
             )
             self.tbl_inst.HrInit()
@@ -278,7 +278,7 @@ class GradientFrame(ctk.CTkCanvas):
 
     @staticmethod
     def rgb_to_hex(rgb):
-        return "#{:02x}{:02x}{:02x}".format(*rgb)
+        return"#{:02x}{:02x}{:02x}".format(*rgb)
 
     def schedule_draw(self, _event=None):
         width = self.winfo_width()
@@ -308,7 +308,7 @@ class GradientFrame(ctk.CTkCanvas):
 
         self.delete("gradient")
 
-        stops = ["#475569", "#000000", "#01436f"]
+        stops = ["#475569","#000000","#01436f"]
         rgb_stops = [self.hex_to_rgb(c) for c in stops]
         num_stops = len(rgb_stops)
 
@@ -347,25 +347,25 @@ class GradientFrame(ctk.CTkCanvas):
 # ============================================================
 
 def clean_text(text):
-    text = str(text or "").casefold()
-    text = re.sub(r"\([^)]*\)", "", text)
-    text = re.sub(r"\[[^\]]*\]", "", text)
-    text = text.replace("&", "and")
-    text = "".join(
-        char if char.isalnum() or char.isspace() else " "
+    text = str(text or"").casefold()
+    text = re.sub(r"\([^)]*\)","", text)
+    text = re.sub(r"\[[^\]]*\]","", text)
+    text = text.replace("&","and")
+    text ="".join(
+        char if char.isalnum() or char.isspace() else""
         for char in text
     )
-    return " ".join(text.split())
+    return"".join(text.split())
 
 
 def derive_title_from_filename(file_path):
     name = Path(file_path).stem
-    name = re.sub(r"^\d+[\s._\-]+", "", name)
-    return name.replace("_", " ").strip()
+    name = re.sub(r"^\d+[\s._\-]+","", name)
+    return name.replace("_","").strip()
 
 
 def split_artist_title(query):
-    separators = [" - ", " – ", " — "]
+    separators = [" -"," –"," —"]
 
     for sep in separators:
         if sep in query:
@@ -376,7 +376,7 @@ def split_artist_title(query):
             if artist and title:
                 return artist, title
 
-    return "", query.strip()
+    return"", query.strip()
 
 
 def normalize_artist_name(name):
@@ -385,13 +385,13 @@ def normalize_artist_name(name):
 
 
 def exact_artist_name_match(target_artist, result_artist_names):
-    """
+"""
     Artist matching is based ONLY on contributing artists.
     Album artist is never consulted.
 
-    A target like "A, B" is considered an exact match when each
+    A target like"A, B" is considered an exact match when each
     target contributing artist appears exactly in the result artist list.
-    """
+"""
     if not target_artist:
         return True
 
@@ -440,53 +440,53 @@ def title_score(wanted_title, result_title):
 
 
 def sanitize_filename(name):
-    name = re.sub(r'[<>:"/\\|?*]', "_", str(name or ""))
-    name = re.sub(r"\s+", " ", name).strip()
-    return name[:180] or "download"
+    name = re.sub(r'[<>:"/\\|?*]',"_", str(name or""))
+    name = re.sub(r"\s+","", name).strip()
+    return name[:180] or"download"
 
 
 def get_url_host(value):
     try:
-        parsed = urllib.parse.urlparse(str(value or "").strip())
-        return (parsed.netloc or "").lower().split(":")[0]
+        parsed = urllib.parse.urlparse(str(value or"").strip())
+        return (parsed.netloc or"").lower().split(":")[0]
     except Exception:
-        return ""
+        return""
 
 
 def is_youtube_music_url(value):
-    """Return True only for first-party YouTube Music hosts."""
+"""Return True only for first-party YouTube Music hosts."""
     return get_url_host(value) in {
-        "music.youtube.com",
-        "www.music.youtube.com",
+"music.youtube.com",
+"www.music.youtube.com",
     }
 
 
 def is_youtube_url(value):
     host = get_url_host(value)
     return host in {
-        "youtube.com",
-        "www.youtube.com",
-        "m.youtube.com",
-        "music.youtube.com",
-        "www.music.youtube.com",
-        "youtu.be",
+"youtube.com",
+"www.youtube.com",
+"m.youtube.com",
+"music.youtube.com",
+"www.music.youtube.com",
+"youtu.be",
     }
 
 
 def is_playlist_url(value):
-    """Identify an actual playlist URL, not a video opened from a playlist."""
+"""Identify an actual playlist URL, not a video opened from a playlist."""
     try:
-        parsed = urllib.parse.urlparse(str(value or "").strip())
-        host = (parsed.netloc or "").lower().split(":")[0]
+        parsed = urllib.parse.urlparse(str(value or"").strip())
+        host = (parsed.netloc or"").lower().split(":")[0]
         path = parsed.path.rstrip("/").lower()
         query = urllib.parse.parse_qs(parsed.query)
 
         if host not in {
-            "youtube.com",
-            "www.youtube.com",
-            "m.youtube.com",
-            "music.youtube.com",
-            "www.music.youtube.com",
+"youtube.com",
+"www.youtube.com",
+"m.youtube.com",
+"music.youtube.com",
+"www.music.youtube.com",
         }:
             return False
 
@@ -497,19 +497,19 @@ def is_playlist_url(value):
             return False
 
         # Only the canonical playlist route is treated as a playlist.
-        return path == "/playlist" and bool(query.get("list"))
+        return path =="/playlist" and bool(query.get("list"))
     except Exception:
         return False
 
 
 def extract_youtube_video_id(value):
-    """Return the YouTube video id for normal, short, embed, and music links."""
+"""Return the YouTube video id for normal, short, embed, and music links."""
     try:
-        parsed = urllib.parse.urlparse(str(value or "").strip())
-        host = (parsed.netloc or "").lower().split(":")[0]
+        parsed = urllib.parse.urlparse(str(value or"").strip())
+        host = (parsed.netloc or"").lower().split(":")[0]
         path = parsed.path.strip("/")
 
-        if host == "youtu.be":
+        if host =="youtu.be":
             return path.split("/", 1)[0] or None
 
         query = urllib.parse.parse_qs(parsed.query)
@@ -517,7 +517,7 @@ def extract_youtube_video_id(value):
             return query["v"][0] or None
 
         parts = path.split("/")
-        if len(parts) >= 2 and parts[0] in {"shorts", "embed", "live"}:
+        if len(parts) >= 2 and parts[0] in {"shorts","embed","live"}:
             return parts[1] or None
     except Exception:
         pass
@@ -526,7 +526,7 @@ def extract_youtube_video_id(value):
 
 
 def youtube_thumbnail_candidates(value):
-    """Return ordered direct YouTube thumbnail candidates from largest to fallback."""
+"""Return ordered direct YouTube thumbnail candidates from largest to fallback."""
     video_id = extract_youtube_video_id(value)
     if not video_id:
         return []
@@ -542,37 +542,37 @@ def youtube_thumbnail_candidates(value):
 
 
 VIDEO_QUALITY_LABELS = {
-    4320: "🌌 8K UHD (4320p)",
-    2160: "🌟 4K UHD (2160p)",
-    1440: "💎 2K QHD (1440p)",
-    1080: "📺 1080P FHD",
-    720: "📱 720P HD",
-    576: "📺 576P",
-    480: "⚡ 480P SD",
-    360: "📱 360P",
-    240: "⚡ 240P",
-    144: "⚡ 144P",
+    4320:" 8K UHD (4320p)",
+    2160:" 4K UHD (2160p)",
+    1440:" 2K QHD (1440p)",
+    1080:" 1080P FHD",
+    720:" 720P HD",
+    576:" 576P",
+    480:" 480P SD",
+    360:" 360P",
+    240:" 240P",
+    144:" 144P",
 }
 
 AUDIO_DOWNLOAD_OPTIONS = [
-    ("🎵 MP3 320kbps", {"kind": "audio", "audio_format": "mp3", "quality": "320K"}),
-    ("🎶 MP3 256kbps", {"kind": "audio", "audio_format": "mp3", "quality": "256K"}),
-    ("🎧 M4A / AAC", {"kind": "audio", "audio_format": "m4a", "quality": "0"}),
-    ("🎼 FLAC Lossless", {"kind": "audio", "audio_format": "flac", "quality": "0"}),
+    (" MP3 320kbps", {"kind":"audio","audio_format":"mp3","quality":"320K"}),
+    (" MP3 256kbps", {"kind":"audio","audio_format":"mp3","quality":"256K"}),
+    (" M4A / AAC", {"kind":"audio","audio_format":"m4a","quality":"0"}),
+    (" FLAC Lossless", {"kind":"audio","audio_format":"flac","quality":"0"}),
 ]
 
 def detected_video_heights(formats):
-    """Return distinct usable video heights, excluding DRM and storyboard formats."""
+"""Return distinct usable video heights, excluding DRM and storyboard formats."""
     heights = set()
 
     for fmt in formats or []:
         if not isinstance(fmt, dict) or fmt.get("has_drm"):
             continue
 
-        vcodec = str(fmt.get("vcodec") or "").strip().lower()
-        if not vcodec or vcodec == "none":
+        vcodec = str(fmt.get("vcodec") or"").strip().lower()
+        if not vcodec or vcodec =="none":
             continue
-        if "mhtml" in str(fmt.get("protocol") or "").lower():
+        if"mhtml" in str(fmt.get("protocol") or"").lower():
             continue
 
         try:
@@ -587,33 +587,33 @@ def detected_video_heights(formats):
 
 
 def build_video_quality_options(formats):
-    """Return unique video-resolution choices actually exposed by yt-dlp."""
+"""Return unique video-resolution choices actually exposed by yt-dlp."""
     ordered = detected_video_heights(formats)
     if not ordered:
         return []
 
     highest = ordered[0]
     options = [(
-        f"🎬 Best Quality — {highest}p",
-        {"kind": "video", "height": highest, "best": True},
+        f" Best Quality — {highest}p",
+        {"kind":"video","height": highest,"best": True},
     )]
 
     for height in ordered[1:]:
         options.append((
-            VIDEO_QUALITY_LABELS.get(height, f"🎞️ {height}P"),
-            {"kind": "video", "height": height, "best": False},
+            VIDEO_QUALITY_LABELS.get(height, f" {height}P"),
+            {"kind":"video","height": height,"best": False},
         ))
 
     return options
 
 
 def build_playlist_quality_options(video_formats_by_video=None):
-    """Build playlist choices only from resolutions found on its individual videos.
+"""Build playlist choices only from resolutions found on its individual videos.
 
     Resolution counts show how many inspected playlist videos expose that exact
     height. Selecting a height downloads each item at its best available height
     at or below that ceiling. Best Quality Separate chooses each item's maximum.
-    """
+"""
     video_formats_by_video = list(video_formats_by_video or [])
     height_counts = {}
     for formats in video_formats_by_video:
@@ -621,18 +621,18 @@ def build_playlist_quality_options(video_formats_by_video=None):
             height_counts[height] = height_counts.get(height, 0) + 1
 
     options = [(
-        "Best Quality Separate",
-        {"kind": "video", "best_per_item": True},
+"Best Quality Separate",
+        {"kind":"video","best_per_item": True},
     )]
 
     for height in sorted(height_counts, reverse=True):
         count = height_counts[height]
-        label = VIDEO_QUALITY_LABELS.get(height, f"🎞️ {height}P")
+        label = VIDEO_QUALITY_LABELS.get(height, f" {height}P")
         if video_formats_by_video:
             label = f"{label} · {count}/{len(video_formats_by_video)} videos"
         options.append((
             label,
-            {"kind": "video", "height": height, "best": False},
+            {"kind":"video","height": height,"best": False},
         ))
 
     options.extend(AUDIO_DOWNLOAD_OPTIONS.copy())
@@ -640,15 +640,15 @@ def build_playlist_quality_options(video_formats_by_video=None):
 
 
 def combine_quality_options(formats):
-    """Build inspected video choices plus the persistent audio choices."""
+"""Build inspected video choices plus the persistent audio choices."""
     return build_video_quality_options(formats) + AUDIO_DOWNLOAD_OPTIONS.copy()
 
 
 def select_best_video_quality_spec(quality_options, maximum_height=None):
-    """Pick the highest inspected video spec, optionally under a height ceiling."""
+"""Pick the highest inspected video spec, optionally under a height ceiling."""
     candidates = []
     for _label, spec in quality_options or []:
-        if not isinstance(spec, dict) or spec.get("kind") != "video":
+        if not isinstance(spec, dict) or spec.get("kind") !="video":
             continue
         try:
             height = int(spec.get("height") or 0)
@@ -666,25 +666,25 @@ def select_best_video_quality_spec(quality_options, maximum_height=None):
 
 
 def youtube_format_extractor_arg_sets():
-    """Return format-inspection client strategies in safest-first order.
+"""Return format-inspection client strategies in safest-first order.
 
     Recent YouTube changes can make yt-dlp's default client expose only a
     low-resolution progressive format (commonly 360p). When that happens,
     retry with web_embedded and, as a final fallback, the TV client.
     The successful strategy is carried into the actual download command so
     the quality menu and downloader inspect the same format universe.
-    """
+"""
     strategies = [
         None,
-        "youtube:player_client=default,web_embedded",
-        "youtube:player_client=tv",
+"youtube:player_client=default,web_embedded",
+"youtube:player_client=tv",
     ]
 
     # Avoid duplicate work if a future yt-dlp build collapses one of these.
     seen = set()
     result = []
     for value in strategies:
-        key = value or "<default>"
+        key = value or"<default>"
         if key in seen:
             continue
         seen.add(key)
@@ -707,80 +707,80 @@ def max_video_height(formats):
 # Human-readable language labels for YouTube alternate-audio tracks.
 # yt-dlp exposes a machine-readable ``language`` field when the extractor
 # provides it, while some YouTube responses also describe the language in
-# ``format_note`` (for example, "English original (default), medium").
+# ``format_note`` (for example,"English original (default), medium").
 AUDIO_LANGUAGE_NAMES = {
-    "ab": "Abkhazian", "aa": "Afar", "af": "Afrikaans", "ak": "Akan",
-    "sq": "Albanian", "am": "Amharic", "ar": "Arabic", "hy": "Armenian",
-    "as": "Assamese", "ay": "Aymara", "az": "Azerbaijani", "bm": "Bambara",
-    "eu": "Basque", "be": "Belarusian", "bn": "Bengali", "bh": "Bihari",
-    "bs": "Bosnian", "br": "Breton", "bg": "Bulgarian", "my": "Burmese",
-    "ca": "Catalan", "ceb": "Cebuano", "zh": "Chinese", "co": "Corsican",
-    "hr": "Croatian", "cs": "Czech", "da": "Danish", "nl": "Dutch",
-    "en": "English", "eo": "Esperanto", "et": "Estonian", "ee": "Ewe",
-    "fo": "Faroese", "fa": "Persian", "fj": "Fijian", "fi": "Finnish",
-    "fr": "French", "fy": "Frisian", "ff": "Fulah", "gl": "Galician",
-    "lg": "Ganda", "ka": "Georgian", "de": "German", "el": "Greek",
-    "gn": "Guarani", "gu": "Gujarati", "ht": "Haitian Creole", "ha": "Hausa",
-    "haw": "Hawaiian", "he": "Hebrew", "hi": "Hindi", "hu": "Hungarian",
-    "is": "Icelandic", "ig": "Igbo", "id": "Indonesian", "ia": "Interlingua",
-    "ga": "Irish", "it": "Italian", "ja": "Japanese", "jv": "Javanese",
-    "kn": "Kannada", "kk": "Kazakh", "km": "Khmer", "rw": "Kinyarwanda",
-    "ko": "Korean", "ku": "Kurdish", "ky": "Kyrgyz", "lo": "Lao",
-    "la": "Latin", "lv": "Latvian", "ln": "Lingala", "lt": "Lithuanian",
-    "lb": "Luxembourgish", "mk": "Macedonian", "mg": "Malagasy", "ms": "Malay",
-    "ml": "Malayalam", "mt": "Maltese", "mi": "Maori", "mr": "Marathi",
-    "mn": "Mongolian", "ne": "Nepali", "no": "Norwegian", "ny": "Nyanja",
-    "or": "Odia", "om": "Oromo", "ps": "Pashto", "pl": "Polish",
-    "pt": "Portuguese", "pa": "Punjabi", "ro": "Romanian", "ru": "Russian",
-    "sm": "Samoan", "sa": "Sanskrit", "gd": "Scottish Gaelic", "sr": "Serbian",
-    "sn": "Shona", "sd": "Sindhi", "si": "Sinhala", "sk": "Slovak",
-    "sl": "Slovenian", "so": "Somali", "es": "Spanish", "su": "Sundanese",
-    "sw": "Swahili", "sv": "Swedish", "tl": "Tagalog", "tg": "Tajik",
-    "ta": "Tamil", "tt": "Tatar", "te": "Telugu", "th": "Thai",
-    "bo": "Tibetan", "ti": "Tigrinya", "to": "Tongan", "tr": "Turkish",
-    "tk": "Turkmen", "uk": "Ukrainian", "ur": "Urdu", "ug": "Uyghur",
-    "uz": "Uzbek", "vi": "Vietnamese", "cy": "Welsh", "wo": "Wolof",
-    "xh": "Xhosa", "yi": "Yiddish", "yo": "Yoruba", "zu": "Zulu",
+"ab":"Abkhazian","aa":"Afar","af":"Afrikaans","ak":"Akan",
+"sq":"Albanian","am":"Amharic","ar":"Arabic","hy":"Armenian",
+"as":"Assamese","ay":"Aymara","az":"Azerbaijani","bm":"Bambara",
+"eu":"Basque","be":"Belarusian","bn":"Bengali","bh":"Bihari",
+"bs":"Bosnian","br":"Breton","bg":"Bulgarian","my":"Burmese",
+"ca":"Catalan","ceb":"Cebuano","zh":"Chinese","co":"Corsican",
+"hr":"Croatian","cs":"Czech","da":"Danish","nl":"Dutch",
+"en":"English","eo":"Esperanto","et":"Estonian","ee":"Ewe",
+"fo":"Faroese","fa":"Persian","fj":"Fijian","fi":"Finnish",
+"fr":"French","fy":"Frisian","ff":"Fulah","gl":"Galician",
+"lg":"Ganda","ka":"Georgian","de":"German","el":"Greek",
+"gn":"Guarani","gu":"Gujarati","ht":"Haitian Creole","ha":"Hausa",
+"haw":"Hawaiian","he":"Hebrew","hi":"Hindi","hu":"Hungarian",
+"is":"Icelandic","ig":"Igbo","id":"Indonesian","ia":"Interlingua",
+"ga":"Irish","it":"Italian","ja":"Japanese","jv":"Javanese",
+"kn":"Kannada","kk":"Kazakh","km":"Khmer","rw":"Kinyarwanda",
+"ko":"Korean","ku":"Kurdish","ky":"Kyrgyz","lo":"Lao",
+"la":"Latin","lv":"Latvian","ln":"Lingala","lt":"Lithuanian",
+"lb":"Luxembourgish","mk":"Macedonian","mg":"Malagasy","ms":"Malay",
+"ml":"Malayalam","mt":"Maltese","mi":"Maori","mr":"Marathi",
+"mn":"Mongolian","ne":"Nepali","no":"Norwegian","ny":"Nyanja",
+"or":"Odia","om":"Oromo","ps":"Pashto","pl":"Polish",
+"pt":"Portuguese","pa":"Punjabi","ro":"Romanian","ru":"Russian",
+"sm":"Samoan","sa":"Sanskrit","gd":"Scottish Gaelic","sr":"Serbian",
+"sn":"Shona","sd":"Sindhi","si":"Sinhala","sk":"Slovak",
+"sl":"Slovenian","so":"Somali","es":"Spanish","su":"Sundanese",
+"sw":"Swahili","sv":"Swedish","tl":"Tagalog","tg":"Tajik",
+"ta":"Tamil","tt":"Tatar","te":"Telugu","th":"Thai",
+"bo":"Tibetan","ti":"Tigrinya","to":"Tongan","tr":"Turkish",
+"tk":"Turkmen","uk":"Ukrainian","ur":"Urdu","ug":"Uyghur",
+"uz":"Uzbek","vi":"Vietnamese","cy":"Welsh","wo":"Wolof",
+"xh":"Xhosa","yi":"Yiddish","yo":"Yoruba","zu":"Zulu",
 }
 
 
 def _format_is_audio_only(fmt):
     if not isinstance(fmt, dict):
         return False
-    acodec = str(fmt.get("acodec") or "").strip().lower()
-    vcodec = str(fmt.get("vcodec") or "").strip().lower()
-    if not acodec or acodec == "none":
+    acodec = str(fmt.get("acodec") or"").strip().lower()
+    vcodec = str(fmt.get("vcodec") or"").strip().lower()
+    if not acodec or acodec =="none":
         return False
-    return not vcodec or vcodec == "none"
+    return not vcodec or vcodec =="none"
 
 
 def _audio_track_is_default(fmt):
-    text = " ".join(
-        str(fmt.get(key) or "")
-        for key in ("format_note", "format", "format_id")
+    text ="".join(
+        str(fmt.get(key) or"")
+        for key in ("format_note","format","format_id")
     ).lower()
     return bool(re.search(r"(?:\(\s*default\s*\)|\bdefault\b)", text))
 
 
 def _audio_track_is_original(fmt):
-    text = " ".join(
-        str(fmt.get(key) or "")
-        for key in ("format_note", "format", "format_id")
+    text ="".join(
+        str(fmt.get(key) or"")
+        for key in ("format_note","format","format_id")
     ).lower()
     return bool(re.search(r"(?:\(\s*original\s*\)|\boriginal\b)", text))
 
 
 def _audio_language_name(fmt):
-    code = str(fmt.get("language") or "").strip().lower()
+    code = str(fmt.get("language") or"").strip().lower()
     code_base = code.split("-")[0].split("_")[0]
     if code_base in AUDIO_LANGUAGE_NAMES:
         return AUDIO_LANGUAGE_NAMES[code_base]
 
-    note = str(fmt.get("format_note") or "").strip()
+    note = str(fmt.get("format_note") or"").strip()
     prefix = note.split(",", 1)[0].strip()
-    prefix = re.sub(r"\([^)]*\)", "", prefix).strip()
-    prefix = re.sub(r"\b(?:audio|track|original|default)\b", " ", prefix, flags=re.I)
-    prefix = re.sub(r"\s+", " ", prefix).strip(" -:")
+    prefix = re.sub(r"\([^)]*\)","", prefix).strip()
+    prefix = re.sub(r"\b(?:audio|track|original|default)\b","", prefix, flags=re.I)
+    prefix = re.sub(r"\s+","", prefix).strip(" -:")
 
     if prefix and len(prefix) <= 60:
         return prefix.title()
@@ -788,21 +788,21 @@ def _audio_language_name(fmt):
     if code:
         return code.upper()
 
-    return "Unknown"
+    return"Unknown"
 
 
 def _audio_track_variant(fmt):
     if _audio_track_is_default(fmt):
-        return "default"
+        return"default"
     if _audio_track_is_original(fmt):
-        return "original"
+        return"original"
 
-    note = str(fmt.get("format_note") or "").strip().lower()
+    note = str(fmt.get("format_note") or"").strip().lower()
     prefix = note.split(",", 1)[0].strip()
-    prefix = re.sub(r"\([^)]*\)", "", prefix)
-    prefix = re.sub(r"\b(?:medium|low|high|audio|track)\b", " ", prefix)
-    prefix = re.sub(r"[^a-z0-9]+", " ", prefix).strip()
-    return prefix or "standard"
+    prefix = re.sub(r"\([^)]*\)","", prefix)
+    prefix = re.sub(r"\b(?:medium|low|high|audio|track)\b","", prefix)
+    prefix = re.sub(r"[^a-z0-9]+","", prefix).strip()
+    return prefix or"standard"
 
 
 def _audio_track_sort_key(fmt):
@@ -818,18 +818,18 @@ def _audio_track_sort_key(fmt):
         except (TypeError, ValueError):
             return 0
 
-    codec = str(fmt.get("acodec") or "").lower()
+    codec = str(fmt.get("acodec") or"").lower()
     codec_rank = {
-        "opus": 6,
-        "vorbis": 5,
-        "flac": 10,
-        "alac": 10,
-        "aac": 4,
-        "mp4a": 4,
-        "m4a": 4,
-        "ac3": 3,
-        "eac3": 3,
-        "mp3": 2,
+"opus": 6,
+"vorbis": 5,
+"flac": 10,
+"alac": 10,
+"aac": 4,
+"mp4a": 4,
+"m4a": 4,
+"ac3": 3,
+"eac3": 3,
+"mp3": 2,
     }.get(codec, 1)
 
     return (
@@ -843,7 +843,7 @@ def _audio_track_sort_key(fmt):
 
 
 def build_audio_track_options(formats):
-    """Return one best audio format per distinct YouTube language/variant track."""
+"""Return one best audio format per distinct YouTube language/variant track."""
     grouped = {}
 
     for fmt in formats or []:
@@ -852,11 +852,11 @@ def build_audio_track_options(formats):
         if fmt.get("has_drm"):
             continue
 
-        format_id = str(fmt.get("format_id") or "").strip()
+        format_id = str(fmt.get("format_id") or"").strip()
         if not format_id:
             continue
 
-        language_code = str(fmt.get("language") or "").strip().lower()
+        language_code = str(fmt.get("language") or"").strip().lower()
         language_name = _audio_language_name(fmt)
         variant = _audio_track_variant(fmt)
         key = (language_code or language_name.lower(), variant)
@@ -869,7 +869,7 @@ def build_audio_track_options(formats):
     used_labels = set()
 
     for fmt in grouped.values():
-        language_code = str(fmt.get("language") or "").strip().lower() or "und"
+        language_code = str(fmt.get("language") or"").strip().lower() or"und"
         language_name = _audio_language_name(fmt)
         is_default = _audio_track_is_default(fmt)
         is_original = _audio_track_is_original(fmt)
@@ -880,7 +880,7 @@ def build_audio_track_options(formats):
         elif is_original:
             label_parts.append("Original")
 
-        label = " ".join(label_parts).strip()
+        label ="".join(label_parts).strip()
         base_label = label
         counter = 2
         while label.lower() in used_labels:
@@ -889,22 +889,22 @@ def build_audio_track_options(formats):
         used_labels.add(label.lower())
 
         tracks.append({
-            "format_id": str(fmt.get("format_id") or ""),
-            "language_code": language_code,
-            "language": language_name,
-            "label": label,
-            "is_default": is_default,
-            "is_original": is_original,
-            "abr": fmt.get("abr"),
-            "asr": fmt.get("asr"),
-            "acodec": fmt.get("acodec"),
+"format_id": str(fmt.get("format_id") or""),
+"language_code": language_code,
+"language": language_name,
+"label": label,
+"is_default": is_default,
+"is_original": is_original,
+"abr": fmt.get("abr"),
+"asr": fmt.get("asr"),
+"acodec": fmt.get("acodec"),
         })
 
     tracks.sort(
         key=lambda track: (
             0 if track.get("is_default") else 1,
             0 if track.get("is_original") else 1,
-            str(track.get("language") or "").lower(),
+            str(track.get("language") or"").lower(),
         )
     )
 
@@ -914,19 +914,19 @@ _INSPECT_CACHE = {}
 _INSPECT_CACHE_TTL = 600  # seconds
 
 # Cookie-file authentication (no browser scanning or browser cookie extraction)
-COOKIE_FILE_ENV = "YTM_MUSIC_TOOLKIT_COOKIES"
-COOKIE_FILE_NAME = "cookies.txt"
+COOKIE_FILE_ENV ="YTM_MUSIC_TOOLKIT_COOKIES"
+COOKIE_FILE_NAME ="cookies.txt"
 
 
 class BrowserSessionError(RuntimeError):
-    """The required Netscape-format cookies.txt file is missing or unavailable."""
+"""The required Netscape-format cookies.txt file is missing or unavailable."""
 
 
 _BROWSER_SESSION_LISTENER = None
 
 
 def set_browser_session_listener(callback):
-    """Register a callback used by the existing status label."""
+"""Register a callback used by the existing status label."""
     global _BROWSER_SESSION_LISTENER
     _BROWSER_SESSION_LISTENER = callback
 
@@ -941,20 +941,20 @@ def _notify_browser_session(label, reason=""):
 
 
 def _saved_cookie_file_path():
-    """Read the user-selected cookie path from the existing app config."""
+"""Read the user-selected cookie path from the existing app config."""
     try:
         config_path = Path(CONFIG_FILE)
         if config_path.is_file():
             data = json.loads(config_path.read_text(encoding="utf-8"))
             if isinstance(data, dict):
-                return str(data.get("cookie_file_path") or "").strip()
+                return str(data.get("cookie_file_path") or"").strip()
     except Exception:
         pass
-    return ""
+    return""
 
 
 def _cookie_file_candidates():
-    """Return explicit file locations; never inspect browser profiles."""
+"""Return explicit file locations; never inspect browser profiles."""
     candidates = []
 
     # The file selected in the GUI always takes priority.
@@ -962,18 +962,18 @@ def _cookie_file_candidates():
     if selected:
         candidates.append(Path(os.path.expandvars(os.path.expanduser(selected))))
 
-    override = os.environ.get(COOKIE_FILE_ENV, "").strip().strip('"')
+    override = os.environ.get(COOKIE_FILE_ENV,"").strip().strip('"')
     if override:
         candidates.append(Path(os.path.expandvars(os.path.expanduser(override))))
 
-    if getattr(sys, "frozen", False):
+    if getattr(sys,"frozen", False):
         app_dir = Path(sys.executable).resolve().parent
     else:
         app_dir = Path(__file__).resolve().parent
 
     candidates.extend([
         app_dir / COOKIE_FILE_NAME,
-        Path.home() / "Documents" / "YTDLP" / COOKIE_FILE_NAME,
+        Path.home() /"Documents" /"YTDLP" / COOKIE_FILE_NAME,
         Path.home() / COOKIE_FILE_NAME,
     ])
 
@@ -992,20 +992,20 @@ def _cookie_file_candidates():
 
 
 def _is_valid_cookie_file(candidate):
-    """Check the Netscape cookie-file signature without logging cookie values."""
+"""Check the Netscape cookie-file signature without logging cookie values."""
     try:
         candidate = Path(candidate)
         if not candidate.is_file() or not os.access(str(candidate), os.R_OK):
             return False
         with candidate.open("r", encoding="utf-8-sig", errors="replace") as handle:
             first_line = handle.readline().strip()
-        return first_line in ("# HTTP Cookie File", "# Netscape HTTP Cookie File")
+        return first_line in ("# HTTP Cookie File","# Netscape HTTP Cookie File")
     except (OSError, UnicodeError):
         return False
 
 
 def _save_selected_cookie_file(path):
-    """Persist the chosen path without discarding other toolkit settings."""
+"""Persist the chosen path without discarding other toolkit settings."""
     config_path = Path(CONFIG_FILE)
     if config_path.exists():
         data = json.loads(config_path.read_text(encoding="utf-8"))
@@ -1015,7 +1015,7 @@ def _save_selected_cookie_file(path):
         data = {}
     data["cookie_file_path"] = str(Path(path).resolve())
     config_path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = config_path.with_name(config_path.name + ".tmp")
+    temp_path = config_path.with_name(config_path.name +".tmp")
     temp_path.write_text(
         json.dumps(data, indent=2, ensure_ascii=False),
         encoding="utf-8",
@@ -1024,33 +1024,33 @@ def _save_selected_cookie_file(path):
 
 
 def get_cookie_file_path():
-    """Return the first readable Netscape-format cookies.txt file."""
+"""Return the first readable Netscape-format cookies.txt file."""
     for candidate in _cookie_file_candidates():
         if _is_valid_cookie_file(candidate):
             try:
                 return str(candidate.resolve())
             except Exception:
                 return str(candidate)
-    return ""
+    return""
 
 
 def _no_session_message():
     return (
-        "Cookie file not found. Put a Netscape-format cookies.txt next to "
-        "YTM Music Toolkit or at Documents\\YTDLP\\cookies.txt. "
-        "You can also set the YTM_MUSIC_TOOLKIT_COOKIES environment variable "
-        "to the full file path. The app no longer reads cookies from browsers."
+"Cookie file not found. Put a Netscape-format cookies.txt next to"
+"YTM Music Toolkit or at Documents\\YTDLP\\cookies.txt."
+"You can also set the YTM_MUSIC_TOOLKIT_COOKIES environment variable"
+"to the full file path. The app no longer reads cookies from browsers."
     )
 
 
 def ytdlp_retry_on_cookie_failure(url, attempt):
-    """Run once using the configured cookies file; never switch browsers."""
+"""Run once using the configured cookies file; never switch browsers."""
     cookie_args = get_browser_cookie_args(url)
     return attempt(cookie_args)
 
 
 def get_browser_cookie_args(url="", force=False, exclude_sources=None):
-    """Compatibility wrapper returning yt-dlp's file-based --cookies argument."""
+"""Compatibility wrapper returning yt-dlp's file-based --cookies argument."""
     cookie_path = get_cookie_file_path()
     if not cookie_path:
         _notify_browser_session(None, _no_session_message())
@@ -1070,14 +1070,14 @@ def _run_ytdlp_info(url, strategy, timeout):
 def _run_ytdlp_info_once(url, strategy, cookie_args, timeout):
     command = [
         get_ytdlp_command(),
-        "--dump-single-json",
-        "--skip-download",
-        "--no-playlist",
-        "--no-warnings",
-        "--socket-timeout", "10",
+"--dump-single-json",
+"--skip-download",
+"--no-playlist",
+"--no-warnings",
+"--socket-timeout","10",
         *youtube_extractor_args_list(strategy),
         *cookie_args,
-        "--",
+"--",
         url,
     ]
     proc = subprocess.run(
@@ -1100,8 +1100,8 @@ def _run_ytdlp_info_once(url, strategy, cookie_args, timeout):
 
 
 def inspect_youtube_info(url, timeout=30):
-    """Inspect title, thumbnail, and formats, recovering if the default client fails."""
-    cache_key = (url, "")
+"""Inspect title, thumbnail, and formats, recovering if the default client fails."""
+    cache_key = (url,"")
     cached = _INSPECT_CACHE.get(cache_key)
     if cached and (time.time() - cached[0]) < _INSPECT_CACHE_TTL:
         return cached[1]
@@ -1145,7 +1145,7 @@ def inspect_youtube_info(url, timeout=30):
                 try:
                     outcomes[strategy] = future.result()
                 except Exception as exc:
-                    errors[strategy or "default"] = str(exc)
+                    errors[strategy or"default"] = str(exc)
 
     if best is None:
         successful = []
@@ -1165,12 +1165,12 @@ def inspect_youtube_info(url, timeout=30):
             if primary_error:
                 failures.append(f"default client: {primary_error}")
             failures.extend(
-                f"{strategy or 'default'}: {error}"
+                f"{strategy or'default'}: {error}"
                 for strategy, error in errors.items()
             )
-            details = "; ".join(failures) or "No extractor strategy returned metadata"
+            details =";".join(failures) or"No extractor strategy returned metadata"
             raise RuntimeError(
-                "YouTube preview/format inspection failed for every client. " + details
+"YouTube preview/format inspection failed for every client." + details
             ) from primary_error
     else:
         for strategy in fallback_strategies:
@@ -1190,20 +1190,20 @@ def inspect_youtube_info(url, timeout=30):
 
 
 def fetch_youtube_data(url, timeout=30):
-    """Metadata-only fetch that shares the preview's cookie handling and cache.
+"""Metadata-only fetch that shares the preview's cookie handling and cache.
 
     Reuses an already-inspected result when the preview step ran first, and
     otherwise does ONE extraction through the same cookie-retry / anonymous
     fallback path the quality inspection uses.
-    """
-    cached = _INSPECT_CACHE.get((url, ""))
+"""
+    cached = _INSPECT_CACHE.get((url,""))
     if cached and (time.time() - cached[0]) < _INSPECT_CACHE_TTL:
         return cached[1][0]
     return _run_ytdlp_info(url, None, timeout)
 
 
 def inspect_youtube_formats(url, timeout=30):
-    """Backwards-compatible wrapper: returns (formats, extractor_arg)."""
+"""Backwards-compatible wrapper: returns (formats, extractor_arg)."""
     _data, formats, strategy = inspect_youtube_info(url, timeout)
     return formats, strategy
 
@@ -1216,9 +1216,9 @@ def canonicalize_thumbnail_url(url):
     if not url:
         return None
 
-    url = re.sub(r"=w\d+(?:-h\d+[^&]*)?$", "=s0", url)
-    url = re.sub(r"=w\d+-h\d+.*$", "=s0", url)
-    url = re.sub(r"=s\d+.*$", "=s0", url)
+    url = re.sub(r"=w\d+(?:-h\d+[^&]*)?$","=s0", url)
+    url = re.sub(r"=w\d+-h\d+.*$","=s0", url)
+    url = re.sub(r"=s\d+.*$","=s0", url)
 
     return url
 
@@ -1245,7 +1245,7 @@ def normalize_cover_to_jpeg(image_bytes):
         image = Image.open(BytesIO(image_bytes))
         image = ImageOps.exif_transpose(image)
 
-        if image.mode != "RGB":
+        if image.mode !="RGB":
             image = image.convert("RGB")
 
         buffer = BytesIO()
@@ -1263,8 +1263,8 @@ def normalize_cover_to_jpeg(image_bytes):
 def make_picture(image_bytes):
     picture = Picture()
     picture.type = 3
-    picture.mime = "image/jpeg"
-    picture.desc = "Front Cover"
+    picture.mime ="image/jpeg"
+    picture.desc ="Front Cover"
     picture.data = image_bytes
     return picture
 
@@ -1283,14 +1283,14 @@ class YTMResolver:
 
         for artist in item.get("artists", []) or []:
             if isinstance(artist, dict):
-                name = artist.get("name", "")
+                name = artist.get("name","")
             else:
                 name = str(artist)
 
             if name:
                 names.append(name)
 
-        # Some yt-dlp-like structures may surface "artist" instead.
+        # Some yt-dlp-like structures may surface"artist" instead.
         if not names:
             fallback = item.get("artist") or item.get("author")
             if fallback:
@@ -1302,9 +1302,9 @@ class YTMResolver:
         album = item.get("album")
 
         if isinstance(album, dict):
-            return album.get("name", "") or ""
+            return album.get("name","") or""
 
-        return str(album or "")
+        return str(album or"")
 
     def _thumbnail_url_from_item(self, item):
         thumbnails = item.get("thumbnails", []) or []
@@ -1328,7 +1328,7 @@ class YTMResolver:
     def _result_score(self, wanted_artist, wanted_album, wanted_title, item):
         artists = self._artist_names_from_item(item)
         album = self._album_name_from_item(item)
-        title = item.get("title", "")
+        title = item.get("title","")
 
         score = title_score(wanted_title, title)
 
@@ -1362,7 +1362,7 @@ class YTMResolver:
             reverse=True,
         )
         for thumbnail in ranked:
-            candidate = canonicalize_thumbnail_url(thumbnail.get("url") or "")
+            candidate = canonicalize_thumbnail_url(thumbnail.get("url") or"")
             if candidate and candidate not in thumbnail_candidates:
                 thumbnail_candidates.append(candidate)
 
@@ -1371,47 +1371,47 @@ class YTMResolver:
             thumbnail_candidates.insert(0, cover_url)
 
         return {
-            "video_id": item.get("videoId", ""),
-            "title": item.get("title", ""),
-            "artist_names": artists,
-            "artist": ", ".join(artists),
-            "album": album,
-            "album_id": (
+"video_id": item.get("videoId",""),
+"title": item.get("title",""),
+"artist_names": artists,
+"artist":",".join(artists),
+"album": album,
+"album_id": (
                 item.get("album", {}).get("id")
                 if isinstance(item.get("album"), dict)
                 else None
             ),
-            "year": "",
-            "cover_url": cover_url,
-            "thumbnail_candidates": thumbnail_candidates,
-            "source": source,
-            "is_fallback": fallback,
+"year":"",
+"cover_url": cover_url,
+"thumbnail_candidates": thumbnail_candidates,
+"source": source,
+"is_fallback": fallback,
         }
 
     def _get_year(self, result):
         album_id = result.get("album_id")
 
         if not album_id:
-            return ""
+            return""
 
         if album_id in self.year_cache:
             return self.year_cache[album_id]
 
-        year = ""
+        year =""
 
         try:
             details = self.yt.get_album(album_id)
-            year = str(details.get("year", "") or "")
+            year = str(details.get("year","") or"")
         except Exception:
-            year = ""
+            year =""
 
         self.year_cache[album_id] = year
         return year
 
     def search(self, artist, title, album=""):
-        artist = str(artist or "").strip()
-        title = str(title or "").strip()
-        album = str(album or "").strip()
+        artist = str(artist or"").strip()
+        title = str(title or"").strip()
+        album = str(album or"").strip()
 
         query = f"{artist} {title}".strip() if artist else title
 
@@ -1508,8 +1508,8 @@ class YTMResolver:
 
     @staticmethod
     def preview_from_url(url):
-        """Silently inspect preview art/title plus source-specific video qualities."""
-        url = str(url or "").strip()
+"""Silently inspect preview art/title plus source-specific video qualities."""
+        url = str(url or"").strip()
 
         def run_json(command, timeout=30):
             proc = subprocess.run(
@@ -1540,27 +1540,27 @@ class YTMResolver:
                 def _playlist_attempt(cookie_args):
                     return run_json([
                         get_ytdlp_command(),
-                        "--dump-single-json",
-                        "--flat-playlist",
-                        "--skip-download",
-                        "--no-warnings",
-                        "--ignore-errors",
+"--dump-single-json",
+"--flat-playlist",
+"--skip-download",
+"--no-warnings",
+"--ignore-errors",
                         *cookie_args,
-                        "--",
+"--",
                         url,
                     ], timeout=180)
 
                 data = ytdlp_retry_on_cookie_failure(url, _playlist_attempt)
 
-                title = str(data.get("title") or "YouTube Playlist").strip()
-                thumbnail = str(data.get("thumbnail") or "").strip()
+                title = str(data.get("title") or"YouTube Playlist").strip()
+                thumbnail = str(data.get("thumbnail") or"").strip()
                 thumbnail_candidates = []
                 if thumbnail:
                     thumbnail_candidates.append(canonicalize_thumbnail_url(thumbnail))
 
                 for thumb in data.get("thumbnails", []) or []:
                     if isinstance(thumb, dict):
-                        candidate = canonicalize_thumbnail_url(thumb.get("url") or "")
+                        candidate = canonicalize_thumbnail_url(thumb.get("url") or"")
                         if candidate and candidate not in thumbnail_candidates:
                             thumbnail_candidates.append(candidate)
 
@@ -1570,23 +1570,23 @@ class YTMResolver:
                 for entry in entries:
                     if not isinstance(entry, dict):
                         continue
-                    video_id = str(entry.get("id") or entry.get("videoId") or "").strip()
-                    entry_url = str(entry.get("webpage_url") or entry.get("url") or "").strip()
+                    video_id = str(entry.get("id") or entry.get("videoId") or"").strip()
+                    entry_url = str(entry.get("webpage_url") or entry.get("url") or"").strip()
                     if not video_id:
-                        video_id = extract_youtube_video_id(entry_url) or ""
+                        video_id = extract_youtube_video_id(entry_url) or""
                     if not video_id or video_id in seen_video_ids:
                         continue
                     seen_video_ids.add(video_id)
                     video_url = f"https://www.youtube.com/watch?v={video_id}"
                     video_entries.append({
-                        "video_id": video_id,
-                        "title": str(entry.get("title") or video_id).strip(),
-                        "url": video_url,
-                        "thumbnail": str(entry.get("thumbnail") or "").strip(),
+"video_id": video_id,
+"title": str(entry.get("title") or video_id).strip(),
+"url": video_url,
+"thumbnail": str(entry.get("thumbnail") or"").strip(),
                     })
 
                 if video_entries:
-                    first_entry_thumb = video_entries[0].get("thumbnail") or ""
+                    first_entry_thumb = video_entries[0].get("thumbnail") or""
                     if first_entry_thumb:
                         candidate = canonicalize_thumbnail_url(first_entry_thumb)
                         if candidate and candidate not in thumbnail_candidates:
@@ -1601,7 +1601,7 @@ class YTMResolver:
                             entry["url"],
                             timeout=45,
                         )
-                        return formats, strategy, ""
+                        return formats, strategy,""
                     except Exception as exc:
                         return [], None, str(exc)
 
@@ -1617,9 +1617,9 @@ class YTMResolver:
                     video_formats.append(formats)
                     inspected_entries.append({
                         **entry,
-                        "heights": heights,
-                        "extractor_arg": strategy,
-                        "error": error,
+"heights": heights,
+"extractor_arg": strategy,
+"error": error,
                     })
 
                 inspected_count = sum(1 for entry in inspected_entries if not entry["error"])
@@ -1628,15 +1628,15 @@ class YTMResolver:
                 )
 
                 return {
-                    "title": title,
-                    "cover_url": thumbnail_candidates[0] if thumbnail_candidates else "",
-                    "thumbnail_candidates": thumbnail_candidates,
-                    "quality_options": build_playlist_quality_options(video_formats),
-                    "quality_summary": quality_summary,
-                    "quality_inventory": inspected_entries,
-                    "is_playlist": True,
-                    "playlist_url": url,
-                    "first_video_url": video_entries[0]["url"] if video_entries else "",
+"title": title,
+"cover_url": thumbnail_candidates[0] if thumbnail_candidates else"",
+"thumbnail_candidates": thumbnail_candidates,
+"quality_options": build_playlist_quality_options(video_formats),
+"quality_summary": quality_summary,
+"quality_inventory": inspected_entries,
+"is_playlist": True,
+"playlist_url": url,
+"first_video_url": video_entries[0]["url"] if video_entries else"",
                 }
 
             # ONE extraction gives title, thumbnail and formats.
@@ -1645,8 +1645,8 @@ class YTMResolver:
                 timeout=30,
             )
 
-            title = str(data.get("title") or "Unknown YouTube Video").strip()
-            thumbnail = str(data.get("thumbnail") or "").strip()
+            title = str(data.get("title") or"Unknown YouTube Video").strip()
+            thumbnail = str(data.get("thumbnail") or"").strip()
             candidates = []
             if thumbnail:
                 candidates.append(canonicalize_thumbnail_url(thumbnail))
@@ -1655,16 +1655,16 @@ class YTMResolver:
                     candidates.append(candidate)
 
             return {
-                "title": title,
-                "cover_url": candidates[0] if candidates else "",
-                "thumbnail_candidates": candidates,
-                "quality_options": combine_quality_options(formats),
-                "youtube_extractor_arg": extractor_arg,
-                "is_playlist": False,
+"title": title,
+"cover_url": candidates[0] if candidates else"",
+"thumbnail_candidates": candidates,
+"quality_options": combine_quality_options(formats),
+"youtube_extractor_arg": extractor_arg,
+"is_playlist": False,
             }
         except Exception as exc:
             write_failure_log(
-                "silent_preview",
+"silent_preview",
                 exc,
                 details=f"URL: {url}",
             )
@@ -1677,7 +1677,7 @@ class YTMResolver:
             data = fetch_youtube_data(url, timeout=30)
             if not data:
                 write_failure_log(
-                    "youtube_metadata_empty",
+"youtube_metadata_empty",
                     RuntimeError("yt-dlp returned no metadata"),
                     details=f"URL: {url}",
                 )
@@ -1688,21 +1688,21 @@ class YTMResolver:
                 or data.get("creator")
                 or data.get("uploader")
                 or data.get("channel")
-                or ""
+                or""
             )
-            title = data.get("track") or data.get("title") or ""
-            album = data.get("album") or ""
+            title = data.get("track") or data.get("title") or""
+            album = data.get("album") or""
 
-            upload_date = str(data.get("upload_date") or "")
-            year = upload_date[:4] if len(upload_date) >= 4 else ""
+            upload_date = str(data.get("upload_date") or"")
+            year = upload_date[:4] if len(upload_date) >= 4 else""
 
-            video_id = str(data.get("id") or "").strip()
+            video_id = str(data.get("id") or"").strip()
             if not video_id:
                 parsed = urllib.parse.urlparse(url)
                 query = urllib.parse.parse_qs(parsed.query)
                 video_id = (query.get("v") or [""])[0].strip()
 
-            thumbnail = data.get("thumbnail") or ""
+            thumbnail = data.get("thumbnail") or""
             thumbnail_candidates = []
 
             direct_thumbnail = canonicalize_thumbnail_url(thumbnail)
@@ -1711,7 +1711,7 @@ class YTMResolver:
 
             for thumb in data.get("thumbnails", []) or []:
                 if isinstance(thumb, dict):
-                    candidate = canonicalize_thumbnail_url(thumb.get("url") or "")
+                    candidate = canonicalize_thumbnail_url(thumb.get("url") or"")
                     if candidate and candidate not in thumbnail_candidates:
                         thumbnail_candidates.append(candidate)
 
@@ -1720,21 +1720,21 @@ class YTMResolver:
                     thumbnail_candidates.append(candidate)
 
             return {
-                "artist": artist,
-                "title": title,
-                "album": album,
-                "year": year,
-                "video_id": video_id,
-                "thumbnail": direct_thumbnail,
-                "thumbnail_candidates": thumbnail_candidates,
-                "source_title": data.get("title") or "",
-                "source_url": url,
+"artist": artist,
+"title": title,
+"album": album,
+"year": year,
+"video_id": video_id,
+"thumbnail": direct_thumbnail,
+"thumbnail_candidates": thumbnail_candidates,
+"source_title": data.get("title") or"",
+"source_url": url,
             }
         except BrowserSessionError:
             raise
         except Exception as exc:
             write_failure_log(
-                "youtube_metadata", 
+"youtube_metadata", 
                 exc,
                 details=f"URL: {url}",
             )
@@ -1742,12 +1742,12 @@ class YTMResolver:
 
 
     def direct_result_from_metadata(self, meta):
-        """Build a download result directly from YouTube metadata without YTM search."""
+"""Build a download result directly from YouTube metadata without YTM search."""
         if not meta or not meta.get("video_id"):
             return None
 
-        artist = str(meta.get("artist") or "").strip()
-        title = str(meta.get("title") or meta.get("source_title") or "").strip()
+        artist = str(meta.get("artist") or"").strip()
+        title = str(meta.get("title") or meta.get("source_title") or"").strip()
 
         if not title:
             return None
@@ -1755,30 +1755,30 @@ class YTMResolver:
         artist_names = [artist] if artist else ["YouTube"]
 
         return {
-            "video_id": meta.get("video_id", ""),
-            "title": title,
-            "artist_names": artist_names,
-            "artist": artist or "YouTube",
-            "album": str(meta.get("album") or ""),
-            "album_id": None,
-            "year": str(meta.get("year") or ""),
-            "cover_url": meta.get("thumbnail"),
-            "thumbnail_candidates": meta.get("thumbnail_candidates") or [],
-            "source_thumbnail_url": meta.get("thumbnail"),
-            "source": "YouTube Direct (YTM matching skipped)",
-            "source_url": meta.get("source_url", ""),
-            "is_fallback": False,
-            "ytm_matched": False,
-            "input_type": "url",
-            "requested_artist": artist,
-            "requested_title": title,
+"video_id": meta.get("video_id",""),
+"title": title,
+"artist_names": artist_names,
+"artist": artist or"YouTube",
+"album": str(meta.get("album") or""),
+"album_id": None,
+"year": str(meta.get("year") or""),
+"cover_url": meta.get("thumbnail"),
+"thumbnail_candidates": meta.get("thumbnail_candidates") or [],
+"source_thumbnail_url": meta.get("thumbnail"),
+"source":"YouTube Direct (YTM matching skipped)",
+"source_url": meta.get("source_url",""),
+"is_fallback": False,
+"ytm_matched": False,
+"input_type":"url",
+"requested_artist": artist,
+"requested_title": title,
         }
 
     def resolve_input(self, user_input):
-        user_input = str(user_input or "").strip()
+        user_input = str(user_input or"").strip()
 
         if not user_input:
-            return None, "Empty input"
+            return None,"Empty input"
 
         if is_youtube_url(user_input):
             meta = self.metadata_from_url(
@@ -1786,7 +1786,7 @@ class YTMResolver:
             )
 
             if not meta:
-                return None, "Could not read YouTube metadata from the link"
+                return None,"Could not read YouTube metadata from the link"
 
             # ONLY YouTube Music URLs enter the YTM songs/videos matching
             # pipeline. Ordinary YouTube and youtu.be links download directly
@@ -1799,49 +1799,49 @@ class YTMResolver:
                 )
 
                 if not result:
-                    return None, "No matching YouTube Music result found"
+                    return None,"No matching YouTube Music result found"
 
-                result["input_type"] = "url"
+                result["input_type"] ="url"
                 result["ytm_matched"] = True
                 result["requested_artist"] = meta["artist"]
                 result["requested_title"] = meta["title"]
-                return result, ""
+                return result,""
 
             direct_result = self.direct_result_from_metadata(meta)
             if not direct_result:
-                return None, "Could not build a direct YouTube download result"
+                return None,"Could not build a direct YouTube download result"
 
-            return direct_result, ""
+            return direct_result,""
 
         artist, title = split_artist_title(user_input)
 
         result = self.search(
             artist,
             title,
-            "",
+"",
         )
 
         if not result:
-            return None, "No YouTube Music result found"
+            return None,"No YouTube Music result found"
 
-        result["input_type"] = "search"
+        result["input_type"] ="search"
         result["ytm_matched"] = True
         result["requested_artist"] = artist
         result["requested_title"] = title
-        return result, ""
+        return result,""
 
     def resolve_playlist_urls(self, playlist_url):
         def _attempt(cookie_args):
             proc = subprocess.run(
                 [
                     get_ytdlp_command(),
-                    "--dump-single-json",
-                    "--flat-playlist",
-                    "--skip-download",
-                    "--no-warnings",
-                    "--ignore-errors",
+"--dump-single-json",
+"--flat-playlist",
+"--skip-download",
+"--no-warnings",
+"--ignore-errors",
                     *cookie_args,
-                    "--",
+"--",
                     playlist_url,
                 ],
                 capture_output=True,
@@ -1868,7 +1868,7 @@ class YTMResolver:
             for entry in entries:
                 if not isinstance(entry, dict):
                     continue
-                video_id = str(entry.get("id") or entry.get("videoId") or "").strip()
+                video_id = str(entry.get("id") or entry.get("videoId") or"").strip()
                 if not video_id:
                     continue
 
@@ -1878,7 +1878,7 @@ class YTMResolver:
                     entry.get("webpage_url")
                     or entry.get("webpage_url_basename")
                     or entry.get("url")
-                    or ""
+                    or""
                 )
                 if isinstance(exact_url, str) and exact_url.startswith("http"):
                     results.append(exact_url)
@@ -1890,7 +1890,7 @@ class YTMResolver:
             raise
         except Exception as exc:
             write_failure_log(
-                "playlist_resolve",
+"playlist_resolve",
                 exc,
                 details=f"Playlist: {playlist_url}",
             )
@@ -1904,13 +1904,13 @@ class YTMResolver:
 
 def remove_album_artist_tags(flac):
     targets = {
-        "albumartist",
-        "album artist",
-        "album_artist",
+"albumartist",
+"album artist",
+"album_artist",
     }
 
     for key in list(flac.keys()):
-        normalized = str(key).strip().lower().replace("-", " ")
+        normalized = str(key).strip().lower().replace("-","")
         if normalized in targets:
             try:
                 del flac[key]
@@ -1919,12 +1919,12 @@ def remove_album_artist_tags(flac):
 
 
 def rewrite_flac_metadata_only(file_path, result):
-    """Rewrite descriptive FLAC metadata without changing the embedded album cover.
+"""Rewrite descriptive FLAC metadata without changing the embedded album cover.
 
     This is the Metadata Rewriter's dedicated entry point. It snapshots all existing
     picture payloads, performs the strict metadata rewrite without replacement artwork,
     and then verifies every picture payload is byte-for-byte identical.
-    """
+"""
     before = FLAC(file_path)
     before_covers = [bytes(p.data or b"") for p in list(before.pictures or [])]
 
@@ -1945,18 +1945,18 @@ def rewrite_flac_metadata_strict(
     result,
     replacement_cover_bytes=None,
 ):
-    """Rewrite FLAC descriptive metadata to ARTIST, ALBUM, DATE.
+"""Rewrite FLAC descriptive metadata to ARTIST, ALBUM, DATE.
 
     STREAMINFO is retained. Existing picture blocks are preserved when no
     replacement_cover_bytes are supplied; only an explicit replacement is allowed
     to change artwork. The Metadata Rewriter uses rewrite_flac_metadata_only().
-    """
+"""
     flac = FLAC(file_path)
 
     streaminfo_blocks = [
         block
         for block in flac.metadata_blocks
-        if getattr(block, "code", None) == StreamInfo.code
+        if getattr(block,"code", None) == StreamInfo.code
     ]
 
     if not streaminfo_blocks:
@@ -1986,8 +1986,8 @@ def rewrite_flac_metadata_strict(
         for name in (result.get("artist_names") or [])
         if str(name).strip()
     ]
-    album = str(result.get("album") or "").strip()
-    year = str(result.get("year") or "").strip()
+    album = str(result.get("album") or"").strip()
+    year = str(result.get("year") or"").strip()
 
     if artists:
         flac["ARTIST"] = artists
@@ -2028,9 +2028,9 @@ def write_flac_metadata(
     if artists:
         flac["ARTIST"] = artists
 
-    album = result.get("album") or ""
-    title = result.get("title") or ""
-    year = result.get("year") or ""
+    album = result.get("album") or""
+    title = result.get("title") or""
+    year = result.get("year") or""
 
     if album:
         flac["ALBUM"] = album
@@ -2062,13 +2062,13 @@ def write_generic_audio_metadata(
     cover_bytes=None,
 ):
     suffix = Path(file_path).suffix.lower()
-    artist = ", ".join(result.get("artist_names") or [])
-    album = result.get("album") or ""
-    title = result.get("title") or ""
-    year = result.get("year") or ""
+    artist =",".join(result.get("artist_names") or [])
+    album = result.get("album") or""
+    title = result.get("title") or""
+    year = result.get("year") or""
 
     try:
-        if suffix == ".mp3":
+        if suffix ==".mp3":
             audio = ID3(file_path)
 
             audio.delall("TPE1")
@@ -2105,7 +2105,7 @@ def write_generic_audio_metadata(
             audio.save(file_path)
             return True
 
-        if suffix in {".m4a", ".mp4", ".aac"}:
+        if suffix in {".m4a",".mp4",".aac"}:
             audio = MP4(file_path)
 
             if artist:
@@ -2143,7 +2143,7 @@ def crop_flac_cover(file_path):
     flac = FLAC(file_path)
 
     if not flac.pictures:
-        return False, "No cover art"
+        return False,"No cover art"
 
     existing = flac.pictures[0]
     image = Image.open(BytesIO(existing.data))
@@ -2168,7 +2168,7 @@ def crop_flac_cover(file_path):
         )
     )
 
-    if cropped.mode != "RGB":
+    if cropped.mode !="RGB":
         cropped = cropped.convert("RGB")
 
     buffer = BytesIO()
@@ -2199,7 +2199,7 @@ except Exception:
 
 
 class DownloadCancelled(Exception):
-    """Raised when the user intentionally stops an active download."""
+"""Raised when the user intentionally stops an active download."""
 
 
 class YTMMusicToolkit(ctk.CTk):
@@ -2211,7 +2211,7 @@ class YTMMusicToolkit(ctk.CTk):
         self.minsize(700, 740)
         self.configure(fg_color="#000000")
 
-        icon_path = os.path.join(RESOURCE_DIR, "app.ico")
+        icon_path = os.path.join(RESOURCE_DIR,"app.ico")
 
         if os.path.exists(icon_path):
             try:
@@ -2221,26 +2221,26 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.custom_path = os.path.join(
             os.path.expanduser("~"),
-            "Downloads",
+"Downloads",
         )
 
         self.active_process = None
         self.is_paused = False
         self.download_running = False
         self.stop_requested = False
-        self._selected_download_format = "🎼 FLAC Lossless"
+        self._selected_download_format =" FLAC Lossless"
         self._selected_download_subtitles = False
 
         # Silent, pre-download link preview state.
         self._dl_preview_job = None
         self._dl_preview_token = 0
-        self._dl_preview_source = ""
+        self._dl_preview_source =""
         self._dl_preview_pil = None
         self._dl_preview_target_size = (96, 96)
         self._dl_preview_loading_job = None
         self._dl_preview_quality_options = []
-        self._dl_preview_quality_source = ""
-        self._dl_preview_mode = "none"
+        self._dl_preview_quality_source =""
+        self._dl_preview_mode ="none"
         self._dl_preview_is_playlist = False
         self._dl_playlist_cover_bytes = None
         self._dl_youtube_extractor_arg = None
@@ -2251,11 +2251,11 @@ class YTMMusicToolkit(ctk.CTk):
         self.resolver = None
 
         self.paths = {
-            "downloader": self.custom_path,
-            "metadata": self.custom_path,
-            "cover": self.custom_path,
-            "crop": self.custom_path,
-            "pipeline": self.custom_path,
+"downloader": self.custom_path,
+"metadata": self.custom_path,
+"cover": self.custom_path,
+"crop": self.custom_path,
+"pipeline": self.custom_path,
         }
 
         self.load_config()
@@ -2322,7 +2322,7 @@ class YTMMusicToolkit(ctk.CTk):
 
             with open(
                 CONFIG_FILE,
-                "r",
+"r",
                 encoding="utf-8",
             ) as handle:
                 data = json.load(handle)
@@ -2340,7 +2340,7 @@ class YTMMusicToolkit(ctk.CTk):
     def save_config(self):
         try:
             payload = {
-                "paths": self.paths,
+"paths": self.paths,
             }
             # Preserve the cookie path selected from the GUI when saving any
             # other settings through the legacy config wrappers.
@@ -2350,7 +2350,7 @@ class YTMMusicToolkit(ctk.CTk):
 
             with open(
                 CONFIG_FILE,
-                "w",
+"w",
                 encoding="utf-8",
             ) as handle:
                 json.dump(payload, handle, indent=2)
@@ -2426,7 +2426,7 @@ class YTMMusicToolkit(ctk.CTk):
         ctk.CTkLabel(
             brand_badge,
             text="YT",
-            font=(APP_FONT, 15, "bold"),
+            font=(APP_FONT, 15,"bold"),
             text_color="#7dd3fc",
         ).pack(
             expand=True,
@@ -2445,7 +2445,7 @@ class YTMMusicToolkit(ctk.CTk):
         ctk.CTkLabel(
             title_stack,
             text="YTM Music Toolkit",
-            font=(APP_FONT, 21, "bold"),
+            font=(APP_FONT, 21,"bold"),
             text_color="#ffffff",
             anchor="w",
         ).pack(
@@ -2474,7 +2474,7 @@ class YTMMusicToolkit(ctk.CTk):
         self.header_status = ctk.CTkLabel(
             meta,
             text="● READY",
-            font=(APP_FONT, 10, "bold"),
+            font=(APP_FONT, 10,"bold"),
             text_color="#67e8f9",
         )
         self.header_status.pack(
@@ -2484,7 +2484,7 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.cookie_status = ctk.CTkLabel(
             meta,
-            text="🔐 Cookie file: checking...",
+            text=" Cookie file: checking...",
             font=(APP_FONT, 10),
             text_color="#64748b",
         )
@@ -2495,10 +2495,10 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.cookie_browse_button = ctk.CTkButton(
             meta,
-            text="📁 Browse",
+            text=" Browse",
             width=78,
             height=28,
-            font=(APP_FONT, 10, "bold"),
+            font=(APP_FONT, 10,"bold"),
             fg_color="#050505",
             hover_color="#1e293b",
             text_color="#ffffff",
@@ -2515,12 +2515,12 @@ class YTMMusicToolkit(ctk.CTk):
                 try:
                     if label:
                         self.cookie_status.configure(
-                            text=f"🔐 Cookies: {label}",
+                            text=f" Cookies: {label}",
                             text_color="#67e8f9",
                         )
                     else:
                         self.cookie_status.configure(
-                            text="⚠ Missing cookies.txt",
+                            text=" Missing cookies.txt",
                             text_color="#f87171",
                         )
                 except Exception:
@@ -2538,15 +2538,15 @@ class YTMMusicToolkit(ctk.CTk):
             _on_cookie_file_status(None, _no_session_message())
 
     def browse_cookie_file(self):
-        """Open a file picker and remember the selected Netscape cookies file."""
+"""Open a file picker and remember the selected Netscape cookies file."""
         current = get_cookie_file_path()
-        initial_dir = str(Path(current).parent) if current else str(Path.home() / "Documents")
+        initial_dir = str(Path(current).parent) if current else str(Path.home() /"Documents")
         selected = filedialog.askopenfilename(
             title="Select YouTube cookies.txt",
             initialdir=initial_dir,
             filetypes=[
-                ("Netscape cookie files", "*.txt"),
-                ("All files", "*.*"),
+                ("Netscape cookie files","*.txt"),
+                ("All files","*.*"),
             ],
         )
         if not selected:
@@ -2555,10 +2555,10 @@ class YTMMusicToolkit(ctk.CTk):
         candidate = Path(selected)
         if not _is_valid_cookie_file(candidate):
             messagebox.showerror(
-                "Invalid cookie file",
-                "Please select a Netscape-format cookies.txt file.\n\n"
-                "The file should start with '# Netscape HTTP Cookie File' "
-                "or '# HTTP Cookie File'.",
+"Invalid cookie file",
+"Please select a Netscape-format cookies.txt file.\n\n"
+"The file should start with'# Netscape HTTP Cookie File'"
+"or'# HTTP Cookie File'.",
                 parent=self,
             )
             return
@@ -2568,7 +2568,7 @@ class YTMMusicToolkit(ctk.CTk):
         except Exception as exc:
             write_failure_log("cookie_file_save", exc, details=f"Selected path: {candidate}")
             messagebox.showerror(
-                "Could not save cookie selection",
+"Could not save cookie selection",
                 f"The cookie file was selected, but its path could not be saved.\n\n{exc}",
                 parent=self,
             )
@@ -2615,7 +2615,7 @@ class YTMMusicToolkit(ctk.CTk):
                 corner_radius=13,
                 border_width=1,
                 border_color="#111827",
-                font=(APP_FONT, 11, "bold"),
+                font=(APP_FONT, 11,"bold"),
             )
         except Exception:
             pass
@@ -2634,7 +2634,7 @@ class YTMMusicToolkit(ctk.CTk):
         ctk.CTkLabel(
             footer,
             text="LOCAL ENGINE  •  YT MUSIC MATCHING  •  FLAC ARTWORK  •  ZERO-REENCODE VIDEO MUX",
-            font=(APP_FONT, 9, "bold"),
+            font=(APP_FONT, 9,"bold"),
             text_color="#334155",
         ).pack(
             anchor="center",
@@ -2649,7 +2649,7 @@ class YTMMusicToolkit(ctk.CTk):
 
         label = ctk.CTkLabel(
             row,
-            text=f"💾 Save To: {self.paths[path_key]}",
+            text=f" Save To: {self.paths[path_key]}",
             font=(APP_FONT, 12),
             text_color="#ffffff",
             anchor="w",
@@ -2663,10 +2663,10 @@ class YTMMusicToolkit(ctk.CTk):
 
         button = ctk.CTkButton(
             row,
-            text="📁 Browse",
+            text=" Browse",
             width=88,
             height=31,
-            font=(APP_FONT, 12, "bold"),
+            font=(APP_FONT, 12,"bold"),
             fg_color="#050505",
             hover_color="#1e293b",
             text_color="#ffffff",
@@ -2700,7 +2700,7 @@ class YTMMusicToolkit(ctk.CTk):
         if label is not None:
             self.set_label(
                 label,
-                f"💾 Save To: {directory}",
+                f" Save To: {directory}",
             )
 
     def append_log(self, textbox, message):
@@ -2710,7 +2710,7 @@ class YTMMusicToolkit(ctk.CTk):
         def write_log():
             try:
                 textbox.configure(state="normal")
-                textbox.insert("end", message.rstrip() + "\n")
+                textbox.insert("end", message.rstrip() +"\n")
                 textbox.see("end")
                 textbox.configure(state="disabled")
             except Exception:
@@ -2722,7 +2722,7 @@ class YTMMusicToolkit(ctk.CTk):
             pass
 
     def make_operation_meter(self, parent, prefix, initial_message="Waiting for operation..."):
-        """Create a hidden operation meter that is revealed when work starts."""
+"""Create a hidden operation meter that is revealed when work starts."""
         meter = ctk.CTkFrame(
             parent,
             fg_color="transparent",
@@ -2756,7 +2756,7 @@ class YTMMusicToolkit(ctk.CTk):
         message = ctk.CTkLabel(
             info,
             text=initial_message,
-            font=(APP_FONT, 10, "bold"),
+            font=(APP_FONT, 10,"bold"),
             text_color="#94a3b8",
             anchor="w",
         )
@@ -2769,7 +2769,7 @@ class YTMMusicToolkit(ctk.CTk):
         percent = ctk.CTkLabel(
             info,
             text="0%",
-            font=(APP_FONT, 10, "bold"),
+            font=(APP_FONT, 10,"bold"),
             text_color="#64748b",
             anchor="e",
         )
@@ -2789,7 +2789,7 @@ class YTMMusicToolkit(ctk.CTk):
         return meter
 
     def show_operation_meter(self, prefix):
-        """Reveal a hidden operation meter with a small slide/fade-style entrance."""
+"""Reveal a hidden operation meter with a small slide/fade-style entrance."""
         meter = getattr(self, f"{prefix}_progress_meter", None)
         if meter is None:
             return
@@ -2826,7 +2826,7 @@ class YTMMusicToolkit(ctk.CTk):
 
 
     def show_activity_console(self, prefix):
-        """Reveal a terminal-style activity panel for the active operation."""
+"""Reveal a terminal-style activity panel for the active operation."""
         panel = getattr(self, f"{prefix}_console_panel", None)
         tab = getattr(self, f"{prefix}_console_tab", None)
         row = getattr(self, f"{prefix}_console_row", None)
@@ -2856,7 +2856,7 @@ class YTMMusicToolkit(ctk.CTk):
                 try:
                     panel.configure(
                         height=max(1, round(1 + (target_height - 1) * amount)),
-                        border_color=self._blend_colors("#050b12", "#111827", amount),
+                        border_color=self._blend_colors("#050b12","#111827", amount),
                     )
                 except Exception:
                     pass
@@ -2881,7 +2881,7 @@ class YTMMusicToolkit(ctk.CTk):
 
 
     def hide_activity_console(self, prefix):
-        """Collapse a terminal-style activity panel while the tab is inactive."""
+"""Collapse a terminal-style activity panel while the tab is inactive."""
         panel = getattr(self, f"{prefix}_console_panel", None)
         tab = getattr(self, f"{prefix}_console_tab", None)
         row = getattr(self, f"{prefix}_console_row", None)
@@ -2898,7 +2898,7 @@ class YTMMusicToolkit(ctk.CTk):
 
 
     def set_operation_progress(self, prefix, percent, message, taskbar=False):
-        """Update a complete operation meter safely from worker threads."""
+"""Update a complete operation meter safely from worker threads."""
         value = max(0.0, min(100.0, float(percent)))
 
         bar = getattr(self, f"{prefix}_progress", None)
@@ -2974,11 +2974,11 @@ class YTMMusicToolkit(ctk.CTk):
         duration_in=550,
         key=None,
     ):
-        """Fade label text out, swap it, then fade it back in.
+"""Fade label text out, swap it, then fade it back in.
 
         This deliberately does not touch the preview's Loading Preview...
         animation, which has its own dedicated timing loop.
-        """
+"""
         if widget is None:
             return
 
@@ -2987,10 +2987,10 @@ class YTMMusicToolkit(ctk.CTk):
         try:
             current_color = self._animation_color(
                 widget.cget("text_color"),
-                "#ffffff",
+"#ffffff",
             )
         except Exception:
-            current_color = "#ffffff"
+            current_color ="#ffffff"
 
         target_color = self._animation_color(
             final_color if final_color is not None else current_color,
@@ -2998,7 +2998,7 @@ class YTMMusicToolkit(ctk.CTk):
         )
         fade_color = self._blend_colors(
             target_color,
-            "#000000",
+"#000000",
             0.90,
         )
 
@@ -3041,7 +3041,7 @@ class YTMMusicToolkit(ctk.CTk):
         )
 
     def set_label(self, label, text):
-        """Set label text with a slow 1-second fade only when the text changes."""
+"""Set label text with a slow 1-second fade only when the text changes."""
         def update():
             try:
                 new_text = str(text)
@@ -3075,7 +3075,7 @@ class YTMMusicToolkit(ctk.CTk):
                 self.animate_text_change(
                     self.header_status,
                     text,
-                    final_color="#38bdf8" if not busy else "#fbbf24",
+                    final_color="#38bdf8" if not busy else"#fbbf24",
                     key="header-status-text",
                 )
             except Exception:
@@ -3088,14 +3088,14 @@ class YTMMusicToolkit(ctk.CTk):
 
     def pulse_header_status(self):
         try:
-            if not hasattr(self, "header_status"):
+            if not hasattr(self,"header_status"):
                 return
 
             busy = self._header_pulse_on
             if busy:
-                colors = ("#fbbf24", "#fde68a")
+                colors = ("#fbbf24","#fde68a")
             else:
-                colors = ("#38bdf8", "#67e8f9")
+                colors = ("#38bdf8","#67e8f9")
 
             current = self.header_status.cget("text_color")
             next_color = colors[1] if current == colors[0] else colors[0]
@@ -3112,22 +3112,22 @@ class YTMMusicToolkit(ctk.CTk):
     def _animation_color(color, transparent_fallback="#000000"):
         if isinstance(color, (tuple, list)):
             if len(color) >= 2:
-                color = color[1] if ctk.get_appearance_mode().lower() == "dark" else color[0]
+                color = color[1] if ctk.get_appearance_mode().lower() =="dark" else color[0]
             elif color:
                 color = color[0]
 
         color = str(color or transparent_fallback)
 
-        if color.lower() == "transparent":
+        if color.lower() =="transparent":
             return transparent_fallback
 
         named = {
-            "white": "#ffffff",
-            "black": "#000000",
-            "red": "#ff0000",
-            "blue": "#0000ff",
-            "gray": "#808080",
-            "grey": "#808080",
+"white":"#ffffff",
+"black":"#000000",
+"red":"#ff0000",
+"blue":"#0000ff",
+"gray":"#808080",
+"grey":"#808080",
         }
         color = named.get(color.lower(), color)
 
@@ -3148,7 +3148,7 @@ class YTMMusicToolkit(ctk.CTk):
             int(a[i] + (b[i] - a[i]) * amount)
             for i in range(3)
         )
-        return "#{:02x}{:02x}{:02x}".format(*mixed)
+        return"#{:02x}{:02x}{:02x}".format(*mixed)
 
     def _animate(self, key, duration_ms, update, on_done=None):
         old_job = self._animation_jobs.get(key)
@@ -3230,37 +3230,37 @@ class YTMMusicToolkit(ctk.CTk):
             normal = button.cget("fg_color")
             hover = button.cget("hover_color")
             base_visual = self._animation_color(normal)
-            hover_visual = self._animation_color(hover, "#1e293b")
+            hover_visual = self._animation_color(hover,"#1e293b")
 
             # Disable CustomTkinter's instant hover background so our
             # own interpolation controls the transition.
             button.configure(hover=False)
 
             button.bind(
-                "<Enter>",
+"<Enter>",
                 lambda _e, b=button, h=hover_visual: self.animate_widget_color(
-                    b, "fg_color", b.cget("fg_color"), h, 135
+                    b,"fg_color", b.cget("fg_color"), h, 135
                 ),
                 add="+",
             )
             button.bind(
-                "<Leave>",
+"<Leave>",
                 lambda _e, b=button, n=base_visual, original=normal: self.animate_widget_color(
-                    b, "fg_color", b.cget("fg_color"), n, 170, original
+                    b,"fg_color", b.cget("fg_color"), n, 170, original
                 ),
                 add="+",
             )
             button.bind(
-                "<ButtonPress-1>",
+"<ButtonPress-1>",
                 lambda _e, b=button: self.animate_widget_color(
-                    b, "fg_color", b.cget("fg_color"), "#334155", 70
+                    b,"fg_color", b.cget("fg_color"),"#334155", 70
                 ),
                 add="+",
             )
             button.bind(
-                "<ButtonRelease-1>",
+"<ButtonRelease-1>",
                 lambda _e, b=button, h=hover_visual: self.animate_widget_color(
-                    b, "fg_color", b.cget("fg_color"), h, 100
+                    b,"fg_color", b.cget("fg_color"), h, 100
                 ),
                 add="+",
             )
@@ -3273,19 +3273,19 @@ class YTMMusicToolkit(ctk.CTk):
                 return
 
             normal = card.cget("border_color")
-            glow = "#1e3a5f"
+            glow ="#1e3a5f"
 
             card.bind(
-                "<Enter>",
+"<Enter>",
                 lambda _e, c=card, n=normal: self.animate_widget_color(
-                    c, "border_color", c.cget("border_color"), glow, 180
+                    c,"border_color", c.cget("border_color"), glow, 180
                 ),
                 add="+",
             )
             card.bind(
-                "<Leave>",
+"<Leave>",
                 lambda _e, c=card, n=normal: self.animate_widget_color(
-                    c, "border_color", c.cget("border_color"), n, 220, n
+                    c,"border_color", c.cget("border_color"), n, 220, n
                 ),
                 add="+",
             )
@@ -3296,20 +3296,20 @@ class YTMMusicToolkit(ctk.CTk):
         try:
             normal = widget.cget("border_color")
             if normal is None:
-                normal = "#111827"
-            focus = "#2563eb"
+                normal ="#111827"
+            focus ="#2563eb"
 
             widget.bind(
-                "<FocusIn>",
+"<FocusIn>",
                 lambda _e, w=widget: self.animate_widget_color(
-                    w, "border_color", w.cget("border_color"), focus, 160
+                    w,"border_color", w.cget("border_color"), focus, 160
                 ),
                 add="+",
             )
             widget.bind(
-                "<FocusOut>",
+"<FocusOut>",
                 lambda _e, w=widget, n=normal: self.animate_widget_color(
-                    w, "border_color", w.cget("border_color"), n, 200, n
+                    w,"border_color", w.cget("border_color"), n, 200, n
                 ),
                 add="+",
             )
@@ -3425,11 +3425,11 @@ class YTMMusicToolkit(ctk.CTk):
         if target_tab == current_tab:
             return
 
-        if getattr(self, "_tab_transition_running", False):
+        if getattr(self,"_tab_transition_running", False):
             return
 
         self._tab_transition_running = True
-        transition_id = getattr(self, "_tab_transition_id", 0) + 1
+        transition_id = getattr(self,"_tab_transition_id", 0) + 1
         self._tab_transition_id = transition_id
 
         overlay = self._create_tab_fade_overlay(current_tab)
@@ -3495,7 +3495,7 @@ class YTMMusicToolkit(ctk.CTk):
         )
 
     def install_tab_transitions(self):
-        """Replace segmented-button tab commands with an animated tab switch."""
+"""Replace segmented-button tab commands with an animated tab switch."""
         try:
             self._current_tab_name = self.tabs.get()
             self._tab_transition_running = False
@@ -3503,7 +3503,7 @@ class YTMMusicToolkit(ctk.CTk):
             self._tab_transition_overlay = None
 
             seg = self.tabs._segmented_button
-            buttons = getattr(seg, "_buttons_dict", {})
+            buttons = getattr(seg,"_buttons_dict", {})
 
             if not buttons:
                 raise RuntimeError("Segmented button internals unavailable")
@@ -3536,24 +3536,24 @@ class YTMMusicToolkit(ctk.CTk):
                 if isinstance(widget, ctk.CTkButton):
                     # Give every button a layered, premium surface while
                     # preserving the existing command and dimensions.
-                    current_text = str(widget.cget("text") or "")
+                    current_text = str(widget.cget("text") or"")
                     is_primary = any(
                         token in current_text
                         for token in (
-                            "Start",
-                            "Download",
-                            "Rewrite",
-                            "Upgrade",
-                            "Overhaul",
-                            "Crop",
+"Start",
+"Download",
+"Rewrite",
+"Upgrade",
+"Overhaul",
+"Crop",
                         )
                     )
 
                     widget.configure(
-                        fg_color="#0a1724" if is_primary else "#060a0f",
-                        hover_color="#12395b" if is_primary else "#111c2a",
+                        fg_color="#0a1724" if is_primary else"#060a0f",
+                        hover_color="#12395b" if is_primary else"#111c2a",
                         border_width=1,
-                        border_color="#1e4f73" if is_primary else "#172234",
+                        border_color="#1e4f73" if is_primary else"#172234",
                         corner_radius=12,
                     )
                     self.bind_smooth_button(widget)
@@ -3565,7 +3565,7 @@ class YTMMusicToolkit(ctk.CTk):
                         bw = 0
                     if bw > 0 and widget not in {self.main_container}:
                         widget.configure(
-                            border_color=widget.cget("border_color") or "#111827"
+                            border_color=widget.cget("border_color") or"#111827"
                         )
                     self.bind_card_glow(widget)
 
@@ -3635,8 +3635,8 @@ class YTMMusicToolkit(ctk.CTk):
 
         ctk.CTkLabel(
             target,
-            text="🔗 Target URL",
-            font=(APP_FONT, 15, "bold"),
+            text=" Target URL",
+            font=(APP_FONT, 15,"bold"),
             text_color="#ffffff",
         ).grid(
             row=0,
@@ -3686,8 +3686,8 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.dl_quality_label = ctk.CTkLabel(
             options,
-            text="⚡ Download Quality",
-            font=(APP_FONT, 15, "bold"),
+            text=" Download Quality",
+            font=(APP_FONT, 15,"bold"),
             text_color="#ffffff",
         )
 
@@ -3758,7 +3758,7 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.dl_path_row, self.dl_path_label = self.make_path_row(
             options,
-            "downloader",
+"downloader",
         )
         self.dl_path_row.grid(
             row=5,
@@ -3793,7 +3793,7 @@ class YTMMusicToolkit(ctk.CTk):
             height=96,
             fg_color="#050505",
             corner_radius=10,
-            font=(APP_FONT, 10, "bold"),
+            font=(APP_FONT, 10,"bold"),
             text_color="#4b5563",
         )
         self.dl_cover.grid(
@@ -3807,7 +3807,7 @@ class YTMMusicToolkit(ctk.CTk):
         self.dl_title = ctk.CTkLabel(
             preview,
             text="Waiting For Target URL...",
-            font=(APP_FONT, 15, "bold"),
+            font=(APP_FONT, 15,"bold"),
             text_color="#ffffff",
             anchor="w",
         )
@@ -3882,7 +3882,7 @@ class YTMMusicToolkit(ctk.CTk):
         self.dl_progress_message = ctk.CTkLabel(
             progress_info,
             text="Waiting for download...",
-            font=(APP_FONT, 10, "bold"),
+            font=(APP_FONT, 10,"bold"),
             text_color="#94a3b8",
             anchor="w",
         )
@@ -3895,7 +3895,7 @@ class YTMMusicToolkit(ctk.CTk):
         self.dl_progress_percent = ctk.CTkLabel(
             progress_info,
             text="0%",
-            font=(APP_FONT, 10, "bold"),
+            font=(APP_FONT, 10,"bold"),
             text_color="#64748b",
             anchor="e",
         )
@@ -3927,12 +3927,12 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.dl_start = ctk.CTkButton(
             controls,
-            text="🚀 Start Download",
+            text=" Start Download",
             command=self.start_download,
             fg_color="transparent",
             hover_color="#1e293b",
             text_color="#ffffff",
-            font=(APP_FONT, 14, "bold"),
+            font=(APP_FONT, 14,"bold"),
             height=42,
             corner_radius=8,
         )
@@ -3945,12 +3945,12 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.dl_pause = ctk.CTkButton(
             controls,
-            text="⏯️ Pause",
+            text=" Pause",
             command=self.toggle_pause,
             fg_color="transparent",
             hover_color="#1e293b",
             text_color="#ffffff",
-            font=(APP_FONT, 13, "bold"),
+            font=(APP_FONT, 13,"bold"),
             height=42,
             corner_radius=8,
             state="disabled",
@@ -3959,12 +3959,12 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.dl_resume = ctk.CTkButton(
             controls,
-            text="⏯️ Resume",
+            text=" Resume",
             command=self.toggle_pause,
             fg_color="transparent",
             hover_color="#1e293b",
             text_color="#ffffff",
-            font=(APP_FONT, 13, "bold"),
+            font=(APP_FONT, 13,"bold"),
             height=42,
             corner_radius=8,
             state="disabled",
@@ -3972,12 +3972,12 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.dl_stop = ctk.CTkButton(
             controls,
-            text="🔴 Stop",
+            text=" Stop",
             command=self.stop_active_process,
             fg_color="transparent",
             hover_color="#1e293b",
             text_color="#ffffff",
-            font=(APP_FONT, 13, "bold"),
+            font=(APP_FONT, 13,"bold"),
             height=42,
             corner_radius=8,
             state="disabled",
@@ -3994,15 +3994,15 @@ class YTMMusicToolkit(ctk.CTk):
     # --------------------------------------------------------
 
     def downloader_quality_mode_for_source(self, source):
-        """Return an explicit quality-menu mode derived only from the current URL."""
-        source = str(source or "").strip()
+"""Return an explicit quality-menu mode derived only from the current URL."""
+        source = str(source or"").strip()
         if not source or not is_youtube_url(source):
-            return "none"
-        return "playlist" if is_playlist_url(source) else "single"
+            return"none"
+        return"playlist" if is_playlist_url(source) else"single"
 
     @staticmethod
     def sanitize_quality_options_for_mode(quality_options, mode):
-        """Prevent playlist-only quality specs from ever leaking into single-video mode."""
+"""Prevent playlist-only quality specs from ever leaking into single-video mode."""
         options = []
         seen = set()
 
@@ -4010,10 +4010,10 @@ class YTMMusicToolkit(ctk.CTk):
             if not isinstance(spec, dict):
                 continue
 
-            if mode == "single" and spec.get("best_per_item"):
+            if mode =="single" and spec.get("best_per_item"):
                 continue
 
-            if mode == "single" and str(label).strip() == "Best Quality Separate":
+            if mode =="single" and str(label).strip() =="Best Quality Separate":
                 continue
 
             key = str(label)
@@ -4027,10 +4027,10 @@ class YTMMusicToolkit(ctk.CTk):
     def hide_download_quality_selector(self):
         self._dl_quality_visible = False
         self._dl_preview_quality_options = []
-        self._dl_preview_quality_source = ""
-        self._dl_preview_mode = "none"
+        self._dl_preview_quality_source =""
+        self._dl_preview_mode ="none"
         self._dl_preview_is_playlist = False
-        self._selected_download_format = ""
+        self._selected_download_format =""
         self._dl_youtube_extractor_arg = None
         try:
             self.dl_quality_label.grid_remove()
@@ -4041,8 +4041,8 @@ class YTMMusicToolkit(ctk.CTk):
             pass
 
     def show_download_quality_selector(self, quality_options, animated=True, source_value="", source_mode=None):
-        """Reveal only qualities valid for the exact current source mode."""
-        source_value = str(source_value or self._dl_preview_source or "").strip()
+"""Reveal only qualities valid for the exact current source mode."""
+        source_value = str(source_value or self._dl_preview_source or"").strip()
         detected_mode = self.downloader_quality_mode_for_source(source_value)
 
         # The URL itself is the single source of truth. Never allow a stale
@@ -4051,11 +4051,11 @@ class YTMMusicToolkit(ctk.CTk):
         if source_mode and source_mode != detected_mode:
             mode = detected_mode
 
-        if mode == "playlist":
+        if mode =="playlist":
             # Keep only playlist resolutions gathered from its per-video scan.
-            options = self.sanitize_quality_options_for_mode(quality_options, "playlist")
-        elif mode == "single":
-            options = self.sanitize_quality_options_for_mode(quality_options, "single")
+            options = self.sanitize_quality_options_for_mode(quality_options,"playlist")
+        elif mode =="single":
+            options = self.sanitize_quality_options_for_mode(quality_options,"single")
         else:
             options = []
 
@@ -4064,7 +4064,7 @@ class YTMMusicToolkit(ctk.CTk):
             return
 
         self._dl_preview_mode = mode
-        self._dl_preview_is_playlist = mode == "playlist"
+        self._dl_preview_is_playlist = mode =="playlist"
         self._dl_preview_quality_options = options
         self._dl_preview_quality_source = source_value
 
@@ -4111,10 +4111,10 @@ class YTMMusicToolkit(ctk.CTk):
 
         def update(amount):
             try:
-                bright = self._blend_colors("#334155", "#ffffff", amount)
+                bright = self._blend_colors("#334155","#ffffff", amount)
                 self.dl_quality_label.configure(text_color=bright)
-                combo_text = self._blend_colors("#334155", "#ffffff", amount)
-                combo_button = self._blend_colors("#0b1220", "#1e293b", amount)
+                combo_text = self._blend_colors("#334155","#ffffff", amount)
+                combo_button = self._blend_colors("#0b1220","#1e293b", amount)
                 self.dl_format.configure(
                     text_color=combo_text,
                     button_color=combo_button,
@@ -4135,14 +4135,14 @@ class YTMMusicToolkit(ctk.CTk):
                 pass
 
         self._animate(
-            "download-quality-selector-in",
+"download-quality-selector-in",
             360,
             update,
             done,
         )
 
     def show_downloader_activity_ui(self):
-        """Reveal the download meter and running controls; hide Start Download."""
+"""Reveal the download meter and running controls; hide Start Download."""
         try:
             self.dl_start.grid_remove()
             self.dl_progress.grid(
@@ -4184,12 +4184,12 @@ class YTMMusicToolkit(ctk.CTk):
             )
 
             def update(amount):
-                color = self._blend_colors("#334155", "#ffffff", amount)
+                color = self._blend_colors("#334155","#ffffff", amount)
                 try:
                     self.dl_pause.configure(text_color=color)
                     self.dl_stop.configure(text_color=color)
                     self.dl_progress.configure(
-                        progress_color=self._blend_colors("#0b1220", "#38bdf8", amount)
+                        progress_color=self._blend_colors("#0b1220","#38bdf8", amount)
                     )
                 except Exception:
                     pass
@@ -4203,7 +4203,7 @@ class YTMMusicToolkit(ctk.CTk):
                     pass
 
             self._animate(
-                "downloader-activity-in",
+"downloader-activity-in",
                 360,
                 update,
                 done,
@@ -4235,7 +4235,7 @@ class YTMMusicToolkit(ctk.CTk):
         return {}
 
     def on_downloader_target_changed(self, *_args):
-        """Invalidate everything on every character change and silently rebuild the source preview."""
+"""Invalidate everything on every character change and silently rebuild the source preview."""
         try:
             current_value = self.dl_input.get()
             self._dl_preview_token += 1
@@ -4250,7 +4250,7 @@ class YTMMusicToolkit(ctk.CTk):
 
             self._stop_loading_preview()
             self._dl_preview_source = current_value
-            self._selected_download_format = ""
+            self._selected_download_format =""
             self.hide_download_quality_selector()
             self._dl_preview_mode = self.downloader_quality_mode_for_source(current_value)
             self._clear_downloader_preview_visuals()
@@ -4274,14 +4274,14 @@ class YTMMusicToolkit(ctk.CTk):
             pass
 
     def on_downloader_paste_preview(self, _event=None):
-        """Backward-compatible wrapper for older bindings."""
+"""Backward-compatible wrapper for older bindings."""
         self.on_downloader_target_changed()
 
     def _clear_downloader_preview_visuals(self):
         try:
             self._dl_preview_pil = None
             self._dl_preview_target_size = (96, 96)
-            self._dl_preview_mode = "none"
+            self._dl_preview_mode ="none"
             self._dl_preview_is_playlist = False
             self._dl_playlist_cover_bytes = None
             self._dl_youtube_extractor_arg = None
@@ -4313,10 +4313,10 @@ class YTMMusicToolkit(ctk.CTk):
             return
 
         states = (
-            "Loading Preview...",
-            "Loading Preview..",
-            "Loading Preview.",
-            "Loading Preview..",
+"Loading Preview...",
+"Loading Preview..",
+"Loading Preview.",
+"Loading Preview..",
         )
 
         try:
@@ -4398,7 +4398,7 @@ class YTMMusicToolkit(ctk.CTk):
             return
 
         cover_bytes = None
-        cover_url = preview.get("cover_url") or ""
+        cover_url = preview.get("cover_url") or""
         candidates = []
 
         if cover_url:
@@ -4428,7 +4428,7 @@ class YTMMusicToolkit(ctk.CTk):
                 self.apply_silent_link_preview(preview)
             except Exception as exc:
                 write_failure_log(
-                    "apply_preview",
+"apply_preview",
                     exc,
                     details=f"URL: {user_input}",
                 )
@@ -4439,19 +4439,19 @@ class YTMMusicToolkit(ctk.CTk):
     def apply_silent_link_preview(self, preview):
         self._stop_loading_preview()
 
-        title = preview.get("title") or "Unknown YouTube Video"
+        title = preview.get("title") or"Unknown YouTube Video"
         cover_bytes = preview.get("cover_bytes")
         source = self._dl_preview_source.strip()
         mode = self.downloader_quality_mode_for_source(source)
         self._dl_preview_mode = mode
-        self._dl_preview_is_playlist = mode == "playlist"
+        self._dl_preview_is_playlist = mode =="playlist"
         self._dl_playlist_cover_bytes = cover_bytes if self._dl_preview_is_playlist else None
         self._dl_preview_quality_source = source
         self._dl_youtube_extractor_arg = preview.get("youtube_extractor_arg")
 
         display_title = title
         if len(display_title) > 64:
-            display_title = display_title[:61] + "..."
+            display_title = display_title[:61] +"..."
 
         self.dl_title.configure(
             text=display_title,
@@ -4474,14 +4474,14 @@ class YTMMusicToolkit(ctk.CTk):
             )
 
         quality_options = preview.get("quality_options") or []
-        if mode == "playlist":
+        if mode =="playlist":
             self.dl_status.configure(
-                text=f"Status: {preview.get('quality_summary') or 'Playlist quality scan complete'}"
+                text=f"Status: {preview.get('quality_summary') or'Playlist quality scan complete'}"
             )
-        elif mode == "single":
-            quality_options = self.sanitize_quality_options_for_mode(quality_options, "single")
+        elif mode =="single":
+            quality_options = self.sanitize_quality_options_for_mode(quality_options,"single")
 
-        if quality_options and mode in {"playlist", "single"}:
+        if quality_options and mode in {"playlist","single"}:
             self.show_download_quality_selector(
                 quality_options,
                 animated=True,
@@ -4495,13 +4495,13 @@ class YTMMusicToolkit(ctk.CTk):
 
 
     def _prepare_preview_image(self, image_bytes):
-        """Prepare artwork/thumbnail at its natural aspect ratio.
+"""Prepare artwork/thumbnail at its natural aspect ratio.
 
         Square album artwork stays square, while normal YouTube thumbnails
         keep their wide 16:9 (or other source) shape instead of being forced
         into a square. The displayed image is bounded so the preview card
         remains compact regardless of the source dimensions.
-        """
+"""
         try:
             image = Image.open(BytesIO(image_bytes))
             image = ImageOps.exif_transpose(image).convert("RGB")
@@ -4561,7 +4561,7 @@ class YTMMusicToolkit(ctk.CTk):
             )
 
     def _animate_downloader_preview_reveal(self):
-        """Drop the preview content in while fading its text toward full contrast."""
+"""Drop the preview content in while fading its text toward full contrast."""
         title = self.dl_title
         artist = self.dl_artist
         status = self.dl_status
@@ -4581,13 +4581,13 @@ class YTMMusicToolkit(ctk.CTk):
 
         def update(amount):
             title.configure(
-                text_color=self._blend_colors("#334155", "#ffffff", amount)
+                text_color=self._blend_colors("#334155","#ffffff", amount)
             )
             artist.configure(
-                text_color=self._blend_colors("#334155", "#9ca3af", amount)
+                text_color=self._blend_colors("#334155","#9ca3af", amount)
             )
             status.configure(
-                text_color=self._blend_colors("#334155", "#ffffff", amount)
+                text_color=self._blend_colors("#334155","#ffffff", amount)
             )
 
             top_title = round(0 + (18 * amount))
@@ -4643,30 +4643,30 @@ class YTMMusicToolkit(ctk.CTk):
         try:
             self.animate_widget_color(
                 card,
-                "border_color",
+"border_color",
                 card.cget("border_color"),
-                "#1e4f73",
+"#1e4f73",
                 220,
-                "#111827",
+"#111827",
             )
         except Exception:
             pass
 
         self._animate(
-            "downloader_preview_reveal",
+"downloader_preview_reveal",
             360,
             update,
             done,
         )
 
     def update_downloader_preview(self, result):
-        artist = result.get("artist") or "[Unknown Artist]"
-        title = result.get("title") or "[Unknown Title]"
-        album = result.get("album") or ""
+        artist = result.get("artist") or"[Unknown Artist]"
+        title = result.get("title") or"[Unknown Title]"
+        album = result.get("album") or""
 
         display_title = title
         if len(display_title) > 48:
-            display_title = display_title[:45] + "..."
+            display_title = display_title[:45] +"..."
 
         self.dl_title.configure(
             text=display_title,
@@ -4675,7 +4675,7 @@ class YTMMusicToolkit(ctk.CTk):
             text=f"{artist}  •  {album}" if album else artist,
         )
 
-        cover_url = result.get("cover_url") or ""
+        cover_url = result.get("cover_url") or""
         thumbnail_candidates = result.get("thumbnail_candidates") or []
 
         if cover_url:
@@ -4723,15 +4723,15 @@ class YTMMusicToolkit(ctk.CTk):
 
         if not user_input:
             messagebox.showerror(
-                "Error",
-                "Enter a search query or YouTube / YT Music link.",
+"Error",
+"Enter a search query or YouTube / YT Music link.",
             )
             return
 
         if user_input.startswith("http") and not is_youtube_url(user_input):
             messagebox.showerror(
-                "Error",
-                "Only YouTube and YouTube Music links are supported.",
+"Error",
+"Only YouTube and YouTube Music links are supported.",
             )
             return
 
@@ -4742,20 +4742,20 @@ class YTMMusicToolkit(ctk.CTk):
             and self._dl_preview_quality_source == current_source
             and self._dl_preview_mode == source_mode
         )
-        selected = self.dl_format.get().strip() if quality_matches_source else ""
+        selected = self.dl_format.get().strip() if quality_matches_source else""
 
-        if source_mode == "single" and selected == "Best Quality Separate":
-            selected = ""
+        if source_mode =="single" and selected =="Best Quality Separate":
+            selected =""
 
-        if source_mode == "single" and selected:
-            valid_labels = {label for label, _spec in self.sanitize_quality_options_for_mode(self._dl_preview_quality_options, "single")}
+        if source_mode =="single" and selected:
+            valid_labels = {label for label, _spec in self.sanitize_quality_options_for_mode(self._dl_preview_quality_options,"single")}
             if selected not in valid_labels:
-                selected = ""
+                selected =""
 
         if not selected:
             # The worker will inspect the exact current single-video source and choose its first option.
             # For playlists, this is the special per-item mode.
-            selected = "Best Quality Separate" if source_mode == "playlist" else "🎬 Best Quality"
+            selected ="Best Quality Separate" if source_mode =="playlist" else" Best Quality"
 
         self._selected_download_format = selected
         self._selected_download_subtitles = bool(self.dl_subs.get())
@@ -4763,9 +4763,9 @@ class YTMMusicToolkit(ctk.CTk):
         self.prepare_downloader_ui()
         self.show_downloader_activity_ui()
         self.set_operation_progress(
-            "dl",
+"dl",
             0,
-            "Preparing download...",
+"Preparing download...",
             taskbar=True,
         )
         self.set_header_status("● DOWNLOADING", busy=True)
@@ -4782,15 +4782,15 @@ class YTMMusicToolkit(ctk.CTk):
     def prepare_downloader_ui(self):
         self.dl_start.configure(
             state="disabled",
-            text="🚀 Processing...",
+            text=" Processing...",
         )
 
         self.dl_progress.set(0)
         self.dl_progress_percent.configure(text="0%")
         self.set_operation_progress(
-            "dl",
+"dl",
             0,
-            "Preparing download...",
+"Preparing download...",
             taskbar=True,
         )
 
@@ -4803,24 +4803,24 @@ class YTMMusicToolkit(ctk.CTk):
         self.set_label(
             self.dl_title,
             (
-                "Resolving YouTube Music result..."
+"Resolving YouTube Music result..."
                 if uses_ytm_matching
-                else "Reading YouTube source..."
+                else"Reading YouTube source..."
             ),
         )
-        self.set_label(self.dl_artist, "")
+        self.set_label(self.dl_artist,"")
         self.set_label(
             self.dl_status,
             (
-                "Status: Songs filter → exact artist match"
+"Status: Songs filter → exact artist match"
                 if uses_ytm_matching
-                else "Status: Direct YouTube download — YTM matching skipped"
+                else"Status: Direct YouTube download — YTM matching skipped"
             ),
         )
 
         self.append_log(
             self.dl_log,
-            "============================================================",
+"============================================================",
         )
         self.append_log(
             self.dl_log,
@@ -4829,8 +4829,8 @@ class YTMMusicToolkit(ctk.CTk):
 
 
     def resolve_quality_options_for_result(self, result):
-        """Inspect a resolved source, retrying YouTube clients when capped at 360p."""
-        video_id = result.get("video_id") if result else ""
+"""Inspect a resolved source, retrying YouTube clients when capped at 360p."""
+        video_id = result.get("video_id") if result else""
         if not video_id:
             return []
 
@@ -4846,7 +4846,7 @@ class YTMMusicToolkit(ctk.CTk):
         except Exception as exc:
             self._last_quality_extractor_arg = None
             write_failure_log(
-                "download_quality_inspection",
+"download_quality_inspection",
                 exc,
                 details=f"Source: {source_url}",
             )
@@ -4861,7 +4861,7 @@ class YTMMusicToolkit(ctk.CTk):
                 urls = resolver.resolve_playlist_urls(
                     user_input,
                 )
-                return "playlist", (
+                return"playlist", (
                     urls,
                     is_youtube_music_url(user_input),
                 )
@@ -4869,16 +4869,16 @@ class YTMMusicToolkit(ctk.CTk):
             result, error = resolver.resolve_input(
                 user_input,
             )
-            return "single", (result, error)
+            return"single", (result, error)
 
         result, error = resolver.resolve_input(
             user_input,
         )
-        return "single", (result, error)
+        return"single", (result, error)
 
     def is_lossless_video_mode(self, selected_format):
         spec = self.selected_quality_spec(selected_format)
-        if not spec or spec.get("kind") != "video":
+        if not spec or spec.get("kind") !="video":
             return False
 
         try:
@@ -4899,7 +4899,7 @@ class YTMMusicToolkit(ctk.CTk):
             raise DownloadCancelled("Download stopped by user.")
 
         self.set_operation_progress(
-            "dl",
+"dl",
             progress_start * 100.0,
             f"{stage_name.title()} — preparing...",
             taskbar=True,
@@ -4957,7 +4957,7 @@ class YTMMusicToolkit(ctk.CTk):
                 percent = max(0.0, min(100.0, float(match.group(1))))
                 overall = progress_start + (progress_end - progress_start) * (percent / 100.0)
                 self.set_operation_progress(
-                    "dl",
+"dl",
                     overall * 100.0,
                     f"{stage_name.title()} — {percent:.0f}%",
                     taskbar=True,
@@ -4980,7 +4980,7 @@ class YTMMusicToolkit(ctk.CTk):
             )
 
         self.set_operation_progress(
-            "dl",
+"dl",
             progress_end * 100.0,
             f"{stage_name.title()} complete",
             taskbar=True,
@@ -4989,7 +4989,7 @@ class YTMMusicToolkit(ctk.CTk):
 
 
     def strip_audio_from_video(self, video_path, silent_output_path, progress_start=0.0, progress_end=1.0):
-        """Copy only the video stream into a new container, guaranteeing no audio remains."""
+"""Copy only the video stream into a new container, guaranteeing no audio remains."""
         if self.stop_requested:
             raise DownloadCancelled("Download stopped by user.")
 
@@ -5004,23 +5004,23 @@ class YTMMusicToolkit(ctk.CTk):
 
         command = [
             ffmpeg,
-            "-y",
-            "-i",
+"-y",
+"-i",
             str(input_path),
-            "-map",
-            "0:v:0",
-            "-an",
-            "-c:v",
-            "copy",
-            "-map_metadata",
-            "-1",
+"-map",
+"0:v:0",
+"-an",
+"-c:v",
+"copy",
+"-map_metadata",
+"-1",
             str(output_path),
         ]
 
         self.set_operation_progress(
-            "dl",
+"dl",
             progress_start * 100.0,
-            "Removing temporary video audio track...",
+"Removing temporary video audio track...",
             taskbar=True,
         )
 
@@ -5038,7 +5038,7 @@ class YTMMusicToolkit(ctk.CTk):
             self.active_process=process
         except Exception as exc:
             log_path=write_failure_log(
-                "download_strip_video_audio_start",
+"download_strip_video_audio_start",
                 exc,
                 details=f"Input: {input_path}\nOutput: {output_path}",
             )
@@ -5069,7 +5069,7 @@ class YTMMusicToolkit(ctk.CTk):
 
         if code != 0:
             log_path=write_failure_log(
-                "download_strip_video_audio",
+"download_strip_video_audio",
                 RuntimeError(f"FFmpeg exit code {code}"),
                 details="\n".join(output_lines),
             )
@@ -5080,7 +5080,7 @@ class YTMMusicToolkit(ctk.CTk):
         if not output_path.exists():
             exc=RuntimeError("FFmpeg completed but the silent video was not created.")
             log_path=write_failure_log(
-                "download_strip_video_audio_output",
+"download_strip_video_audio_output",
                 exc,
                 details=f"Expected output: {output_path}",
             )
@@ -5089,22 +5089,22 @@ class YTMMusicToolkit(ctk.CTk):
             )
 
         self.set_operation_progress(
-            "dl",
+"dl",
             progress_end * 100.0,
-            "Video-only stream prepared...",
+"Video-only stream prepared...",
             taskbar=True,
         )
         return output_path
 
 
     def prepare_mkv_cover_attachments(self, cover_path, temp_dir):
-        """Prepare JPEG cover attachments using Matroska's standard names.
+"""Prepare JPEG cover attachments using Matroska's standard names.
 
         The full-resolution artwork is preserved without cropping. We always
         create cover.jpg, and for landscape artwork we also create
         cover_land.jpg so Explorer thumbnail handlers that honor Matroska's
         landscape naming convention can choose the intended 16:9 artwork.
-        """
+"""
         if not cover_path:
             return []
 
@@ -5119,7 +5119,7 @@ class YTMMusicToolkit(ctk.CTk):
             raw = source.read_bytes()
             with Image.open(BytesIO(raw)) as image:
                 image = ImageOps.exif_transpose(image)
-                if image.mode != "RGB":
+                if image.mode !="RGB":
                     image = image.convert("RGB")
                 width, height = image.size
 
@@ -5138,12 +5138,12 @@ class YTMMusicToolkit(ctk.CTk):
 
         attachments = []
 
-        cover = target_dir / "cover.jpg"
+        cover = target_dir /"cover.jpg"
         cover.write_bytes(normalized)
         attachments.append(cover)
 
         if width > height:
-            landscape = target_dir / "cover_land.jpg"
+            landscape = target_dir /"cover_land.jpg"
             landscape.write_bytes(normalized)
             attachments.append(landscape)
 
@@ -5151,21 +5151,21 @@ class YTMMusicToolkit(ctk.CTk):
 
 
     def verify_mkv_cover_attachment(self, file_path):
-        """Return True only when the MKV contains a real JPEG cover attachment."""
+"""Return True only when the MKV contains a real JPEG cover attachment."""
         try:
-            ffprobe = find_executable("ffprobe") or "ffprobe"
-            if ffprobe == "ffprobe" and not find_executable("ffprobe"):
+            ffprobe = find_executable("ffprobe") or"ffprobe"
+            if ffprobe =="ffprobe" and not find_executable("ffprobe"):
                 return False
 
             command = [
                 ffprobe,
-                "-v",
-                "error",
-                "-show_streams",
-                "-show_entries",
-                "stream=codec_type,codec_name,disposition:stream_tags",
-                "-of",
-                "json",
+"-v",
+"error",
+"-show_streams",
+"-show_entries",
+"stream=codec_type,codec_name,disposition:stream_tags",
+"-of",
+"json",
                 str(file_path),
             ]
 
@@ -5188,19 +5188,19 @@ class YTMMusicToolkit(ctk.CTk):
                 disposition = stream.get("disposition") or {}
                 tags = stream.get("tags") or {}
                 if (
-                    stream.get("codec_name") in {"mjpeg", "png", "jpeg"}
+                    stream.get("codec_name") in {"mjpeg","png","jpeg"}
                     and int(disposition.get("attached_pic", 0) or 0) == 1
-                    and str(tags.get("mimetype", "")).lower() == "image/jpeg"
+                    and str(tags.get("mimetype","")).lower() =="image/jpeg"
                 ):
                     return True
 
                 # FFmpeg may expose a Matroska image attachment as an
                 # attachment stream rather than an attached-pic video stream.
                 if (
-                    stream.get("codec_type") == "attachment"
-                    and str(tags.get("mimetype", "")).lower() == "image/jpeg"
-                    and str(tags.get("filename", "")).lower().endswith(
-                        ("cover.jpg", "cover_land.jpg")
+                    stream.get("codec_type") =="attachment"
+                    and str(tags.get("mimetype","")).lower() =="image/jpeg"
+                    and str(tags.get("filename","")).lower().endswith(
+                        ("cover.jpg","cover_land.jpg")
                     )
                 ):
                     return True
@@ -5208,10 +5208,10 @@ class YTMMusicToolkit(ctk.CTk):
                 # FFmpeg commonly exposes Matroska image attachments as
                 # MJPEG streams carrying the attachment filename in tags.
                 if (
-                    stream.get("codec_name") in {"mjpeg", "jpeg"}
-                    and str(tags.get("mimetype", "")).lower() == "image/jpeg"
-                    and str(tags.get("filename", "")).lower().endswith(
-                        ("cover.jpg", "cover_land.jpg")
+                    stream.get("codec_name") in {"mjpeg","jpeg"}
+                    and str(tags.get("mimetype","")).lower() =="image/jpeg"
+                    and str(tags.get("filename","")).lower().endswith(
+                        ("cover.jpg","cover_land.jpg")
                     )
                 ):
                     return True
@@ -5232,21 +5232,21 @@ class YTMMusicToolkit(ctk.CTk):
         cover_path=None,
         audio_tracks=None,
     ):
-        """Mux video with one or more already-created FLAC audio tracks.
+"""Mux video with one or more already-created FLAC audio tracks.
 
         Every audio stream is copied without re-encoding and is labeled with
         its language/track name. The first track is marked as default. The
         resulting MKV therefore exposes the language tracks to players such
         as VLC while the individual FLAC files remain available separately.
-        """
+"""
         if self.stop_requested:
             raise DownloadCancelled("Download stopped by user.")
 
         ffmpeg = get_ffmpeg_command()
 
-        if not find_executable("ffmpeg") and ffmpeg == "ffmpeg":
+        if not find_executable("ffmpeg") and ffmpeg =="ffmpeg":
             raise RuntimeError(
-                "FFmpeg was not found. It is required to mux FLAC audio into the final video without re-encoding."
+"FFmpeg was not found. It is required to mux FLAC audio into the final video without re-encoding."
             )
 
         if isinstance(flac_path, (list, tuple)):
@@ -5264,8 +5264,8 @@ class YTMMusicToolkit(ctk.CTk):
 
         command = [
             ffmpeg,
-            "-y",
-            "-i",
+"-y",
+"-i",
             str(video_path),
         ]
 
@@ -5273,27 +5273,27 @@ class YTMMusicToolkit(ctk.CTk):
             command.extend(["-i", str(path)])
 
         command.extend([
-            "-map",
-            "0:v:0",
+"-map",
+"0:v:0",
         ])
 
         for index in range(len(audio_paths)):
             command.extend(["-map", f"{index + 1}:a:0"])
 
         command.extend([
-            "-c:v",
-            "copy",
-            "-c:a",
-            "copy",
-            "-map_metadata",
-            "-1",
+"-c:v",
+"copy",
+"-c:a",
+"copy",
+"-map_metadata",
+"-1",
         ])
 
         metadata_values = {
-            "title": result.get("title") or "",
-            "artist": result.get("artist") or "",
-            "album": result.get("album") or "",
-            "date": result.get("year") or "",
+"title": result.get("title") or"",
+"artist": result.get("artist") or"",
+"album": result.get("album") or"",
+"date": result.get("year") or"",
         }
 
         for key, value in metadata_values.items():
@@ -5301,7 +5301,7 @@ class YTMMusicToolkit(ctk.CTk):
                 command.extend(["-metadata", f"{key}={value}"])
 
         for index, track in enumerate(track_data[:len(audio_paths)]):
-            language_code = str(track.get("language_code") or "und").strip().lower()
+            language_code = str(track.get("language_code") or"und").strip().lower()
             label = str(track.get("label") or track.get("language") or f"Audio Track {index + 1}").strip()
 
             command.extend([
@@ -5310,7 +5310,7 @@ class YTMMusicToolkit(ctk.CTk):
                 f"-metadata:s:a:{index}",
                 f"title={label}",
                 f"-disposition:a:{index}",
-                "default" if index == 0 else "0",
+"default" if index == 0 else"0",
             ])
 
         # Matroska cover art is stored as Attachments. Use the standard
@@ -5328,20 +5328,20 @@ class YTMMusicToolkit(ctk.CTk):
         for index, attachment in enumerate(cover_attachments):
             command.extend([
                 f"-metadata:s:t:{index}",
-                "mimetype=image/jpeg",
+"mimetype=image/jpeg",
                 f"-metadata:s:t:{index}",
                 f"filename={attachment.name}",
                 f"-metadata:s:t:{index}",
-                "title=Cover Art",
+"title=Cover Art",
             ])
 
         command.append(str(output_path))
 
         track_count = len(audio_paths)
         self.set_operation_progress(
-            "dl",
+"dl",
             progress_start * 100.0,
-            f"Merging video + {track_count} language audio track{'s' if track_count != 1 else ''}...",
+            f"Merging video + {track_count} language audio track{'s' if track_count != 1 else''}...",
             taskbar=True,
         )
         self.append_log(
@@ -5363,7 +5363,7 @@ class YTMMusicToolkit(ctk.CTk):
             self.active_process = process
         except Exception as exc:
             log_path = write_failure_log(
-                "download_final_mux_start",
+"download_final_mux_start",
                 exc,
                 details=f"Output: {output_path}\nAudio tracks: {audio_paths}",
             )
@@ -5401,7 +5401,7 @@ class YTMMusicToolkit(ctk.CTk):
 
         if return_code != 0:
             log_path = write_failure_log(
-                "download_final_mux",
+"download_final_mux",
                 RuntimeError(f"FFmpeg exit code {return_code}"),
                 details="\n".join(output_lines),
             )
@@ -5411,10 +5411,10 @@ class YTMMusicToolkit(ctk.CTk):
 
         if not Path(output_path).exists():
             exc = RuntimeError(
-                "FFmpeg completed but the final merged video was not created."
+"FFmpeg completed but the final merged video was not created."
             )
             log_path = write_failure_log(
-                "download_final_mux_output",
+"download_final_mux_output",
                 exc,
                 details=f"Expected output: {output_path}",
             )
@@ -5428,13 +5428,13 @@ class YTMMusicToolkit(ctk.CTk):
         if cover_path and Path(cover_path).exists():
             if not self.verify_mkv_cover_attachment(output_path):
                 repair_path = Path(output_path).with_name(
-                    Path(output_path).stem + ".cover_repair.tmp.mkv"
+                    Path(output_path).stem +".cover_repair.tmp.mkv"
                 )
                 try:
                     self.set_operation_progress(
-                        "dl",
+"dl",
                         progress_start * 100.0,
-                        "Rebinding thumbnail to final video...",
+"Rebinding thumbnail to final video...",
                         taskbar=True,
                     )
 
@@ -5445,8 +5445,8 @@ class YTMMusicToolkit(ctk.CTk):
 
                     repair_command = [
                         ffmpeg,
-                        "-y",
-                        "-i",
+"-y",
+"-i",
                         str(output_path),
                     ]
 
@@ -5456,20 +5456,20 @@ class YTMMusicToolkit(ctk.CTk):
                     for attach_index, attachment in enumerate(repair_attachments):
                         repair_command.extend([
                             f"-metadata:s:t:{attach_index}",
-                            "mimetype=image/jpeg",
+"mimetype=image/jpeg",
                             f"-metadata:s:t:{attach_index}",
                             f"filename={attachment.name}",
                             f"-metadata:s:t:{attach_index}",
-                            "title=Cover Art",
+"title=Cover Art",
                         ])
 
                     repair_command.extend([
-                        "-c",
-                        "copy",
-                        "-map_metadata",
-                        "0",
-                        "-map_chapters",
-                        "0",
+"-c",
+"copy",
+"-map_metadata",
+"0",
+"-map_chapters",
+"0",
                         str(repair_path),
                     ])
 
@@ -5492,12 +5492,12 @@ class YTMMusicToolkit(ctk.CTk):
 
                     if not self.verify_mkv_cover_attachment(output_path):
                         raise RuntimeError(
-                            "The final MKV was created but the embedded JPEG cover could not be verified."
+"The final MKV was created but the embedded JPEG cover could not be verified."
                         )
 
                     self.append_log(
                         self.dl_log,
-                        "VIDEO THUMBNAIL: attachment verified after repair remux.",
+"VIDEO THUMBNAIL: attachment verified after repair remux.",
                     )
                 except Exception as exc:
                     try:
@@ -5506,7 +5506,7 @@ class YTMMusicToolkit(ctk.CTk):
                     except Exception:
                         pass
                     log_path = write_failure_log(
-                        "download_final_mux_thumbnail_verify",
+"download_final_mux_thumbnail_verify",
                         exc,
                         details=(
                             f"Output: {output_path}\n"
@@ -5520,28 +5520,28 @@ class YTMMusicToolkit(ctk.CTk):
             else:
                 self.append_log(
                     self.dl_log,
-                    "VIDEO THUMBNAIL: embedded JPEG attachment verified in final MKV.",
+"VIDEO THUMBNAIL: embedded JPEG attachment verified in final MKV.",
                 )
 
         self.set_operation_progress(
-            "dl",
+"dl",
             progress_end * 100.0,
-            f"{track_count} audio track{'s' if track_count != 1 else ''} bound to final video",
+            f"{track_count} audio track{'s' if track_count != 1 else''} bound to final video",
             taskbar=True,
         )
 
         if cover_attachments and self.verify_mkv_cover_attachment(output_path):
-            names = ", ".join(path.name for path in cover_attachments)
+            names =",".join(path.name for path in cover_attachments)
             self.append_log(
                 self.dl_log,
                 f"VIDEO THUMBNAIL: physically embedded in final MKV ({names}) and verified.",
             )
         elif cover_attachments:
             exc = RuntimeError(
-                "The final MKV was created, but its JPEG cover attachment could not be verified."
+"The final MKV was created, but its JPEG cover attachment could not be verified."
             )
             log_path = write_failure_log(
-                "download_final_mux_cover_verification",
+"download_final_mux_cover_verification",
                 exc,
                 details=(
                     f"Output: {output_path}\n"
@@ -5564,13 +5564,13 @@ class YTMMusicToolkit(ctk.CTk):
 
         if cleanup_errors:
             cleanup_log = write_failure_log(
-                "download_final_mux_cleanup",
+"download_final_mux_cleanup",
                 RuntimeError("One or more temporary FLAC files could not be deleted."),
                 details="\n".join(cleanup_errors),
             )
             self.append_log(
                 self.dl_log,
-                "TEMP FLAC CLEANUP WARNING: " + "; ".join(cleanup_errors)
+"TEMP FLAC CLEANUP WARNING:" +";".join(cleanup_errors)
                 + f" | Failure log: {cleanup_log or FAILURE_LOG_DIR}",
             )
         else:
@@ -5591,7 +5591,7 @@ class YTMMusicToolkit(ctk.CTk):
         output_dir = self.paths["downloader"]
 
         title_for_name = sanitize_filename(
-            result.get("output_filename") or result.get("title") or "track"
+            result.get("output_filename") or result.get("title") or"track"
         )
 
         output_template = os.path.join(
@@ -5601,17 +5601,17 @@ class YTMMusicToolkit(ctk.CTk):
 
         command = [
             get_ytdlp_command(),
-            "--newline",
-            "--windows-filenames",
-            "--concurrent-fragments",
-            "4",
-            "--embed-metadata",
-            "--embed-thumbnail",
+"--newline",
+"--windows-filenames",
+"--concurrent-fragments",
+"4",
+"--embed-metadata",
+"--embed-thumbnail",
         ]
 
         command.extend(get_browser_cookie_args(source_url))
 
-        if "quality_extractor_arg" in result:
+        if"quality_extractor_arg" in result:
             effective_extractor_arg = result.get("quality_extractor_arg")
         else:
             effective_extractor_arg = (
@@ -5624,14 +5624,14 @@ class YTMMusicToolkit(ctk.CTk):
         spec = self.selected_quality_spec(selected_format)
         kind = spec.get("kind")
 
-        if kind == "audio":
-            audio_format = spec.get("audio_format") or "flac"
-            quality = spec.get("quality") or "0"
+        if kind =="audio":
+            audio_format = spec.get("audio_format") or"flac"
+            quality = spec.get("quality") or"0"
             command.extend([
-                "-x",
-                "--audio-format",
+"-x",
+"--audio-format",
                 audio_format,
-                "--audio-quality",
+"--audio-quality",
                 quality,
             ])
         else:
@@ -5650,37 +5650,37 @@ class YTMMusicToolkit(ctk.CTk):
                 )
             else:
                 video_selector = (
-                    "bestvideo[ext=mp4]+bestaudio[ext=m4a]"
-                    "/bestvideo+bestaudio"
-                    "/best"
+"bestvideo[ext=mp4]+bestaudio[ext=m4a]"
+"/bestvideo+bestaudio"
+"/best"
                 )
 
             # This path is reserved for 720p and below video downloads.
             # Audio remains in its original source codec; no FLAC extraction,
             # audio transcoding, or other lossless-audio workflow is used.
             command.extend([
-                "-f",
+"-f",
                 video_selector,
-                "--merge-output-format",
-                "mp4",
+"--merge-output-format",
+"mp4",
             ])
 
-        is_video_download = kind == "video"
+        is_video_download = kind =="video"
 
         if self._selected_download_subtitles and is_video_download:
             command.extend([
-                "--write-sub",
-                "--write-auto-sub",
-                "--embed-subs",
-                "--sub-lang",
-                "en,ar",
+"--write-sub",
+"--write-auto-sub",
+"--embed-subs",
+"--sub-lang",
+"en,ar",
             ])
 
 
         command.extend([
-            "-o",
+"-o",
             output_template,
-            "--",
+"--",
             source_url,
         ])
 
@@ -5695,12 +5695,12 @@ class YTMMusicToolkit(ctk.CTk):
             if p.is_file()
             and p not in before_files
             and p.suffix.lower() in {
-                ".flac",
-                ".mp3",
-                ".m4a",
-                ".mp4",
-                ".webm",
-                ".aac",
+".flac",
+".mp3",
+".m4a",
+".mp4",
+".webm",
+".aac",
             }
         ]
 
@@ -5725,7 +5725,7 @@ class YTMMusicToolkit(ctk.CTk):
 
         if not video_id:
             raise RuntimeError(
-                "Resolved result has no video id"
+"Resolved result has no video id"
             )
 
         source_url = result.get("source_url") or f"https://www.youtube.com/watch?v={video_id}"
@@ -5733,7 +5733,7 @@ class YTMMusicToolkit(ctk.CTk):
         # Playlist items are immutable sources. Never allow an enriched YTM
         # result to substitute a different video URL or video ID.
         if result.get("playlist_source_locked"):
-            locked_id = str(result.get("video_id") or "").strip()
+            locked_id = str(result.get("video_id") or"").strip()
             parsed_source = urllib.parse.urlparse(source_url)
             source_query = urllib.parse.parse_qs(parsed_source.query)
             source_id = str((source_query.get("v") or [""])[0]).strip()
@@ -5757,18 +5757,18 @@ class YTMMusicToolkit(ctk.CTk):
             local = max(0.0, min(1.0, float(local_fraction)))
             overall = (item_base + (item_span * local)) * 100.0
             self.set_operation_progress(
-                "dl",
+"dl",
                 overall,
                 message,
                 taskbar=taskbar,
             )
 
-        report(0.0, "Preparing source...")
+        report(0.0,"Preparing source...")
 
-        self.append_log(self.dl_log, "SOURCE: " + source_url)
-        self.append_log(self.dl_log, "MATCH: " + result.get("source", ""))
-        self.append_log(self.dl_log, "ARTIST: " + result.get("artist", ""))
-        self.append_log(self.dl_log, "TITLE: " + result.get("title", ""))
+        self.append_log(self.dl_log,"SOURCE:" + source_url)
+        self.append_log(self.dl_log,"MATCH:" + result.get("source",""))
+        self.append_log(self.dl_log,"ARTIST:" + result.get("artist",""))
+        self.append_log(self.dl_log,"TITLE:" + result.get("title",""))
 
         # 1080p and above (including Best Quality) use a separate FLAC audio
         # stage followed by silent video download and lossless MKV mux.
@@ -5776,17 +5776,17 @@ class YTMMusicToolkit(ctk.CTk):
         # stream preserved in its original lossy codec.
         if self.is_lossless_video_mode(selected_format):
             title_for_name = sanitize_filename(
-                result.get("output_filename") or result.get("title") or "track"
+                result.get("output_filename") or result.get("title") or"track"
             )
             base_name = title_for_name
 
-            temp_root = Path(output_dir) / ".ytm_music_toolkit_temp"
+            temp_root = Path(output_dir) /".ytm_music_toolkit_temp"
             temp_dir = temp_root / str(os.getpid())
             temp_dir.mkdir(parents=True, exist_ok=True)
 
             final_video = Path(output_dir) / f"{base_name}.mkv"
             audio_track_outputs = []
-            cover_attachment = temp_dir / "cover.jpg"
+            cover_attachment = temp_dir /"cover.jpg"
             cover_bytes = None
 
             try:
@@ -5797,10 +5797,10 @@ class YTMMusicToolkit(ctk.CTk):
                 audio_tracks = self.ensure_audio_tracks_for_result(result)
                 if not audio_tracks:
                     raise RuntimeError(
-                        "YouTube exposed no separate audio tracks for this video."
+"YouTube exposed no separate audio tracks for this video."
                     )
 
-                report(0.02, "Downloading language audio tracks...")
+                report(0.02,"Downloading language audio tracks...")
                 audio_track_outputs = self.download_all_audio_tracks(
                     source_url,
                     result,
@@ -5809,7 +5809,7 @@ class YTMMusicToolkit(ctk.CTk):
                     progress_end=0.30,
                 )
 
-                report(0.31, "Downloading highest-quality thumbnail separately...")
+                report(0.31,"Downloading highest-quality thumbnail separately...")
                 _, cover_bytes, cover_size = self.download_highest_quality_thumbnail(
                     result,
                     cover_attachment,
@@ -5820,7 +5820,7 @@ class YTMMusicToolkit(ctk.CTk):
                     f"VIDEO THUMBNAIL: {cover_size[0]}x{cover_size[1]} JPEG downloaded separately for mux.",
                 )
 
-                report(0.35, "Binding language labels and artwork...")
+                report(0.35,"Binding language labels and artwork...")
                 for completed in audio_track_outputs:
                     path = completed["path"]
                     track = completed["track"]
@@ -5833,13 +5833,13 @@ class YTMMusicToolkit(ctk.CTk):
                         )
                     self._write_language_tag_to_flac(path, track)
                     self.set_operation_progress(
-                        "dl",
+"dl",
                         (0.35 + 0.13 * (audio_track_outputs.index(completed) + 1) / max(1, len(audio_track_outputs))) * 100.0,
-                        f"Binding {track.get('label', 'audio track')}...",
+                        f"Binding {track.get('label','audio track')}...",
                         taskbar=True,
                     )
 
-                report(0.50, "Downloading silent video stream...")
+                report(0.50,"Downloading silent video stream...")
                 video_template = str(temp_dir / f"{base_name}.%(ext)s")
                 video_selector_spec = self.selected_quality_spec(selected_format)
                 requested_height = int(video_selector_spec.get("height") or 0)
@@ -5847,21 +5847,21 @@ class YTMMusicToolkit(ctk.CTk):
                     video_selector = (
                         f"bestvideo[height={requested_height}]"
                         f"/bestvideo[height<={requested_height}]"
-                        "/bestvideo"
+"/bestvideo"
                     )
                 else:
-                    video_selector = "bestvideo"
+                    video_selector ="bestvideo"
 
                 video_command = [
                     get_ytdlp_command(),
-                    "--newline",
-                    "--windows-filenames",
-                    "--concurrent-fragments",
-                    "4",
-                    "--no-playlist",
+"--newline",
+"--windows-filenames",
+"--concurrent-fragments",
+"4",
+"--no-playlist",
                     *youtube_extractor_args_list(
                         result.get("quality_extractor_arg")
-                        if "quality_extractor_arg" in result
+                        if"quality_extractor_arg" in result
                         else (
                             self._dl_youtube_extractor_arg
                             or self._last_quality_extractor_arg
@@ -5870,23 +5870,23 @@ class YTMMusicToolkit(ctk.CTk):
                 ]
                 video_command.extend(get_browser_cookie_args(source_url))
                 video_command.extend([
-                    "-f",
+"-f",
                     video_selector,
-                    "-o",
+"-o",
                     video_template,
-                    "--",
+"--",
                     source_url,
                 ])
 
                 self.run_ytdlp_logged(
                     video_command,
-                    "VIDEO",
+"VIDEO",
                     output_dir,
                     progress_start=0.50,
                     progress_end=0.74,
                 )
 
-                video_extensions = {".mp4", ".webm", ".mkv", ".mov", ".m4v"}
+                video_extensions = {".mp4",".webm",".mkv",".mov",".m4v"}
                 video_candidates = [
                     p for p in temp_dir.iterdir()
                     if p.is_file() and p.suffix.lower() in video_extensions
@@ -5894,14 +5894,14 @@ class YTMMusicToolkit(ctk.CTk):
 
                 if not video_candidates:
                     raise RuntimeError(
-                        "yt-dlp finished the video stage but the video file could not be located."
+"yt-dlp finished the video stage but the video file could not be located."
                     )
 
                 video_candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
                 temp_video_path = video_candidates[0]
 
                 silent_video_path = temp_dir / f"{base_name}.silent.mkv"
-                report(0.75, "Preparing video-only stream...")
+                report(0.75,"Preparing video-only stream...")
                 self.strip_audio_from_video(
                     temp_video_path,
                     silent_video_path,
@@ -5914,7 +5914,7 @@ class YTMMusicToolkit(ctk.CTk):
                     except Exception:
                         pass
 
-                report(0.80, "Merging video + all language audio tracks...")
+                report(0.80,"Merging video + all language audio tracks...")
                 audio_paths = [item["path"] for item in audio_track_outputs]
                 track_specs = [item["track"] for item in audio_track_outputs]
                 self.merge_video_and_flac(
@@ -5928,10 +5928,10 @@ class YTMMusicToolkit(ctk.CTk):
                     audio_tracks=track_specs,
                 )
 
-                report(1.0, "Operation Successful")
+                report(1.0,"Operation Successful")
                 self.append_log(
                     self.dl_log,
-                    "VIDEO SAVED: " + str(final_video),
+"VIDEO SAVED:" + str(final_video),
                 )
                 self.append_log(
                     self.dl_log,
@@ -5939,12 +5939,12 @@ class YTMMusicToolkit(ctk.CTk):
                 )
                 self.append_log(
                     self.dl_log,
-                    "SEPARATE FLAC FILES: temporary mux inputs removed after successful final video creation",
+"SEPARATE FLAC FILES: temporary mux inputs removed after successful final video creation",
                 )
                 if cover_written:
                     self.append_log(
                         self.dl_log,
-                        "VIDEO THUMBNAIL: separately downloaded and embedded as verified Matroska cover attachment(s)",
+"VIDEO THUMBNAIL: separately downloaded and embedded as verified Matroska cover attachment(s)",
                     )
                 return final_video
 
@@ -5957,7 +5957,7 @@ class YTMMusicToolkit(ctk.CTk):
                         temp_root.rmdir()
                 except Exception as exc:
                     write_failure_log(
-                        "download_temp_cleanup",
+"download_temp_cleanup",
                         exc,
                         details=f"Directory: {temp_dir}",
                     )
@@ -5970,20 +5970,20 @@ class YTMMusicToolkit(ctk.CTk):
 
         output_lines = self.run_ytdlp_logged(
             command,
-            "media",
+"media",
             output_dir,
             progress_start=0.03,
             progress_end=0.70,
         )
 
-        report(0.72, "Preparing metadata and artwork...")
+        report(0.72,"Preparing metadata and artwork...")
         downloaded = self.discover_downloaded_file(output_dir, before_files)
 
         if not downloaded:
             possible = [
                 p for p in Path(output_dir).iterdir()
                 if p.is_file() and p.suffix.lower() in {
-                    ".flac", ".mp3", ".m4a", ".mp4", ".webm", ".aac",
+".flac",".mp3",".m4a",".mp4",".webm",".aac",
                 }
             ]
             if possible:
@@ -6001,9 +6001,9 @@ class YTMMusicToolkit(ctk.CTk):
             prefix=".ytm_thumbnail_",
             dir=output_dir,
         ))
-        thumbnail_path = thumbnail_temp_dir / "cover.jpg"
+        thumbnail_path = thumbnail_temp_dir /"cover.jpg"
         try:
-            report(0.74, "Downloading highest-quality thumbnail separately...")
+            report(0.74,"Downloading highest-quality thumbnail separately...")
             _, thumbnail_bytes, thumb_size = self.download_highest_quality_thumbnail(
                 result,
                 thumbnail_path,
@@ -6027,8 +6027,8 @@ class YTMMusicToolkit(ctk.CTk):
                 f"THUMBNAIL: bound to {downloaded.name} successfully.",
             )
 
-            if Path(downloaded).suffix.lower() == ".mp4" and self.selected_quality_spec(selected_format).get("kind") == "video":
-                report(0.82, "Extracting separate language audio tracks...")
+            if Path(downloaded).suffix.lower() ==".mp4" and self.selected_quality_spec(selected_format).get("kind") =="video":
+                report(0.82,"Extracting separate language audio tracks...")
                 try:
                     self.ensure_audio_tracks_for_result(result)
                     self.download_all_audio_tracks(
@@ -6041,7 +6041,7 @@ class YTMMusicToolkit(ctk.CTk):
                     )
                 except Exception as exc:
                     log_path = write_failure_log(
-                        "download_audio_tracks_after_mp4",
+"download_audio_tracks_after_mp4",
                         exc,
                         details=f"Video: {downloaded}\nSource: {source_url}",
                     )
@@ -6049,10 +6049,10 @@ class YTMMusicToolkit(ctk.CTk):
                         f"Separate language audio-track extraction failed. Failure log: {log_path or FAILURE_LOG_DIR}"
                     ) from exc
 
-            report(1.0, "Operation Successful")
+            report(1.0,"Operation Successful")
         except Exception as exc:
             log_path = write_failure_log(
-                "download_thumbnail_or_postprocess",
+"download_thumbnail_or_postprocess",
                 exc,
                 details=f"File: {downloaded}\nSource video id: {result.get('video_id')}",
             )
@@ -6067,13 +6067,13 @@ class YTMMusicToolkit(ctk.CTk):
 
 
     def ensure_audio_tracks_for_result(self, result):
-        """Inspect the source and cache its distinct available audio tracks.
+"""Inspect the source and cache its distinct available audio tracks.
 
         The inspector returns one best format per language/variant track. The
         chosen extractor strategy is cached on the result and reused by every
         subsequent yt-dlp command so format IDs remain valid across the full
         download pipeline.
-        """
+"""
         if not result:
             return []
 
@@ -6081,10 +6081,10 @@ class YTMMusicToolkit(ctk.CTk):
         if isinstance(cached, list):
             return cached
 
-        video_id = str(result.get("video_id") or "").strip()
+        video_id = str(result.get("video_id") or"").strip()
         source_url = str(
             result.get("source_url")
-            or (f"https://www.youtube.com/watch?v={video_id}" if video_id else "")
+            or (f"https://www.youtube.com/watch?v={video_id}" if video_id else"")
         ).strip()
         if not source_url:
             raise RuntimeError("Cannot inspect audio tracks without a source URL.")
@@ -6096,7 +6096,7 @@ class YTMMusicToolkit(ctk.CTk):
             )
         except Exception as exc:
             log_path = write_failure_log(
-                "download_audio_track_inspection",
+"download_audio_track_inspection",
                 exc,
                 details=f"Source: {source_url}",
             )
@@ -6108,7 +6108,7 @@ class YTMMusicToolkit(ctk.CTk):
         if not tracks:
             exc = RuntimeError("No separate audio tracks were exposed by YouTube for this video.")
             log_path = write_failure_log(
-                "download_audio_track_inspection_empty",
+"download_audio_track_inspection_empty",
                 exc,
                 details=f"Source: {source_url}\nExtractor strategy: {extractor_arg}",
             )
@@ -6123,12 +6123,12 @@ class YTMMusicToolkit(ctk.CTk):
 
 
     def _write_language_tag_to_flac(self, file_path, track):
-        """Write explicit language/track labels without disturbing audio/artwork."""
+"""Write explicit language/track labels without disturbing audio/artwork."""
         flac = FLAC(file_path)
 
-        language_code = str(track.get("language_code") or "und").strip().lower()
-        language_name = str(track.get("language") or "Unknown").strip()
-        label = str(track.get("label") or language_name or "Audio Track").strip()
+        language_code = str(track.get("language_code") or"und").strip().lower()
+        language_name = str(track.get("language") or"Unknown").strip()
+        label = str(track.get("label") or language_name or"Audio Track").strip()
 
         flac["LANGUAGE"] = [language_code]
         flac["LANGUAGE_NAME"] = [language_name]
@@ -6156,7 +6156,7 @@ class YTMMusicToolkit(ctk.CTk):
         progress_end=1.0,
         cover_bytes=None,
     ):
-        """Download each discovered language/variant as its own FLAC file."""
+"""Download each discovered language/variant as its own FLAC file."""
         if self.stop_requested:
             raise DownloadCancelled("Download stopped by user.")
 
@@ -6167,12 +6167,12 @@ class YTMMusicToolkit(ctk.CTk):
         output_folder = Path(output_dir)
         output_folder.mkdir(parents=True, exist_ok=True)
         title = sanitize_filename(
-            result.get("output_filename") or result.get("title") or "audio"
+            result.get("output_filename") or result.get("title") or"audio"
         )
 
         # Keep the selected extractor strategy consistent with the inspection
         # that produced the exact format IDs below.
-        if "audio_tracks_extractor_arg" in result:
+        if"audio_tracks_extractor_arg" in result:
             extractor_arg = result.get("audio_tracks_extractor_arg")
         else:
             extractor_arg = (
@@ -6194,10 +6194,10 @@ class YTMMusicToolkit(ctk.CTk):
 
             command = [
                 get_ytdlp_command(),
-                "--newline",
-                "--windows-filenames",
-                "--no-playlist",
-                "--no-overwrites",
+"--newline",
+"--windows-filenames",
+"--no-playlist",
+"--no-overwrites",
             ]
 
             if extractor_arg:
@@ -6207,16 +6207,16 @@ class YTMMusicToolkit(ctk.CTk):
 
     
             command.extend([
-                "-f",
+"-f",
                 str(track.get("format_id")),
-                "-x",
-                "--audio-format",
-                "flac",
-                "--audio-quality",
-                "0",
-                "-o",
+"-x",
+"--audio-format",
+"flac",
+"--audio-quality",
+"0",
+"-o",
                 template,
-                "--",
+"--",
                 source_url,
             ])
 
@@ -6224,7 +6224,7 @@ class YTMMusicToolkit(ctk.CTk):
             local_end = progress_start + (progress_end - progress_start) * (index / total)
 
             self.set_operation_progress(
-                "dl",
+"dl",
                 local_start * 100.0,
                 f"Downloading {label} audio track...",
                 taskbar=True,
@@ -6240,7 +6240,7 @@ class YTMMusicToolkit(ctk.CTk):
                 )
             except Exception as exc:
                 log_path = write_failure_log(
-                    "download_audio_track",
+"download_audio_track",
                     exc,
                     details=(
                         f"Source: {source_url}\n"
@@ -6271,7 +6271,7 @@ class YTMMusicToolkit(ctk.CTk):
                     f"yt-dlp reported success but the {label} FLAC file was not found."
                 )
                 log_path = write_failure_log(
-                    "download_audio_track_output_missing",
+"download_audio_track_output_missing",
                     exc,
                     details=f"Expected: {final_path}\nSource: {source_url}",
                 )
@@ -6290,12 +6290,12 @@ class YTMMusicToolkit(ctk.CTk):
             self._write_language_tag_to_flac(final_path, track)
 
             completed.append({
-                "path": Path(final_path),
-                "track": dict(track),
+"path": Path(final_path),
+"track": dict(track),
             })
 
             self.set_operation_progress(
-                "dl",
+"dl",
                 local_end * 100.0,
                 f"{label} audio track ready...",
                 taskbar=True,
@@ -6309,7 +6309,7 @@ class YTMMusicToolkit(ctk.CTk):
         result,
         destination_path,
     ):
-        """Download and persist the highest-resolution valid thumbnail candidate."""
+"""Download and persist the highest-resolution valid thumbnail candidate."""
         result = result or {}
         destination = Path(destination_path)
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -6329,7 +6329,7 @@ class YTMMusicToolkit(ctk.CTk):
             # Ordinary YouTube downloads should use the video's native
             # thumbnail, trying every direct size and any extractor-supplied
             # candidate before giving up.
-            source_thumb = result.get("source_thumbnail_url") or ""
+            source_thumb = result.get("source_thumbnail_url") or""
             if source_thumb:
                 candidates.append(source_thumb)
 
@@ -6337,7 +6337,7 @@ class YTMMusicToolkit(ctk.CTk):
                 if candidate:
                     candidates.append(candidate)
 
-            video_id = result.get("video_id") or ""
+            video_id = result.get("video_id") or""
             if video_id:
                 candidates.extend(
                     youtube_thumbnail_candidates(
@@ -6351,7 +6351,7 @@ class YTMMusicToolkit(ctk.CTk):
         deduped = []
         seen = set()
         for candidate in candidates:
-            candidate = canonicalize_thumbnail_url(str(candidate or "").strip())
+            candidate = canonicalize_thumbnail_url(str(candidate or"").strip())
             if candidate and candidate not in seen:
                 seen.add(candidate)
                 deduped.append(candidate)
@@ -6362,7 +6362,7 @@ class YTMMusicToolkit(ctk.CTk):
         best_raw = None
         best_area = -1
         best_bytes = -1
-        best_source = ""
+        best_source =""
 
         for candidate in deduped:
             try:
@@ -6411,53 +6411,53 @@ class YTMMusicToolkit(ctk.CTk):
 
 
     def embed_mp4_video_thumbnail(self, file_path, thumbnail_path):
-        """Embed a JPEG as a real attached-picture stream in an MP4 video.
+"""Embed a JPEG as a real attached-picture stream in an MP4 video.
 
         The video and audio streams are copied without re-encoding. This is
         separate from MP4 audio-style ``covr`` artwork because video players
         that support attached pictures can consume the image as cover art.
-        """
+"""
         if not thumbnail_path or not Path(thumbnail_path).exists():
             raise RuntimeError("Thumbnail file is missing for MP4 embedding.")
 
         ffmpeg = get_ffmpeg_command()
-        if not find_executable("ffmpeg") and ffmpeg == "ffmpeg":
+        if not find_executable("ffmpeg") and ffmpeg =="ffmpeg":
             raise RuntimeError("FFmpeg was not found. It is required to embed the MP4 video thumbnail.")
 
         source = Path(file_path)
-        temp_output = source.with_name(source.stem + ".thumbnail_embed.tmp.mp4")
+        temp_output = source.with_name(source.stem +".thumbnail_embed.tmp.mp4")
 
         command = [
             ffmpeg,
-            "-y",
-            "-i",
+"-y",
+"-i",
             str(source),
-            "-i",
+"-i",
             str(thumbnail_path),
-            "-map",
-            "0:v:0",
-            "-map",
-            "0:a?",
-            "-map",
-            "0:s?",
-            "-map",
-            "1:0",
-            "-map_metadata",
-            "0",
-            "-map_chapters",
-            "0",
-            "-c:v:0",
-            "copy",
-            "-c:a",
-            "copy",
-            "-c:s",
-            "copy",
-            "-c:v:1",
-            "mjpeg",
-            "-disposition:v:1",
-            "attached_pic",
-            "-metadata:s:v:1",
-            "title=Cover Art",
+"-map",
+"0:v:0",
+"-map",
+"0:a?",
+"-map",
+"0:s?",
+"-map",
+"1:0",
+"-map_metadata",
+"0",
+"-map_chapters",
+"0",
+"-c:v:0",
+"copy",
+"-c:a",
+"copy",
+"-c:s",
+"copy",
+"-c:v:1",
+"mjpeg",
+"-disposition:v:1",
+"attached_pic",
+"-metadata:s:v:1",
+"title=Cover Art",
             str(temp_output),
         ]
 
@@ -6490,7 +6490,7 @@ class YTMMusicToolkit(ctk.CTk):
                 pass
 
             log_path = write_failure_log(
-                "download_mp4_thumbnail_embed",
+"download_mp4_thumbnail_embed",
                 exc,
                 details=f"Video: {source}\nThumbnail: {thumbnail_path}",
             )
@@ -6500,28 +6500,28 @@ class YTMMusicToolkit(ctk.CTk):
 
 
     def embed_webm_video_thumbnail(self, file_path, thumbnail_path):
-        """Attach artwork to WebM by remuxing unchanged streams into MKV.
+"""Attach artwork to WebM by remuxing unchanged streams into MKV.
 
         WebM cannot store Matroska attachment streams, so the output container
         becomes MKV while its encoded audio and video remain untouched.
-        """
+"""
         if not thumbnail_path or not Path(thumbnail_path).exists():
             raise RuntimeError("Thumbnail file is missing for WebM embedding.")
 
         ffmpeg = get_ffmpeg_command()
-        if not find_executable("ffmpeg") and ffmpeg == "ffmpeg":
+        if not find_executable("ffmpeg") and ffmpeg =="ffmpeg":
             raise RuntimeError("FFmpeg was not found. It is required to embed the WebM video thumbnail.")
 
         source = Path(file_path)
         destination = source.with_suffix(".mkv")
-        temp_output = destination.with_name(destination.stem + ".thumbnail_embed.tmp.mkv")
+        temp_output = destination.with_name(destination.stem +".thumbnail_embed.tmp.mkv")
         command = [
-            ffmpeg, "-y", "-i", str(source),
-            "-map", "0", "-map", "1:0", "-c", "copy",
-            "-attach", str(thumbnail_path),
-            "-metadata:s:t:0", "mimetype=image/jpeg",
-            "-metadata:s:t:0", "filename=cover.jpg",
-            "-metadata:s:t:0", "title=Cover Art",
+            ffmpeg,"-y","-i", str(source),
+"-map","0","-map","1:0","-c","copy",
+"-attach", str(thumbnail_path),
+"-metadata:s:t:0","mimetype=image/jpeg",
+"-metadata:s:t:0","filename=cover.jpg",
+"-metadata:s:t:0","title=Cover Art",
             str(temp_output),
         ]
 
@@ -6551,7 +6551,7 @@ class YTMMusicToolkit(ctk.CTk):
             except Exception:
                 pass
             log_path = write_failure_log(
-                "download_webm_thumbnail_embed",
+"download_webm_thumbnail_embed",
                 exc,
                 details=f"Video: {source}\nThumbnail: {thumbnail_path}",
             )
@@ -6572,7 +6572,7 @@ class YTMMusicToolkit(ctk.CTk):
                 progress_callback(max(0.0, min(1.0, fraction)), message)
 
         try:
-            report(0.05, "Fetching matched artwork...")
+            report(0.05,"Fetching matched artwork...")
 
             cover_bytes = result.get("downloaded_thumbnail_bytes")
             cover_url = result.get("cover_url")
@@ -6583,9 +6583,9 @@ class YTMMusicToolkit(ctk.CTk):
                     cover_bytes = raw
 
             suffix = Path(file_path).suffix.lower()
-            report(0.35, "Applying metadata and artwork...")
+            report(0.35,"Applying metadata and artwork...")
 
-            if suffix == ".flac":
+            if suffix ==".flac":
                 write_flac_metadata(
                     file_path,
                     result,
@@ -6593,12 +6593,12 @@ class YTMMusicToolkit(ctk.CTk):
                     wipe_tags=False,
                 )
 
-                report(0.78, "Normalizing cover artwork to 1:1...")
+                report(0.78,"Normalizing cover artwork to 1:1...")
                 try:
                     crop_flac_cover(file_path)
                 except Exception as exc:
                     log_path = write_failure_log(
-                        "download_cover_crop",
+"download_cover_crop",
                         exc,
                         details=f"File: {file_path}",
                     )
@@ -6614,29 +6614,29 @@ class YTMMusicToolkit(ctk.CTk):
                     cover_bytes=cover_bytes,
                 )
 
-                if suffix == ".mp4" and thumbnail_path:
-                    report(0.82, "Embedding video thumbnail...")
+                if suffix ==".mp4" and thumbnail_path:
+                    report(0.82,"Embedding video thumbnail...")
                     self.embed_mp4_video_thumbnail(
                         file_path,
                         thumbnail_path,
                     )
-                elif suffix == ".webm" and thumbnail_path:
-                    report(0.82, "Embedding video thumbnail...")
+                elif suffix ==".webm" and thumbnail_path:
+                    report(0.82,"Embedding video thumbnail...")
                     file_path = self.embed_webm_video_thumbnail(
                         file_path,
                         thumbnail_path,
                     )
                 elif not metadata_written:
                     raise RuntimeError(
-                        f"Thumbnail embedding is not supported for downloaded format {suffix or '(unknown)'}."
+                        f"Thumbnail embedding is not supported for downloaded format {suffix or'(unknown)'}."
                     )
 
-            report(1.0, "Metadata + artwork complete")
+            report(1.0,"Metadata + artwork complete")
             return Path(file_path)
 
         except Exception as exc:
             log_path = write_failure_log(
-                "download_postprocess",
+"download_postprocess",
                 exc,
                 details=f"File: {file_path}",
             )
@@ -6654,15 +6654,15 @@ class YTMMusicToolkit(ctk.CTk):
         try:
             os.makedirs(self.paths["downloader"], exist_ok=True)
             self.set_operation_progress(
-                "dl",
+"dl",
                 2,
-                "Resolving source and preparing the pipeline...",
+"Resolving source and preparing the pipeline...",
                 taskbar=True,
             )
 
             mode, payload = self.resolve_for_download(user_input)
 
-            if mode == "playlist":
+            if mode =="playlist":
                 urls, playlist_uses_ytm = payload
                 used_ytm_matching = bool(playlist_uses_ytm)
 
@@ -6676,7 +6676,7 @@ class YTMMusicToolkit(ctk.CTk):
                         raise DownloadCancelled("Download stopped by user.")
 
                     self.set_collection_progress(
-                        "dl",
+"dl",
                         index,
                         total,
                         0.0,
@@ -6691,7 +6691,7 @@ class YTMMusicToolkit(ctk.CTk):
                     if not meta:
                         self.append_log(self.dl_log, f"[{index}/{total}] metadata lookup failed")
                         write_failure_log(
-                            "download_playlist_metadata",
+"download_playlist_metadata",
                             RuntimeError("Metadata lookup returned no result"),
                             details=f"Item {index}/{total}: {url}",
                         )
@@ -6713,11 +6713,11 @@ class YTMMusicToolkit(ctk.CTk):
                             ytm_result = resolver.search(
                                 meta["artist"],
                                 meta["title"],
-                                meta.get("album", ""),
+                                meta.get("album",""),
                             )
                         except Exception as exc:
                             write_failure_log(
-                                "download_playlist_ytm_match",
+"download_playlist_ytm_match",
                                 exc,
                                 details=f"Item {index}/{total}: {url}",
                             )
@@ -6735,15 +6735,15 @@ class YTMMusicToolkit(ctk.CTk):
                             # A title/artist similarity is not sufficient because
                             # it can select a live/remaster/cover/lyric-video
                             # variant of the intended track.
-                            source_video_id = str(source_result.get("video_id") or "").strip()
-                            matched_video_id = str(ytm_result.get("video_id") or "").strip()
+                            source_video_id = str(source_result.get("video_id") or"").strip()
+                            matched_video_id = str(ytm_result.get("video_id") or"").strip()
 
                             if source_video_id and matched_video_id and source_video_id == matched_video_id:
                                 result = dict(ytm_result)
                                 result["video_id"] = source_video_id
                                 result["source_url"] = source_result.get("source_url", url)
-                                result["requested_artist"] = meta.get("artist", "")
-                                result["requested_title"] = meta.get("title", "")
+                                result["requested_artist"] = meta.get("artist","")
+                                result["requested_title"] = meta.get("title","")
                                 result["playlist_source_locked"] = True
                             else:
                                 self.append_log(
@@ -6765,7 +6765,7 @@ class YTMMusicToolkit(ctk.CTk):
                     if not result:
                         self.append_log(self.dl_log, f"[{index}/{total}] no usable source metadata")
                         write_failure_log(
-                            "download_playlist_resolution",
+"download_playlist_resolution",
                             RuntimeError("No usable result was resolved"),
                             details=f"Item {index}/{total}: {url}",
                         )
@@ -6773,7 +6773,7 @@ class YTMMusicToolkit(ctk.CTk):
 
                     self.after(0, lambda r=result: self.update_downloader_preview(r))
                     # Playlist quality behavior:
-                    # - "Best Quality Separate" inspects EACH item independently
+                    # -"Best Quality Separate" inspects EACH item independently
                     #   and uses that video's highest available resolution.
                     # - A manually selected resolution remains the user's ceiling
                     #   for every item, but the actual item resolution is resolved
@@ -6801,7 +6801,7 @@ class YTMMusicToolkit(ctk.CTk):
                         item_spec_override = dict(item_best)
                         item_spec_override["best_per_item"] = True
 
-                    elif current_spec.get("kind") == "video" and current_spec.get("height"):
+                    elif current_spec.get("kind") =="video" and current_spec.get("height"):
                         # Resolve the highest actual format at or below the user's
                         # requested ceiling for this specific playlist item.
                         self._last_quality_extractor_arg = None
@@ -6822,8 +6822,8 @@ class YTMMusicToolkit(ctk.CTk):
                             )
 
                     download_result = dict(result)
-                    source_title = sanitize_filename(result.get("title") or "video")
-                    video_id = str(result.get("video_id") or "").strip()
+                    source_title = sanitize_filename(result.get("title") or"video")
+                    video_id = str(result.get("video_id") or"").strip()
                     download_result["output_filename"] = (
                         f"{index:04d} - {source_title[:140]} [{video_id}]"
                     )
@@ -6846,16 +6846,16 @@ class YTMMusicToolkit(ctk.CTk):
                     raise DownloadCancelled("Download stopped by user.")
 
                 if not result:
-                    raise RuntimeError(error or "No result")
+                    raise RuntimeError(error or"No result")
 
                 self.after(0, lambda r=result: self.update_downloader_preview(r))
 
                 current_source = user_input.strip()
                 single_mode = self.downloader_quality_mode_for_source(current_source)
                 quality_source_matches = (
-                    single_mode == "single"
+                    single_mode =="single"
                     and self._dl_preview_quality_source == current_source
-                    and self._dl_preview_mode == "single"
+                    and self._dl_preview_mode =="single"
                 )
 
                 selected_spec = self.selected_quality_spec(self._selected_download_format)
@@ -6865,11 +6865,11 @@ class YTMMusicToolkit(ctk.CTk):
                 if not quality_source_matches or not selected_spec:
                     self._last_quality_extractor_arg = None
                     quality_options = self.resolve_quality_options_for_result(result)
-                    quality_options = self.sanitize_quality_options_for_mode(quality_options, "single")
+                    quality_options = self.sanitize_quality_options_for_mode(quality_options,"single")
                     if quality_options:
                         self._dl_preview_quality_options = quality_options
                         self._dl_preview_quality_source = current_source
-                        self._dl_preview_mode = "single"
+                        self._dl_preview_mode ="single"
                         self._dl_youtube_extractor_arg = self._last_quality_extractor_arg
                         self._selected_download_format = quality_options[0][0]
                         self.after(0, lambda opts=quality_options, src=current_source: self.show_download_quality_selector(opts, animated=True, source_value=src, source_mode="single"))
@@ -6881,17 +6881,17 @@ class YTMMusicToolkit(ctk.CTk):
                 self.dl_progress.set(1.0)
                 self.dl_progress_percent.configure(text="100%")
                 self.set_operation_progress(
-                    "dl",
+"dl",
                     100,
-                    "Operation Successful",
+"Operation Successful",
                     taskbar=True,
                 )
-                self.set_label(self.dl_status, "Status: Operation Successful")
+                self.set_label(self.dl_status,"Status: Operation Successful")
 
                 message = (
-                    "Download complete and YT Music metadata/artwork applied."
+"Download complete and YT Music metadata/artwork applied."
                     if used_ytm_matching
-                    else "Download complete. Source YouTube metadata/artwork was used directly."
+                    else"Download complete. Source YouTube metadata/artwork was used directly."
                 )
                 messagebox.showinfo("Success", message)
 
@@ -6900,16 +6900,16 @@ class YTMMusicToolkit(ctk.CTk):
         except DownloadCancelled as exc:
             self.append_log(self.dl_log, f"[CANCELLED] {exc}")
             self.set_operation_progress(
-                "dl",
-                self.dl_progress.get() * 100 if hasattr(self.dl_progress, "get") else 0,
-                "Download stopped by user.",
+"dl",
+                self.dl_progress.get() * 100 if hasattr(self.dl_progress,"get") else 0,
+"Download stopped by user.",
                 taskbar=False,
             )
             # Cancellation is user-requested, so it is not treated as a failure log.
 
         except Exception as exc:
             log_path = write_failure_log(
-                "download_worker",
+"download_worker",
                 exc,
                 details=f"Input: {user_input}",
             )
@@ -6920,17 +6920,17 @@ class YTMMusicToolkit(ctk.CTk):
             self.after(
                 0,
                 lambda e=str(exc), p=(log_path or FAILURE_LOG_DIR): messagebox.showerror(
-                    "Download Error",
+"Download Error",
                     f"{e}\n\nFailure log:\n{p}",
                 ),
             )
             self.set_operation_progress(
-                "dl",
+"dl",
                 0,
-                "Download failed — failure log written",
+"Download failed — failure log written",
                 taskbar=False,
             )
-            self.set_label(self.dl_status, "Status: Download failed")
+            self.set_label(self.dl_status,"Status: Download failed")
 
         finally:
             self.stop_requested = False
@@ -6953,8 +6953,8 @@ class YTMMusicToolkit(ctk.CTk):
             import psutil
         except ImportError:
             messagebox.showwarning(
-                "Notice",
-                "Pause/resume requires the psutil package.",
+"Notice",
+"Pause/resume requires the psutil package.",
             )
             return
 
@@ -6987,7 +6987,7 @@ class YTMMusicToolkit(ctk.CTk):
                 )
                 self.set_label(
                     self.dl_status,
-                    "Status: Download Paused.",
+"Status: Download Paused.",
                 )
                 self.taskbar_progress.set_state(8)
             else:
@@ -7010,17 +7010,17 @@ class YTMMusicToolkit(ctk.CTk):
                 )
                 self.set_label(
                     self.dl_status,
-                    "Status: Resuming download...",
+"Status: Resuming download...",
                 )
                 self.taskbar_progress.set_state(2)
 
         except Exception as exc:
             log_path = write_failure_log(
-                "pause_resume",
+"pause_resume",
                 exc,
             )
             messagebox.showerror(
-                "Pause/Resume Error",
+"Pause/Resume Error",
                 f"{exc}\n\nFailure log:\n{log_path or FAILURE_LOG_DIR}",
             )
 
@@ -7058,7 +7058,7 @@ class YTMMusicToolkit(ctk.CTk):
         self.stop_requested = True
         self.set_label(
             self.dl_status,
-            "Status: Stopping download...",
+"Status: Stopping download...",
         )
 
     def reset_downloader_ui(self):
@@ -7074,7 +7074,7 @@ class YTMMusicToolkit(ctk.CTk):
                 except Exception:
                     pass
                 self._dl_preview_job = None
-            self._dl_preview_source = ""
+            self._dl_preview_source =""
             self._dl_preview_pil = None
         except Exception:
             pass
@@ -7086,7 +7086,7 @@ class YTMMusicToolkit(ctk.CTk):
             self.dl_stop.configure(state="disabled")
             self.dl_start.configure(
                 state="normal",
-                text="🚀 Start Download",
+                text=" Start Download",
             )
             self.taskbar_progress.set_state(0)
         except Exception:
@@ -7117,8 +7117,8 @@ class YTMMusicToolkit(ctk.CTk):
 
         ctk.CTkLabel(
             box,
-            text="✏️ Metadata Rewriter",
-            font=(APP_FONT, 16, "bold"),
+            text=" Metadata Rewriter",
+            font=(APP_FONT, 16,"bold"),
             text_color="#ffffff",
         ).pack(
             anchor="w",
@@ -7129,7 +7129,7 @@ class YTMMusicToolkit(ctk.CTk):
         ctk.CTkLabel(
             box,
             text=(
-                "Strips all writable metadata and keeps only contributing artist, album, and year"
+"Strips all writable metadata and keeps only contributing artist, album, and year"
             ),
             font=(APP_FONT, 11),
             text_color="#94a3b8",
@@ -7143,7 +7143,7 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.meta_path_row, self.meta_path_label = self.make_path_row(
             box,
-            "metadata",
+"metadata",
         )
         self.meta_path_row.pack(
             fill="x",
@@ -7164,7 +7164,7 @@ class YTMMusicToolkit(ctk.CTk):
         ctk.CTkLabel(
             controls,
             text="STRICT REWRITE  •  ARTIST  •  ALBUM  •  YEAR",
-            font=(APP_FONT, 11, "bold"),
+            font=(APP_FONT, 11,"bold"),
             text_color="#94a3b8",
             anchor="w",
         ).pack(
@@ -7183,10 +7183,10 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.meta_start = ctk.CTkButton(
             self.meta_start_row,
-            text="▶ Start Rewrite",
+            text=" Start Rewrite",
             command=self.start_metadata_rewrite,
             height=40,
-            font=(APP_FONT, 13, "bold"),
+            font=(APP_FONT, 13,"bold"),
             fg_color="transparent",
             hover_color="#1e293b",
             text_color="#ffffff",
@@ -7212,8 +7212,8 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.make_operation_meter(
             box,
-            "meta",
-            "Ready to rewrite metadata...",
+"meta",
+"Ready to rewrite metadata...",
         )
 
     def start_metadata_rewrite(self):
@@ -7221,21 +7221,21 @@ class YTMMusicToolkit(ctk.CTk):
 
         if not os.path.isdir(folder):
             messagebox.showerror(
-                "Error",
-                "Select a valid folder.",
+"Error",
+"Select a valid folder.",
             )
             return
 
         self.meta_start.configure(
             state="disabled",
-            text="⏳ Rewriting...",
+            text=" Rewriting...",
         )
         self.show_operation_meter("meta")
         self.set_header_status("● REWRITING", busy=True)
         self.set_operation_progress(
-            "meta",
+"meta",
             0,
-            "Preparing metadata rewrite...",
+"Preparing metadata rewrite...",
         )
 
         threading.Thread(
@@ -7258,12 +7258,12 @@ class YTMMusicToolkit(ctk.CTk):
                     flac = FLAC(file_path)
                     artists = flac.get("artist", [])
                     current_artist = (
-                        ", ".join(str(x) for x in artists if str(x).strip())
+",".join(str(x) for x in artists if str(x).strip())
                         if isinstance(artists, list)
-                        else str(artists or "")
+                        else str(artists or"")
                     )
-                    current_album = flac.get("album", [""])[0] if flac.get("album") else ""
-                    current_title = flac.get("title", [""])[0] if flac.get("title") else ""
+                    current_album = flac.get("album", [""])[0] if flac.get("album") else""
+                    current_title = flac.get("title", [""])[0] if flac.get("title") else""
                     if not current_title:
                         current_title = derive_title_from_filename(file_path)
 
@@ -7279,22 +7279,22 @@ class YTMMusicToolkit(ctk.CTk):
 
                 except Exception as exc:
                     log_path = write_failure_log(
-                        "metadata_rewrite_item",
+"metadata_rewrite_item",
                         exc,
                         details=f"File: {file_path}",
                     )
                     self.set_collection_progress(
-                        "meta",
+"meta",
                         index,
                         total,
                         1.0,
-                        f"[{index}/{total}] Failed — log saved: {Path(log_path).name if log_path else 'YTDLP\\failure log'}",
+                        f"[{index}/{total}] Failed — log saved: {Path(log_path).name if log_path else'YTDLP\\failure log'}",
                     )
 
                 time.sleep(REQUEST_DELAY)
 
-            self.set_operation_progress("meta", 100, "Operation Successful")
-            self.after(0, lambda: messagebox.showinfo("Complete", "Metadata rewrite complete."))
+            self.set_operation_progress("meta", 100,"Operation Successful")
+            self.after(0, lambda: messagebox.showinfo("Complete","Metadata rewrite complete."))
 
         except Exception as exc:
             log_path = write_failure_log("metadata_worker", exc, details=f"Folder: {self.paths['metadata']}")
@@ -7302,7 +7302,7 @@ class YTMMusicToolkit(ctk.CTk):
             self.after(0, lambda e=str(exc), p=(log_path or FAILURE_LOG_DIR): messagebox.showerror("Metadata Error", f"{e}\n\nFailure log:\n{p}"))
         finally:
             self.set_header_status("● READY", busy=False)
-            self.after(0, lambda: self.meta_start.configure(state="normal", text="▶ Start Rewrite"))
+            self.after(0, lambda: self.meta_start.configure(state="normal", text=" Start Rewrite"))
 
 
     # --------------------------------------------------------
@@ -7329,8 +7329,8 @@ class YTMMusicToolkit(ctk.CTk):
 
         ctk.CTkLabel(
             box,
-            text="🎨 Cover Art Overwrite",
-            font=(APP_FONT, 16, "bold"),
+            text=" Cover Art Overwrite",
+            font=(APP_FONT, 16,"bold"),
             text_color="#ffffff",
         ).pack(
             anchor="w",
@@ -7341,7 +7341,7 @@ class YTMMusicToolkit(ctk.CTk):
         ctk.CTkLabel(
             box,
             text=(
-                "Album Artwork is obtained using YouTube query matches of current metadata"
+"Album Artwork is obtained using YouTube query matches of current metadata"
             ),
             font=(APP_FONT, 11),
             text_color="#94a3b8",
@@ -7353,7 +7353,7 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.cover_path_row, self.cover_path_label = self.make_path_row(
             box,
-            "cover",
+"cover",
         )
         self.cover_path_row.pack(
             fill="x",
@@ -7373,11 +7373,11 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.cover_start = ctk.CTkButton(
             controls,
-            text="▶ Start Cover Upgrade",
+            text=" Start Cover Upgrade",
             command=self.start_cover_upgrade,
             width=180,
             height=38,
-            font=(APP_FONT, 13, "bold"),
+            font=(APP_FONT, 13,"bold"),
             fg_color="transparent",
             hover_color="#1e293b",
             text_color="#ffffff",
@@ -7403,8 +7403,8 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.make_operation_meter(
             box,
-            "cover",
-            "Ready to upgrade artwork...",
+"cover",
+"Ready to upgrade artwork...",
         )
 
     def start_cover_upgrade(self):
@@ -7412,21 +7412,21 @@ class YTMMusicToolkit(ctk.CTk):
 
         if not os.path.isdir(folder):
             messagebox.showerror(
-                "Error",
-                "Select a valid folder.",
+"Error",
+"Select a valid folder.",
             )
             return
 
         self.cover_start.configure(
             state="disabled",
-            text="⏳ Upgrading...",
+            text=" Upgrading...",
         )
         self.show_operation_meter("cover")
         self.set_header_status("● ARTWORK", busy=True)
         self.set_operation_progress(
-            "cover",
+"cover",
             0,
-            "Preparing artwork upgrade...",
+"Preparing artwork upgrade...",
         )
 
         threading.Thread(
@@ -7449,12 +7449,12 @@ class YTMMusicToolkit(ctk.CTk):
                     flac = FLAC(file_path)
                     artists = flac.get("artist", [])
                     artist = (
-                        ", ".join(str(x) for x in artists if str(x).strip())
+",".join(str(x) for x in artists if str(x).strip())
                         if isinstance(artists, list)
-                        else str(artists or "")
+                        else str(artists or"")
                     )
                     title = flac.get("title", [""])[0] if flac.get("title") else derive_title_from_filename(file_path)
-                    album = flac.get("album", [""])[0] if flac.get("album") else ""
+                    album = flac.get("album", [""])[0] if flac.get("album") else""
 
                     self.set_collection_progress("cover", index, total, 0.22, f"[{index}/{total}] Matching current metadata...")
                     result = resolver.search(artist, title, album)
@@ -7475,12 +7475,12 @@ class YTMMusicToolkit(ctk.CTk):
 
                 except Exception as exc:
                     log_path = write_failure_log("cover_upgrade_item", exc, details=f"File: {file_path}")
-                    self.set_collection_progress("cover", index, total, 1.0, f"[{index}/{total}] Failed — log saved: {Path(log_path).name if log_path else 'YTDLP\\failure log'}")
+                    self.set_collection_progress("cover", index, total, 1.0, f"[{index}/{total}] Failed — log saved: {Path(log_path).name if log_path else'YTDLP\\failure log'}")
 
                 time.sleep(REQUEST_DELAY)
 
-            self.set_operation_progress("cover", 100, "Operation Successful")
-            self.after(0, lambda: messagebox.showinfo("Complete", "Cover art upgrade complete."))
+            self.set_operation_progress("cover", 100,"Operation Successful")
+            self.after(0, lambda: messagebox.showinfo("Complete","Cover art upgrade complete."))
 
         except Exception as exc:
             log_path = write_failure_log("cover_worker", exc, details=f"Folder: {self.paths['cover']}")
@@ -7488,7 +7488,7 @@ class YTMMusicToolkit(ctk.CTk):
             self.after(0, lambda e=str(exc), p=(log_path or FAILURE_LOG_DIR): messagebox.showerror("Cover Error", f"{e}\n\nFailure log:\n{p}"))
         finally:
             self.set_header_status("● READY", busy=False)
-            self.after(0, lambda: self.cover_start.configure(state="normal", text="🚀 Start Cover Overwrite"))
+            self.after(0, lambda: self.cover_start.configure(state="normal", text=" Start Cover Overwrite"))
 
 
     # --------------------------------------------------------
@@ -7515,8 +7515,8 @@ class YTMMusicToolkit(ctk.CTk):
 
         ctk.CTkLabel(
             box,
-            text="🪚 Cover Cropper",
-            font=(APP_FONT, 16, "bold"),
+            text=" Cover Cropper",
+            font=(APP_FONT, 16,"bold"),
             text_color="#ffffff",
         ).pack(
             anchor="w",
@@ -7527,7 +7527,7 @@ class YTMMusicToolkit(ctk.CTk):
         ctk.CTkLabel(
             box,
             text=(
-                "Crops Existing Album Cover into a 1:1 ratio"
+"Crops Existing Album Cover into a 1:1 ratio"
             ),
             font=(APP_FONT, 11),
             text_color="#94a3b8",
@@ -7539,7 +7539,7 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.crop_path_row, self.crop_path_label = self.make_path_row(
             box,
-            "crop",
+"crop",
         )
         self.crop_path_row.pack(
             fill="x",
@@ -7559,11 +7559,11 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.crop_start = ctk.CTkButton(
             controls,
-            text="🚀 Start Crop",
+            text=" Start Crop",
             command=self.start_crop,
             width=140,
             height=38,
-            font=(APP_FONT, 13, "bold"),
+            font=(APP_FONT, 13,"bold"),
             fg_color="transparent",
             hover_color="#1e293b",
             text_color="#ffffff",
@@ -7589,8 +7589,8 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.make_operation_meter(
             box,
-            "crop",
-            "Ready to crop artwork...",
+"crop",
+"Ready to crop artwork...",
         )
 
     def start_crop(self):
@@ -7598,21 +7598,21 @@ class YTMMusicToolkit(ctk.CTk):
 
         if not os.path.isdir(folder):
             messagebox.showerror(
-                "Error",
-                "Select a valid folder.",
+"Error",
+"Select a valid folder.",
             )
             return
 
         self.crop_start.configure(
             state="disabled",
-            text="⏳ Cropping...",
+            text=" Cropping...",
         )
         self.show_operation_meter("crop")
         self.set_header_status("● CROPPING", busy=True)
         self.set_operation_progress(
-            "crop",
+"crop",
             0,
-            "Preparing cover crop...",
+"Preparing cover crop...",
         )
 
         threading.Thread(
@@ -7636,10 +7636,10 @@ class YTMMusicToolkit(ctk.CTk):
                     self.set_collection_progress("crop", index, total, 1.0, f"[{index}/{total}] Complete — {detail}")
                 except Exception as exc:
                     log_path = write_failure_log("crop_item", exc, details=f"File: {file_path}")
-                    self.set_collection_progress("crop", index, total, 1.0, f"[{index}/{total}] Failed — log saved: {Path(log_path).name if log_path else 'YTDLP\\failure log'}")
+                    self.set_collection_progress("crop", index, total, 1.0, f"[{index}/{total}] Failed — log saved: {Path(log_path).name if log_path else'YTDLP\\failure log'}")
 
-            self.set_operation_progress("crop", 100, "Operation Successful")
-            self.after(0, lambda: messagebox.showinfo("Complete", "Cover crop complete."))
+            self.set_operation_progress("crop", 100,"Operation Successful")
+            self.after(0, lambda: messagebox.showinfo("Complete","Cover crop complete."))
 
         except Exception as exc:
             log_path = write_failure_log("crop_worker", exc, details=f"Folder: {self.paths['crop']}")
@@ -7647,7 +7647,7 @@ class YTMMusicToolkit(ctk.CTk):
             self.after(0, lambda e=str(exc), p=(log_path or FAILURE_LOG_DIR): messagebox.showerror("Crop Error", f"{e}\n\nFailure log:\n{p}"))
         finally:
             self.set_header_status("● READY", busy=False)
-            self.after(0, lambda: self.crop_start.configure(state="normal", text="▶ Start Crop"))
+            self.after(0, lambda: self.crop_start.configure(state="normal", text=" Start Crop"))
 
 
     # --------------------------------------------------------
@@ -7675,8 +7675,8 @@ class YTMMusicToolkit(ctk.CTk):
 
         ctk.CTkLabel(
             box,
-            text="🔥 Library Overhaul",
-            font=(APP_FONT, 17, "bold"),
+            text=" Library Overhaul",
+            font=(APP_FONT, 17,"bold"),
             text_color="#ffffff",
         ).pack(
             anchor="w",
@@ -7687,7 +7687,7 @@ class YTMMusicToolkit(ctk.CTk):
         ctk.CTkLabel(
             box,
             text=(
-                "Strict metadata cleanup + YT Music matching in one ✔️"
+"Strict metadata cleanup + YT Music matching in one"
             ),
             font=(APP_FONT, 11),
             text_color="#94a3b8",
@@ -7701,7 +7701,7 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.pipeline_path_row, self.pipeline_path_label = self.make_path_row(
             box,
-            "pipeline",
+"pipeline",
         )
         self.pipeline_path_row.pack(
             fill="x",
@@ -7721,11 +7721,11 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.pipeline_start = ctk.CTkButton(
             controls,
-            text="🚀 Start Overhaul",
+            text=" Start Overhaul",
             command=self.start_pipeline,
             width=190,
             height=40,
-            font=(APP_FONT, 13, "bold"),
+            font=(APP_FONT, 13,"bold"),
             fg_color="transparent",
             hover_color="#1e293b",
             text_color="#ffffff",
@@ -7751,8 +7751,8 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.make_operation_meter(
             box,
-            "pipeline",
-            "Ready for full library overhaul...",
+"pipeline",
+"Ready for full library overhaul...",
         )
 
         self.pipeline_log = ctk.CTkTextbox(
@@ -7783,22 +7783,22 @@ class YTMMusicToolkit(ctk.CTk):
 
         if not os.path.isdir(folder):
             messagebox.showerror(
-                "Error",
-                "Select a valid folder.",
+"Error",
+"Select a valid folder.",
             )
             return
 
         self.pipeline_start.configure(
             state="disabled",
-            text="⏳ Processing...",
+            text=" Processing...",
         )
         self.show_operation_meter("pipeline")
         self.show_activity_console("pipeline")
         self.set_header_status("● OVERHAUL", busy=True)
         self.set_operation_progress(
-            "pipeline",
+"pipeline",
             0,
-            "Preparing library overhaul...",
+"Preparing library overhaul...",
         )
 
         threading.Thread(
@@ -7822,11 +7822,11 @@ class YTMMusicToolkit(ctk.CTk):
                     flac = FLAC(file_path)
                     artists = flac.get("artist", [])
                     artist = (
-                        ", ".join(str(x) for x in artists if str(x).strip())
+",".join(str(x) for x in artists if str(x).strip())
                         if isinstance(artists, list)
-                        else str(artists or "")
+                        else str(artists or"")
                     )
-                    album = flac.get("album", [""])[0] if flac.get("album") else ""
+                    album = flac.get("album", [""])[0] if flac.get("album") else""
                     title = flac.get("title", [""])[0] if flac.get("title") else derive_title_from_filename(file_path)
 
                     self.set_collection_progress("pipeline", index, total, 0.20, f"[{index}/{total}] Matching on YouTube Music...")
@@ -7834,9 +7834,9 @@ class YTMMusicToolkit(ctk.CTk):
                     if not result:
                         raise RuntimeError("No YouTube Music match found")
 
-                    self.append_log(self.pipeline_log, "  source: " + result.get("source", ""))
-                    self.append_log(self.pipeline_log, "  artist: " + result.get("artist", ""))
-                    self.append_log(self.pipeline_log, "  title: " + result.get("title", ""))
+                    self.append_log(self.pipeline_log,"  source:" + result.get("source",""))
+                    self.append_log(self.pipeline_log,"  artist:" + result.get("artist",""))
+                    self.append_log(self.pipeline_log,"  title:" + result.get("title",""))
 
                     replacement_cover_bytes = None
                     self.set_collection_progress("pipeline", index, total, 0.42, f"[{index}/{total}] Fetching matched album artwork...")
@@ -7857,7 +7857,7 @@ class YTMMusicToolkit(ctk.CTk):
                         crop_flac_cover(file_path)
                     except Exception as crop_exc:
                         log_path = write_failure_log(
-                            "pipeline_cover_crop",
+"pipeline_cover_crop",
                             crop_exc,
                             details=f"File: {file_path}",
                         )
@@ -7872,12 +7872,12 @@ class YTMMusicToolkit(ctk.CTk):
                 except Exception as exc:
                     log_path = write_failure_log("pipeline_item", exc, details=f"File: {file_path}")
                     self.append_log(self.pipeline_log, f"  ERROR: {exc} | Failure log: {log_path or FAILURE_LOG_DIR}")
-                    self.set_collection_progress("pipeline", index, total, 1.0, f"[{index}/{total}] Failed — log saved: {Path(log_path).name if log_path else 'YTDLP\\failure log'}")
+                    self.set_collection_progress("pipeline", index, total, 1.0, f"[{index}/{total}] Failed — log saved: {Path(log_path).name if log_path else'YTDLP\\failure log'}")
 
                 time.sleep(REQUEST_DELAY)
 
-            self.set_operation_progress("pipeline", 100, "Operation Successful")
-            self.after(0, lambda: messagebox.showinfo("Complete", "Library overhaul complete."))
+            self.set_operation_progress("pipeline", 100,"Operation Successful")
+            self.after(0, lambda: messagebox.showinfo("Complete","Library overhaul complete."))
 
         except Exception as exc:
             log_path = write_failure_log("pipeline_worker", exc, details=f"Folder: {self.paths['pipeline']}")
@@ -7886,7 +7886,7 @@ class YTMMusicToolkit(ctk.CTk):
         finally:
             self.hide_activity_console("pipeline")
             self.set_header_status("● READY", busy=False)
-            self.after(0, lambda: self.pipeline_start.configure(state="normal", text="🔥 Start Full Overhaul"))
+            self.after(0, lambda: self.pipeline_start.configure(state="normal", text=" Start Full Overhaul"))
 
 
 
@@ -7900,65 +7900,65 @@ class YTMMusicToolkit(ctk.CTk):
 # performance controls, and a lightweight queue.
 
 FILE_TYPE_OPTIONS_V3 = [
-    ("⚙️ Auto (Recommended)", "auto"),
-    ("🎬 MP4 Video", "mp4"),
-    ("🎞️ MKV Video", "mkv"),
-    ("🎵 MP3 Audio", "mp3"),
-    ("🎧 M4A / AAC Audio", "m4a"),
-    ("🔊 Opus Audio", "opus"),
-    ("🎼 Vorbis / OGG Audio", "vorbis"),
-    ("💎 FLAC Audio", "flac"),
-    ("📻 WAV PCM Audio", "wav"),
+    (" Auto (Recommended)","auto"),
+    (" MP4 Video","mp4"),
+    (" MKV Video","mkv"),
+    (" MP3 Audio","mp3"),
+    (" M4A / AAC Audio","m4a"),
+    (" Opus Audio","opus"),
+    (" Vorbis / OGG Audio","vorbis"),
+    (" FLAC Audio","flac"),
+    (" WAV PCM Audio","wav"),
 ]
 FILE_TYPE_BY_LABEL_V3 = {label: value for label, value in FILE_TYPE_OPTIONS_V3}
 FILE_LABEL_BY_TYPE_V3 = {value: label for label, value in FILE_TYPE_OPTIONS_V3}
-VIDEO_FILE_TYPES_V3 = {"auto", "mp4", "mkv"}
-AUDIO_FILE_TYPES_V3 = {"mp3", "m4a", "opus", "vorbis", "flac", "wav"}
-LOSSLESS_AUDIO_TYPES_V3 = {"flac", "wav"}
+VIDEO_FILE_TYPES_V3 = {"auto","mp4","mkv"}
+AUDIO_FILE_TYPES_V3 = {"mp3","m4a","opus","vorbis","flac","wav"}
+LOSSLESS_AUDIO_TYPES_V3 = {"flac","wav"}
 AUDIO_BITRATES_V3 = {
-    "mp3": [64, 96, 128, 160, 192, 224, 256, 320],
-    "m4a": [64, 96, 128, 160, 192, 256, 320],
-    "opus": [48, 64, 96, 128, 160, 192, 256, 320],
-    "vorbis": [64, 96, 128, 160, 192, 256, 320],
+"mp3": [64, 96, 128, 160, 192, 224, 256, 320],
+"m4a": [64, 96, 128, 160, 192, 256, 320],
+"opus": [48, 64, 96, 128, 160, 192, 256, 320],
+"vorbis": [64, 96, 128, 160, 192, 256, 320],
 }
 
 
 def _v3_file_type_id(label):
-    return FILE_TYPE_BY_LABEL_V3.get(str(label or ""), "auto")
+    return FILE_TYPE_BY_LABEL_V3.get(str(label or""),"auto")
 
 
 def _v3_audio_quality_options(file_type):
-    file_type = str(file_type or "").lower()
+    file_type = str(file_type or"").lower()
     if file_type in LOSSLESS_AUDIO_TYPES_V3:
         return [(
-            {"flac": "Lossless — FLAC", "alac": "Lossless — ALAC", "wav": "Lossless — PCM WAV"}[file_type],
-            {"kind": "audio", "audio_format": file_type, "quality": None, "lossless": True, "file_type": file_type},
+            {"flac":"Lossless — FLAC","alac":"Lossless — ALAC","wav":"Lossless — PCM WAV"}[file_type],
+            {"kind":"audio","audio_format": file_type,"quality": None,"lossless": True,"file_type": file_type},
         )]
     return [
-        (f"🎚️ {rate} kbps", {"kind": "audio", "audio_format": file_type, "quality": f"{rate}K", "bitrate": rate, "lossless": False, "file_type": file_type})
+        (f" {rate} kbps", {"kind":"audio","audio_format": file_type,"quality": f"{rate}K","bitrate": rate,"lossless": False,"file_type": file_type})
         for rate in sorted(AUDIO_BITRATES_V3.get(file_type, []), reverse=True)
     ]
 
 
 def _v3_video_quality_options(formats, file_type, mode="single"):
-    file_type = str(file_type or "auto").lower()
-    if mode == "playlist":
-        out = [("Best Option Separate", {"kind": "video", "best_per_item": True, "file_type": file_type})]
+    file_type = str(file_type or"auto").lower()
+    if mode =="playlist":
+        out = [("Best Option Separate", {"kind":"video","best_per_item": True,"file_type": file_type})]
         for height, label in sorted(VIDEO_QUALITY_LABELS.items(), reverse=True):
-            out.append((label, {"kind": "video", "height": height, "best": False, "file_type": file_type}))
+            out.append((label, {"kind":"video","height": height,"best": False,"file_type": file_type}))
         return out
     heights = detected_video_heights(formats)
     if not heights:
         return []
     highest = heights[0]
-    out = [(f"🎬 Best Quality — {highest}p", {"kind": "video", "height": highest, "best": True, "file_type": file_type})]
+    out = [(f" Best Quality — {highest}p", {"kind":"video","height": highest,"best": True,"file_type": file_type})]
     for height in heights[1:]:
-        out.append((VIDEO_QUALITY_LABELS.get(height, f"🎞️ {height}P"), {"kind": "video", "height": height, "best": False, "file_type": file_type}))
+        out.append((VIDEO_QUALITY_LABELS.get(height, f" {height}P"), {"kind":"video","height": height,"best": False,"file_type": file_type}))
     return out
 
 
 def _v3_quality_options(formats, file_type, mode="single"):
-    file_type = str(file_type or "auto").lower()
+    file_type = str(file_type or"auto").lower()
     if file_type in AUDIO_FILE_TYPES_V3:
         return _v3_audio_quality_options(file_type)
     return _v3_video_quality_options(formats, file_type, mode)
@@ -7982,28 +7982,28 @@ def _v3_validate_output(file_path, kind):
     path = Path(file_path)
     if not path.exists() or path.stat().st_size <= 0:
         raise RuntimeError(f"Output is missing or empty: {path}")
-    if kind == "audio":
+    if kind =="audio":
         suffix = path.suffix.lower()
-        if suffix == ".flac":
+        if suffix ==".flac":
             audio = FLAC(path)
             if not audio.info or audio.info.length <= 0:
                 raise RuntimeError(f"Invalid FLAC output: {path.name}")
             return True
-        if suffix == ".mp3":
+        if suffix ==".mp3":
             ID3(path)
             return True
-    ffprobe = find_executable("ffprobe") or "ffprobe"
+    ffprobe = find_executable("ffprobe") or"ffprobe"
     proc = subprocess.run(
-        [ffprobe, "-v", "error", "-show_entries", "stream=codec_type,codec_name", "-of", "json", str(path)],
+        [ffprobe,"-v","error","-show_entries","stream=codec_type,codec_name","-of","json", str(path)],
         capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30,
         **get_hidden_subprocess_kwargs(),
     )
     if proc.returncode != 0:
         raise RuntimeError(f"ffprobe validation failed: {path.name}")
-    streams = json.loads(proc.stdout or "{}").get("streams", [])
-    if kind == "video" and not any(s.get("codec_type") == "video" for s in streams):
+    streams = json.loads(proc.stdout or"{}").get("streams", [])
+    if kind =="video" and not any(s.get("codec_type") =="video" for s in streams):
         raise RuntimeError(f"No video stream found in {path.name}")
-    if kind == "audio" and not any(s.get("codec_type") == "audio" for s in streams):
+    if kind =="audio" and not any(s.get("codec_type") =="audio" for s in streams):
         raise RuntimeError(f"No audio stream found in {path.name}")
     return True
 
@@ -8011,7 +8011,7 @@ def _v3_validate_output(file_path, kind):
 def _v3_history(entry):
     try:
         ensure_failure_log_dir()
-        path = Path(FAILURE_LOG_DIR) / "operation_history.json"
+        path = Path(FAILURE_LOG_DIR) /"operation_history.json"
         data = []
         if path.exists():
             try:
@@ -8033,23 +8033,23 @@ _ORIGINAL_RESOLVER_PREVIEW_V3 = YTMResolver.preview_from_url
 
 
 def _v3_public_metadata_preview(url):
-    """Fallback title/artwork preview when yt-dlp cannot inspect YouTube formats."""
+"""Fallback title/artwork preview when yt-dlp cannot inspect YouTube formats."""
     if is_playlist_url(url):
         return None
     try:
         response = session.get(
-            "https://www.youtube.com/oembed",
-            params={"url": url, "format": "json"},
+"https://www.youtube.com/oembed",
+            params={"url": url,"format":"json"},
             timeout=12,
         )
         response.raise_for_status()
         payload = response.json()
-        title = str(payload.get("title") or "").strip()
+        title = str(payload.get("title") or"").strip()
         if not title:
             return None
 
         thumbnail_candidates = []
-        thumbnail = str(payload.get("thumbnail_url") or "").strip()
+        thumbnail = str(payload.get("thumbnail_url") or"").strip()
         if thumbnail:
             candidate = canonicalize_thumbnail_url(thumbnail)
             if candidate:
@@ -8059,23 +8059,23 @@ def _v3_public_metadata_preview(url):
                 thumbnail_candidates.append(candidate)
 
         write_failure_log(
-            "preview_metadata_fallback",
+"preview_metadata_fallback",
             RuntimeError("yt-dlp format inspection failed; loaded public oEmbed metadata instead"),
             details=f"URL: {url}\nTitle: {title}",
         )
         return {
-            "title": title,
-            "cover_url": thumbnail_candidates[0] if thumbnail_candidates else "",
-            "thumbnail_candidates": thumbnail_candidates,
-            "quality_options": AUDIO_DOWNLOAD_OPTIONS.copy(),
-            "formats": [],
-            "youtube_extractor_arg": None,
-            "is_playlist": False,
-            "metadata_only_fallback": True,
+"title": title,
+"cover_url": thumbnail_candidates[0] if thumbnail_candidates else"",
+"thumbnail_candidates": thumbnail_candidates,
+"quality_options": AUDIO_DOWNLOAD_OPTIONS.copy(),
+"formats": [],
+"youtube_extractor_arg": None,
+"is_playlist": False,
+"metadata_only_fallback": True,
         }
     except Exception as exc:
         write_failure_log(
-            "preview_oembed_fallback",
+"preview_oembed_fallback",
             exc,
             details=f"URL: {url}",
         )
@@ -8129,12 +8129,12 @@ def _v3_build_downloader_tab(self, tab):
         options.grid_columnconfigure(0, weight=1)
         options.grid_columnconfigure(1, weight=1)
 
-        self._v3_selected_file_type = "auto"
-        self._v3_selected_file_quality = ""
+        self._v3_selected_file_type ="auto"
+        self._v3_selected_file_quality =""
         self._v3_preview_formats = []
         self._v3_queue = []
 
-        self.dl_file_type_label = ctk.CTkLabel(options, text="📦 File Type", font=(APP_FONT, 15, "bold"), text_color="#ffffff")
+        self.dl_file_type_label = ctk.CTkLabel(options, text=" File Type", font=(APP_FONT, 15,"bold"), text_color="#ffffff")
         self.dl_file_type = ctk.CTkComboBox(
             options,
             values=[label for label, _ in FILE_TYPE_OPTIONS_V3],
@@ -8147,7 +8147,7 @@ def _v3_build_downloader_tab(self, tab):
         self.dl_file_type.set(FILE_LABEL_BY_TYPE_V3["auto"])
 
         # Reuse V2's quality combo but move it into the right-hand column.
-        self.dl_quality_label.configure(text="⚡ File Quality")
+        self.dl_quality_label.configure(text=" File Quality")
 
         utility = ctk.CTkFrame(options, fg_color="transparent")
         utility.grid(row=5, column=0, columnspan=2, sticky="ew", padx=22, pady=(0, 8))
@@ -8158,18 +8158,18 @@ def _v3_build_downloader_tab(self, tab):
         ctk.CTkCheckBox(utility, text="Inspect only (dry run)", variable=self.dl_dry_run, onvalue="1", offvalue="0", font=(APP_FONT, 11), text_color="#cbd5e1").grid(row=0, column=0, sticky="w")
 
         self.dl_performance = ctk.CTkComboBox(
-            utility, values=["Balanced", "Conservative", "Aggressive"], state="readonly", height=32,
+            utility, values=["Balanced","Conservative","Aggressive"], state="readonly", height=32,
             font=(APP_FONT, 11), dropdown_font=(APP_FONT, 11), fg_color="#050505",
             button_color="#1e293b", button_hover_color="#334155", dropdown_fg_color="#000000",
             dropdown_text_color="#ffffff", text_color="#ffffff",
             command=lambda value: self._v3_set_performance(value),
         )
-        self.dl_performance.set({"balanced": "Balanced", "conservative": "Conservative", "aggressive": "Aggressive"}.get(self.performance_mode, "Balanced"))
+        self.dl_performance.set({"balanced":"Balanced","conservative":"Conservative","aggressive":"Aggressive"}.get(self.performance_mode,"Balanced"))
         self.dl_performance.grid(row=0, column=1, sticky="ew")
 
-        ctk.CTkButton(utility, text="ⓘ Inspect Details", width=120, height=32, font=(APP_FONT, 10, "bold"), fg_color="transparent", hover_color="#1e293b", text_color="#cbd5e1", command=self._v3_show_media_details).grid(row=1, column=0, sticky="w", pady=(6, 0))
-        ctk.CTkButton(utility, text="＋ Queue", width=85, height=32, font=(APP_FONT, 10, "bold"), fg_color="transparent", hover_color="#1e293b", text_color="#cbd5e1", command=self._v3_queue_current).grid(row=1, column=1, sticky="w", pady=(6, 0))
-        self.dl_queue_count = ctk.CTkLabel(utility, text="Queue: 0", font=(APP_FONT, 10, "bold"), text_color="#64748b")
+        ctk.CTkButton(utility, text="ⓘ Inspect Details", width=120, height=32, font=(APP_FONT, 10,"bold"), fg_color="transparent", hover_color="#1e293b", text_color="#cbd5e1", command=self._v3_show_media_details).grid(row=1, column=0, sticky="w", pady=(6, 0))
+        ctk.CTkButton(utility, text="＋ Queue", width=85, height=32, font=(APP_FONT, 10,"bold"), fg_color="transparent", hover_color="#1e293b", text_color="#cbd5e1", command=self._v3_queue_current).grid(row=1, column=1, sticky="w", pady=(6, 0))
+        self.dl_queue_count = ctk.CTkLabel(utility, text="Queue: 0", font=(APP_FONT, 10,"bold"), text_color="#64748b")
         self.dl_queue_count.grid(row=1, column=1, sticky="e", pady=(6, 0))
 
         # Move the existing Save To row down one row.
@@ -8184,9 +8184,9 @@ def _v3_build_downloader_tab(self, tab):
 def _v3_hide_selector(self):
     self._dl_quality_visible = False
     self._dl_preview_quality_options = []
-    self._dl_preview_quality_source = ""
-    self._dl_preview_quality_mode = "none"
-    self._v3_selected_file_quality = ""
+    self._dl_preview_quality_source =""
+    self._dl_preview_quality_mode ="none"
+    self._v3_selected_file_quality =""
     try:
         self.dl_file_type_label.grid_remove()
         self.dl_file_type.grid_remove()
@@ -8204,12 +8204,12 @@ def _v3_file_type_changed(self, selected_label=None):
         file_type = _v3_file_type_id(label)
         self._v3_selected_file_type = file_type
         mode = self.downloader_quality_mode_for_source(self._dl_preview_quality_source or self.dl_input.get())
-        quality_options = _v3_quality_options(self._v3_preview_formats, file_type, mode if mode in {"single", "playlist"} else "single")
+        quality_options = _v3_quality_options(self._v3_preview_formats, file_type, mode if mode in {"single","playlist"} else"single")
         self._dl_preview_quality_options = quality_options
         values = [label for label, _ in quality_options]
         if values:
-            if mode == "playlist" and file_type in VIDEO_FILE_TYPES_V3:
-                default = "Best Option Separate"
+            if mode =="playlist" and file_type in VIDEO_FILE_TYPES_V3:
+                default ="Best Option Separate"
             else:
                 default = values[0]
             self.dl_format.configure(values=values)
@@ -8234,7 +8234,7 @@ def _v3_file_type_changed(self, selected_label=None):
 def _v3_show_selector(self, quality_options=None, animated=True, source_value="", source_mode=None):
     source_value = str(source_value or self._dl_preview_quality_source or self.dl_input.get()).strip()
     mode = self.downloader_quality_mode_for_source(source_value)
-    if mode not in {"single", "playlist"}:
+    if mode not in {"single","playlist"}:
         _v3_hide_selector(self)
         return
     self._dl_preview_quality_source = source_value
@@ -8242,12 +8242,12 @@ def _v3_show_selector(self, quality_options=None, animated=True, source_value=""
     try:
         self.dl_file_type.set(FILE_LABEL_BY_TYPE_V3.get(self._v3_selected_file_type, FILE_LABEL_BY_TYPE_V3["auto"]))
         _v3_file_type_changed(self, self.dl_file_type.get())
-        if mode == "playlist" and self._v3_selected_file_type in VIDEO_FILE_TYPES_V3:
-            opts = _v3_quality_options(self._v3_preview_formats, self._v3_selected_file_type, "playlist")
+        if mode =="playlist" and self._v3_selected_file_type in VIDEO_FILE_TYPES_V3:
+            opts = _v3_quality_options(self._v3_preview_formats, self._v3_selected_file_type,"playlist")
             self._dl_preview_quality_options = opts
             self.dl_format.configure(values=[label for label, _ in opts])
             self.dl_format.set("Best Option Separate")
-            self._v3_selected_file_quality = "Best Option Separate"
+            self._v3_selected_file_quality ="Best Option Separate"
         elif self._v3_selected_file_type in LOSSLESS_AUDIO_TYPES_V3:
             self.dl_quality_label.grid_remove()
             self.dl_format.grid_remove()
@@ -8263,7 +8263,7 @@ def _v3_show_selector(self, quality_options=None, animated=True, source_value=""
 def _v3_selected_quality_spec(self, selected_format=None):
     if isinstance(selected_format, dict):
         return dict(selected_format)
-    label = str(selected_format or self._v3_selected_file_quality or self.dl_format.get() or "").strip()
+    label = str(selected_format or self._v3_selected_file_quality or self.dl_format.get() or"").strip()
     for option_label, spec in self._dl_preview_quality_options or []:
         if option_label == label:
             return dict(spec)
@@ -8291,45 +8291,45 @@ def _v3_start_download(self):
     if not current:
         return _ORIGINAL_START_DOWNLOAD_V3(self)
     try:
-        file_type = _v3_file_type_id(self.dl_file_type.get()) if getattr(self, "dl_file_type", None) else "auto"
-        quality = self.dl_format.get().strip() if getattr(self, "dl_format", None) and self._dl_quality_visible else ""
+        file_type = _v3_file_type_id(self.dl_file_type.get()) if getattr(self,"dl_file_type", None) else"auto"
+        quality = self.dl_format.get().strip() if getattr(self,"dl_format", None) and self._dl_quality_visible else""
         if file_type in LOSSLESS_AUDIO_TYPES_V3:
             quality = _v3_audio_quality_options(file_type)[0][0]
-        if self.downloader_quality_mode_for_source(current) == "playlist" and file_type in VIDEO_FILE_TYPES_V3:
-            quality = quality or "Best Option Separate"
+        if self.downloader_quality_mode_for_source(current) =="playlist" and file_type in VIDEO_FILE_TYPES_V3:
+            quality = quality or"Best Option Separate"
         self._v3_selected_file_type = file_type
         self._v3_selected_file_quality = quality
         self._selected_download_format = quality
         self._selected_file_type = file_type
         self._selected_file_quality = quality
-        self._v3_dry_run_active = bool(getattr(self, "dl_dry_run", StringVar(value="0")).get() == "1")
+        self._v3_dry_run_active = bool(getattr(self,"dl_dry_run", StringVar(value="0")).get() =="1")
     except Exception:
-        self._v3_selected_file_type = "auto"
-        self._selected_file_quality = ""
-        self._selected_download_format = ""
+        self._v3_selected_file_type ="auto"
+        self._selected_file_quality =""
+        self._selected_download_format =""
         self._v3_dry_run_active = False
     _ORIGINAL_START_DOWNLOAD_V3(self)
 
 
 def _v3_run_worker(self, user_input):
-    if getattr(self, "_v3_dry_run_active", False):
+    if getattr(self,"_v3_dry_run_active", False):
         try:
             mode, payload = self.resolve_for_download(user_input)
-            self.set_operation_progress("dl", 40, "Inspecting source formats...", taskbar=True)
-            if mode == "single":
+            self.set_operation_progress("dl", 40,"Inspecting source formats...", taskbar=True)
+            if mode =="single":
                 result, error = payload
                 if not result:
-                    raise RuntimeError(error or "No result")
+                    raise RuntimeError(error or"No result")
                 formats, extractor_arg = inspect_youtube_formats(result.get("source_url") or f"https://www.youtube.com/watch?v={result.get('video_id')}", timeout=45)
                 self._v3_preview_formats = formats
                 self._dl_youtube_extractor_arg = extractor_arg
-                opts = _v3_quality_options(formats, self._v3_selected_file_type, "single")
+                opts = _v3_quality_options(formats, self._v3_selected_file_type,"single")
                 self._dl_preview_quality_options = opts
                 self.after(0, lambda: self._v3_show_selector(opts, animated=True, source_value=user_input, source_mode="single"))
             else:
-                self.set_operation_progress("dl", 85, "Playlist inspection complete — no files downloaded.", taskbar=True)
-            self.set_operation_progress("dl", 100, "Inspection Complete", taskbar=True)
-            _v3_history({"operation": "dry_run", "input": user_input, "result": "inspected_only", "file_type": self._v3_selected_file_type})
+                self.set_operation_progress("dl", 85,"Playlist inspection complete — no files downloaded.", taskbar=True)
+            self.set_operation_progress("dl", 100,"Inspection Complete", taskbar=True)
+            _v3_history({"operation":"dry_run","input": user_input,"result":"inspected_only","file_type": self._v3_selected_file_type})
         except Exception as exc:
             log_path = write_failure_log("v3_dry_run", exc, details=f"Input: {user_input}")
             self.set_operation_progress("dl", 0, f"Inspection failed — {log_path or FAILURE_LOG_DIR}", taskbar=False)
@@ -8347,53 +8347,53 @@ def _v3_build_command(self, source_url, result, selected_format):
         return _ORIGINAL_BUILD_COMMAND_V3(self, source_url, result, selected_format)
 
     output_dir = self.paths["downloader"]
-    file_type = str(spec.get("file_type") or getattr(self, "_v3_selected_file_type", "auto")).lower()
-    title = sanitize_filename(result.get("output_filename") or result.get("title") or "track")
+    file_type = str(spec.get("file_type") or getattr(self,"_v3_selected_file_type","auto")).lower()
+    title = sanitize_filename(result.get("output_filename") or result.get("title") or"track")
     command = [
-        get_ytdlp_command(), "--newline", "--windows-filenames",
-        "--concurrent-fragments", str({"conservative": 2, "balanced": 4, "aggressive": 8}.get(getattr(self, "performance_mode", "balanced"), 4)),
-        "--retries", "10", "--fragment-retries", "10", "--retry-sleep", "exponential",
-        "--no-overwrites", "--format-sort", "res,fps,hdr:12,vcodec,channels,acodec,size,br,asr,proto,ext",
+        get_ytdlp_command(),"--newline","--windows-filenames",
+"--concurrent-fragments", str({"conservative": 2,"balanced": 4,"aggressive": 8}.get(getattr(self,"performance_mode","balanced"), 4)),
+"--retries","10","--fragment-retries","10","--retry-sleep","exponential",
+"--no-overwrites","--format-sort","res,fps,hdr:12,vcodec,channels,acodec,size,br,asr,proto,ext",
     ]
     command.extend(get_browser_cookie_args(source_url))
-    extractor_arg = result.get("quality_extractor_arg") or getattr(self, "_dl_youtube_extractor_arg", None) or getattr(self, "_last_quality_extractor_arg", None)
+    extractor_arg = result.get("quality_extractor_arg") or getattr(self,"_dl_youtube_extractor_arg", None) or getattr(self,"_last_quality_extractor_arg", None)
     if extractor_arg:
         command.extend(youtube_extractor_args_list(extractor_arg))
 
-    if spec.get("kind") == "audio":
-        audio_format = spec.get("audio_format") or "flac"
-        command.extend(["-x", "--audio-format", audio_format])
+    if spec.get("kind") =="audio":
+        audio_format = spec.get("audio_format") or"flac"
+        command.extend(["-x","--audio-format", audio_format])
         if spec.get("quality"):
             command.extend(["--audio-quality", spec["quality"]])
-    elif spec.get("kind") == "video":
+    elif spec.get("kind") =="video":
         height = int(spec.get("height") or 0)
         if not height:
             raise RuntimeError("The selected video quality has no resolution")
-        if file_type == "mp4" or (file_type == "auto" and height <= 720):
+        if file_type =="mp4" or (file_type =="auto" and height <= 720):
             selector = f"bestvideo[height<={height}][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<={height}]+bestaudio/best[height<={height}]"
         else:
             selector = f"bestvideo[height<={height}]+bestaudio/best[height<={height}]"
-        container = "mp4" if file_type == "auto" and height <= 720 else file_type
-        command.extend(["-f", selector, "--merge-output-format", container])
+        container ="mp4" if file_type =="auto" and height <= 720 else file_type
+        command.extend(["-f", selector,"--merge-output-format", container])
     else:
         raise RuntimeError("No valid download type selected")
 
-    if getattr(self, "_selected_download_subtitles", False) and spec.get("kind") == "video" and file_type in {"mp4", "mkv", "webm"}:
-        command.extend(["--write-sub", "--write-auto-sub", "--embed-subs", "--sub-lang", "en,ar"])
-    command.extend(["-o", os.path.join(output_dir, f"{title}.%(ext)s"), "--", source_url])
+    if getattr(self,"_selected_download_subtitles", False) and spec.get("kind") =="video" and file_type in {"mp4","mkv","webm"}:
+        command.extend(["--write-sub","--write-auto-sub","--embed-subs","--sub-lang","en,ar"])
+    command.extend(["-o", os.path.join(output_dir, f"{title}.%(ext)s"),"--", source_url])
     return command
 
 
 def _v3_is_lossless_video(self, selected_format):
     spec = _v3_selected_quality_spec(self, selected_format)
-    if spec.get("kind") != "video":
+    if spec.get("kind") !="video":
         return False
     try:
         h = int(spec.get("height") or 0)
     except Exception:
         return False
-    ft = str(spec.get("file_type") or getattr(self, "_v3_selected_file_type", "auto"))
-    return h >= 1080 and ft in {"auto", "mkv"}
+    ft = str(spec.get("file_type") or getattr(self,"_v3_selected_file_type","auto"))
+    return h >= 1080 and ft in {"auto","mkv"}
 
 
 def _v3_postprocess(self, file_path, result, progress_callback=None, thumbnail_path=None):
@@ -8403,17 +8403,17 @@ def _v3_postprocess(self, file_path, result, progress_callback=None, thumbnail_p
     try:
         suffix = Path(file_path).suffix.lower()
         cover_bytes = result.get("downloaded_thumbnail_bytes")
-        if suffix == ".flac":
+        if suffix ==".flac":
             write_flac_metadata(file_path, result, cover_bytes=cover_bytes, wipe_tags=False)
-        elif suffix in {".mp3", ".m4a", ".opus", ".ogg", ".oga", ".wav"}:
+        elif suffix in {".mp3",".m4a",".opus",".ogg",".oga",".wav"}:
             write_generic_audio_metadata(file_path, result, cover_bytes=cover_bytes)
-        elif suffix in {".mp4", ".mov"} and thumbnail_path:
-            report(0.75, "Binding video thumbnail...")
+        elif suffix in {".mp4",".mov"} and thumbnail_path:
+            report(0.75,"Binding video thumbnail...")
             self.embed_mp4_video_thumbnail(file_path, thumbnail_path)
-        elif suffix == ".mkv" and thumbnail_path:
-            report(0.75, "Binding video thumbnail...")
+        elif suffix ==".mkv" and thumbnail_path:
+            report(0.75,"Binding video thumbnail...")
             self._v3_embed_mkv_thumbnail(file_path, thumbnail_path)
-        report(1.0, "Metadata + artwork complete")
+        report(1.0,"Metadata + artwork complete")
         return Path(file_path)
     except Exception as exc:
         log_path = write_failure_log("v3_postprocess", exc, details=f"File: {file_path}")
@@ -8422,9 +8422,9 @@ def _v3_postprocess(self, file_path, result, progress_callback=None, thumbnail_p
 
 def _v3_embed_mkv_thumbnail(self, file_path, thumbnail_path):
     source = Path(file_path)
-    temp = source.with_name(source.stem + ".cover.tmp.mkv")
+    temp = source.with_name(source.stem +".cover.tmp.mkv")
     ffmpeg = get_ffmpeg_command()
-    command = [ffmpeg, "-y", "-i", str(source), "-map", "0", "-c", "copy", "-attach", str(thumbnail_path), "-metadata:s:t:0", "mimetype=image/jpeg", "-metadata:s:t:0", "filename=cover.jpg", "-metadata:s:t:0", "title=Cover Art", str(temp)]
+    command = [ffmpeg,"-y","-i", str(source),"-map","0","-c","copy","-attach", str(thumbnail_path),"-metadata:s:t:0","mimetype=image/jpeg","-metadata:s:t:0","filename=cover.jpg","-metadata:s:t:0","title=Cover Art", str(temp)]
     proc = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=180, **get_hidden_subprocess_kwargs())
     if proc.returncode != 0 or not temp.exists():
         raise RuntimeError(f"FFmpeg MKV thumbnail embedding failed: {proc.stderr[-1200:]}")
@@ -8434,58 +8434,58 @@ def _v3_embed_mkv_thumbnail(self, file_path, thumbnail_path):
 
 
 def _v3_verify_mkv_attachment(path):
-    ffprobe = find_executable("ffprobe") or "ffprobe"
-    proc = subprocess.run([ffprobe, "-v", "error", "-show_entries", "stream=index,codec_type:stream_tags=mimetype,filename", "-show_entries", "format_tags=title", "-of", "json", str(path)], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30, **get_hidden_subprocess_kwargs())
+    ffprobe = find_executable("ffprobe") or"ffprobe"
+    proc = subprocess.run([ffprobe,"-v","error","-show_entries","stream=index,codec_type:stream_tags=mimetype,filename","-show_entries","format_tags=title","-of","json", str(path)], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30, **get_hidden_subprocess_kwargs())
     if proc.returncode != 0:
         return False
-    payload = json.loads(proc.stdout or "{}")
+    payload = json.loads(proc.stdout or"{}")
     streams = payload.get("streams", [])
-    return any(str(s.get("codec_type") or "") == "attachment" and str((s.get("tags") or {}).get("mimetype") or "") == "image/jpeg" for s in streams)
+    return any(str(s.get("codec_type") or"") =="attachment" and str((s.get("tags") or {}).get("mimetype") or"") =="image/jpeg" for s in streams)
 
 
 def _v3_execute(self, result, item_index=1, item_total=1, selected_format_override=None):
     selected = selected_format_override if selected_format_override is not None else self._selected_download_format
     spec = _v3_selected_quality_spec(self, selected)
-    file_type = str(spec.get("file_type") or getattr(self, "_v3_selected_file_type", "auto"))
+    file_type = str(spec.get("file_type") or getattr(self,"_v3_selected_file_type","auto"))
     exts = {
-        "auto": [".mkv", ".mp4", ".flac"], "mp4": [".mp4"], "mkv": [".mkv"], "webm": [".webm", ".mkv"], "mov": [".mov"],
-        "mp3": [".mp3"], "m4a": [".m4a"], "opus": [".opus"], "vorbis": [".ogg"], "flac": [".flac"], "alac": [".m4a"], "wav": [".wav"],
-    }.get(file_type, [".mp4", ".mkv", ".flac"])
+"auto": [".mkv",".mp4",".flac"],"mp4": [".mp4"],"mkv": [".mkv"],"webm": [".webm",".mkv"],"mov": [".mov"],
+"mp3": [".mp3"],"m4a": [".m4a"],"opus": [".opus"],"vorbis": [".ogg"],"flac": [".flac"],"alac": [".m4a"],"wav": [".wav"],
+    }.get(file_type, [".mp4",".mkv",".flac"])
     result = dict(result)
-    result["output_filename"] = _v3_unique_stem(self.paths["downloader"], result.get("title") or result.get("output_filename") or "track", exts)
+    result["output_filename"] = _v3_unique_stem(self.paths["downloader"], result.get("title") or result.get("output_filename") or"track", exts)
     out = _ORIGINAL_EXECUTE_V3(self, result, item_index=item_index, item_total=item_total, selected_format_override=selected_format_override)
-    kind = "audio" if spec.get("kind") == "audio" else "video"
+    kind ="audio" if spec.get("kind") =="audio" else"video"
     _v3_validate_output(out, kind)
-    _v3_history({"operation": "download_item", "video_id": result.get("video_id"), "title": result.get("title"), "file": str(out), "file_type": file_type, "quality": selected, "result": "success"})
+    _v3_history({"operation":"download_item","video_id": result.get("video_id"),"title": result.get("title"),"file": str(out),"file_type": file_type,"quality": selected,"result":"success"})
     return out
 
 
 def _v3_set_performance(self, value):
-    self.performance_mode = {"Balanced": "balanced", "Conservative": "conservative", "Aggressive": "aggressive"}.get(str(value), "balanced")
+    self.performance_mode = {"Balanced":"balanced","Conservative":"conservative","Aggressive":"aggressive"}.get(str(value),"balanced")
     self.save_config()
 
 
 def _v3_show_media_details(self):
-    source = str(getattr(self, "_dl_preview_source", "") or self.dl_input.get()).strip()
+    source = str(getattr(self,"_dl_preview_source","") or self.dl_input.get()).strip()
     if not source:
-        messagebox.showinfo("Media Details", "Paste a YouTube link first.")
+        messagebox.showinfo("Media Details","Paste a YouTube link first.")
         return
-    fmts = getattr(self, "_v3_preview_formats", []) or []
+    fmts = getattr(self,"_v3_preview_formats", []) or []
     heights = detected_video_heights(fmts)
     tracks = build_audio_track_options(fmts)
-    top = choose_best_format_at_height(fmts) if 'choose_best_format_at_height' in globals() else None
-    lines = [f"Source: {source}", f"Mode: {self.downloader_quality_mode_for_source(source)}", f"Video heights: {', '.join(str(h)+'p' for h in heights) or 'none'}", f"Audio tracks: {len(tracks)}"]
+    top = choose_best_format_at_height(fmts) if'choose_best_format_at_height' in globals() else None
+    lines = [f"Source: {source}", f"Mode: {self.downloader_quality_mode_for_source(source)}", f"Video heights: {','.join(str(h)+'p' for h in heights) or'none'}", f"Audio tracks: {len(tracks)}"]
     if top:
-        lines.append(f"Best format: {top.get('height', 0)}p {top.get('fps') or 0}fps {top.get('vcodec') or 'unknown'}")
-    messagebox.showinfo("Media Details", "\n".join(lines))
+        lines.append(f"Best format: {top.get('height', 0)}p {top.get('fps') or 0}fps {top.get('vcodec') or'unknown'}")
+    messagebox.showinfo("Media Details","\n".join(lines))
 
 
 def _v3_queue_current(self):
     value = self.dl_input.get().strip()
     if not value or not is_youtube_url(value):
-        messagebox.showerror("Queue", "Enter a valid YouTube URL first.")
+        messagebox.showerror("Queue","Enter a valid YouTube URL first.")
         return
-    if value not in getattr(self, "_v3_queue", []):
+    if value not in getattr(self,"_v3_queue", []):
         self._v3_queue.append(value)
     try:
         self.dl_queue_count.configure(text=f"Queue: {len(self._v3_queue)}")
@@ -8520,8 +8520,8 @@ def _v3_load_config(self):
     try:
         if os.path.exists(CONFIG_FILE):
             data = json.loads(Path(CONFIG_FILE).read_text(encoding="utf-8"))
-            self.performance_mode = str(data.get("performance_mode", getattr(self, "performance_mode", "balanced")))
-            self.conflict_mode = str(data.get("conflict_mode", getattr(self, "conflict_mode", "rename")))
+            self.performance_mode = str(data.get("performance_mode", getattr(self,"performance_mode","balanced")))
+            self.conflict_mode = str(data.get("conflict_mode", getattr(self,"conflict_mode","rename")))
             self.config_version = 3
     except Exception as exc:
         write_failure_log("v3_config_load", exc)
@@ -8534,7 +8534,7 @@ def _v3_save_config(self):
             data = json.loads(Path(CONFIG_FILE).read_text(encoding="utf-8"))
         else:
             data = {}
-        data.update({"config_version": 3, "performance_mode": getattr(self, "performance_mode", "balanced"), "conflict_mode": getattr(self, "conflict_mode", "rename")})
+        data.update({"config_version": 3,"performance_mode": getattr(self,"performance_mode","balanced"),"conflict_mode": getattr(self,"conflict_mode","rename")})
         Path(CONFIG_FILE).write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     except Exception as exc:
         write_failure_log("v3_config_save", exc)
@@ -8557,72 +8557,72 @@ from datetime import datetime
 # Portable diagnostics location: never hard-code a user's Windows account.
 FAILURE_LOG_DIR = os.path.join(
     os.path.expanduser("~"),
-    "Documents",
-    "YTDLP",
+"Documents",
+"YTDLP",
 )
 
 # Supported containers/codecs exposed by the downloader UI.
 FILE_TYPE_OPTIONS_V3 = [
-    ("🤖 Auto", "auto"),
-    ("🎬 MP4 Video", "mp4"),
-    ("🎞️ MKV Video", "mkv"),
-    ("🎵 MP3 Audio", "mp3"),
-    ("🎧 M4A / AAC Audio", "m4a"),
-    ("🔊 Opus Audio", "opus"),
-    ("🎼 Vorbis / OGG Audio", "vorbis"),
-    ("💎 FLAC Audio", "flac"),
-    ("📻 WAV PCM Audio", "wav"),
+    (" Auto","auto"),
+    (" MP4 Video","mp4"),
+    (" MKV Video","mkv"),
+    (" MP3 Audio","mp3"),
+    (" M4A / AAC Audio","m4a"),
+    (" Opus Audio","opus"),
+    (" Vorbis / OGG Audio","vorbis"),
+    (" FLAC Audio","flac"),
+    (" WAV PCM Audio","wav"),
 ]
 FILE_TYPE_BY_LABEL_V3 = {label: value for label, value in FILE_TYPE_OPTIONS_V3}
 FILE_LABEL_BY_TYPE_V3 = {value: label for label, value in FILE_TYPE_OPTIONS_V3}
-VIDEO_FILE_TYPES_V3 = {"auto", "mp4", "mkv"}
-AUDIO_FILE_TYPES_V3 = {"mp3", "m4a", "opus", "vorbis", "flac", "wav"}
-LOSSLESS_AUDIO_TYPES_V3 = {"flac", "wav"}
+VIDEO_FILE_TYPES_V3 = {"auto","mp4","mkv"}
+AUDIO_FILE_TYPES_V3 = {"mp3","m4a","opus","vorbis","flac","wav"}
+LOSSLESS_AUDIO_TYPES_V3 = {"flac","wav"}
 AUDIO_BITRATES_V3 = {
-    "mp3": [64, 96, 128, 160, 192, 224, 256, 320],
-    "m4a": [64, 96, 128, 160, 192, 224, 256, 320],
-    "opus": [32, 48, 64, 96, 128, 160, 192, 256, 320],
-    "vorbis": [64, 96, 128, 160, 192, 224, 256, 320],
+"mp3": [64, 96, 128, 160, 192, 224, 256, 320],
+"m4a": [64, 96, 128, 160, 192, 224, 256, 320],
+"opus": [32, 48, 64, 96, 128, 160, 192, 256, 320],
+"vorbis": [64, 96, 128, 160, 192, 224, 256, 320],
 }
 
 # Output extension map used by the conflict-safe naming layer.
 V3_OUTPUT_EXTENSIONS = {
-    "auto": [".mkv", ".mp4", ".flac"],
-    "mp4": [".mp4"],
-    "mkv": [".mkv"],
-    "mp3": [".mp3"],
-    "m4a": [".m4a"],
-    "opus": [".opus"],
-    "vorbis": [".ogg"],
-    "flac": [".flac"],
-    "wav": [".wav"],
+"auto": [".mkv",".mp4",".flac"],
+"mp4": [".mp4"],
+"mkv": [".mkv"],
+"mp3": [".mp3"],
+"m4a": [".m4a"],
+"opus": [".opus"],
+"vorbis": [".ogg"],
+"flac": [".flac"],
+"wav": [".wav"],
 }
 
 
 def _v3_file_type_id_final(label):
-    return FILE_TYPE_BY_LABEL_V3.get(str(label or ""), "auto")
+    return FILE_TYPE_BY_LABEL_V3.get(str(label or""),"auto")
 
 
 def _v3_audio_quality_options_final(file_type):
-    file_type = str(file_type or "").lower()
+    file_type = str(file_type or"").lower()
     if file_type in LOSSLESS_AUDIO_TYPES_V3:
         # UI hides this quality dropdown for truly lossless types.
-        name = {"flac": "Lossless — FLAC", "alac": "Lossless — ALAC", "wav": "Lossless — PCM WAV"}[file_type]
+        name = {"flac":"Lossless — FLAC","alac":"Lossless — ALAC","wav":"Lossless — PCM WAV"}[file_type]
         return [(name, {
-            "kind": "audio",
-            "audio_format": file_type,
-            "quality": None,
-            "lossless": True,
-            "file_type": file_type,
+"kind":"audio",
+"audio_format": file_type,
+"quality": None,
+"lossless": True,
+"file_type": file_type,
         })]
     return [
-        (f"🎚️ {rate} kbps", {
-            "kind": "audio",
-            "audio_format": file_type,
-            "quality": f"{rate}K",
-            "bitrate": rate,
-            "lossless": False,
-            "file_type": file_type,
+        (f" {rate} kbps", {
+"kind":"audio",
+"audio_format": file_type,
+"quality": f"{rate}K",
+"bitrate": rate,
+"lossless": False,
+"file_type": file_type,
         })
         for rate in sorted(AUDIO_BITRATES_V3.get(file_type, []), reverse=True)
     ]
@@ -8637,42 +8637,42 @@ def _v3_best_video_descriptor_final(formats, height):
             h = int(fmt.get("height") or 0)
         except (TypeError, ValueError):
             continue
-        if h != int(height) or str(fmt.get("vcodec") or "none") == "none":
+        if h != int(height) or str(fmt.get("vcodec") or"none") =="none":
             continue
         try:
             fps = float(fmt.get("fps") or 0)
         except (TypeError, ValueError):
             fps = 0.0
-        hdr = str(fmt.get("dynamic_range") or fmt.get("hdr") or "").strip()
-        vcodec = str(fmt.get("vcodec") or "").split(".", 1)[0]
-        tbr = float(fmt.get("tbr") or 0) if str(fmt.get("tbr") or "").replace('.', '', 1).isdigit() else 0.0
-        candidates.append((fps, 1 if hdr and hdr.lower() not in {"sdr", "none"} else 0, tbr, vcodec, hdr))
+        hdr = str(fmt.get("dynamic_range") or fmt.get("hdr") or"").strip()
+        vcodec = str(fmt.get("vcodec") or"").split(".", 1)[0]
+        tbr = float(fmt.get("tbr") or 0) if str(fmt.get("tbr") or"").replace('.','', 1).isdigit() else 0.0
+        candidates.append((fps, 1 if hdr and hdr.lower() not in {"sdr","none"} else 0, tbr, vcodec, hdr))
     if not candidates:
-        return ""
+        return""
     fps, hdr_rank, _tbr, vcodec, hdr = max(candidates, key=lambda x: (x[0], x[1], x[2]))
     parts = [f"{int(height)}p"]
     if fps >= 1:
         parts.append(f"{int(fps) if fps.is_integer() else fps:g}fps")
     if hdr_rank:
         parts.append(hdr)
-    return " • ".join(parts)
+    return" •".join(parts)
 
 
 def _v3_video_quality_options_final(formats, file_type, mode="single"):
-    file_type = str(file_type or "auto").lower()
-    if mode == "playlist":
+    file_type = str(file_type or"auto").lower()
+    if mode =="playlist":
         options = [(
-            "Best Option Separate",
-            {"kind": "video", "best_per_item": True, "file_type": file_type},
+"Best Option Separate",
+            {"kind":"video","best_per_item": True,"file_type": file_type},
         )]
         # Playlist mode intentionally exposes the complete resolution menu.
         for height, label in sorted(VIDEO_QUALITY_LABELS.items(), reverse=True):
             options.append((label, {
-                "kind": "video",
-                "height": height,
-                "best": False,
-                "file_type": file_type,
-                "playlist_ceiling": True,
+"kind":"video",
+"height": height,
+"best": False,
+"file_type": file_type,
+"playlist_ceiling": True,
             }))
         return options
 
@@ -8681,27 +8681,27 @@ def _v3_video_quality_options_final(formats, file_type, mode="single"):
         return _v5_generic_video_options(file_type)
     highest = heights[0]
     descriptor = _v3_best_video_descriptor_final(formats, highest)
-    best_label = f"🎬 Best Quality — {descriptor or str(highest) + 'p'}"
+    best_label = f" Best Quality — {descriptor or str(highest) +'p'}"
     options = [(best_label, {
-        "kind": "video",
-        "height": highest,
-        "best": True,
-        "file_type": file_type,
+"kind":"video",
+"height": highest,
+"best": True,
+"file_type": file_type,
     })]
     for height in heights[1:]:
         descriptor = _v3_best_video_descriptor_final(formats, height)
-        label = descriptor if descriptor else VIDEO_QUALITY_LABELS.get(height, f"🎞️ {height}P")
+        label = descriptor if descriptor else VIDEO_QUALITY_LABELS.get(height, f" {height}P")
         options.append((label, {
-            "kind": "video",
-            "height": height,
-            "best": False,
-            "file_type": file_type,
+"kind":"video",
+"height": height,
+"best": False,
+"file_type": file_type,
         }))
     return options
 
 
 def _v3_quality_options_final(formats, file_type, mode="single"):
-    if str(file_type or "").lower() in AUDIO_FILE_TYPES_V3:
+    if str(file_type or"").lower() in AUDIO_FILE_TYPES_V3:
         return _v3_audio_quality_options_final(file_type)
     return _v3_video_quality_options_final(formats, file_type, mode)
 
@@ -8713,9 +8713,9 @@ _v3_file_type_id = _v3_file_type_id_final
 
 
 def _v3_set_dynamic_file_quality_ui(self, mode):
-    """Rebuild only the quality dropdown appropriate to the current file type."""
-    file_type = str(getattr(self, "_v3_selected_file_type", "auto"))
-    options = _v3_quality_options_final(getattr(self, "_v3_preview_formats", []), file_type, mode)
+"""Rebuild only the quality dropdown appropriate to the current file type."""
+    file_type = str(getattr(self,"_v3_selected_file_type","auto"))
+    options = _v3_quality_options_final(getattr(self,"_v3_preview_formats", []), file_type, mode)
     self._dl_preview_quality_options = options
     labels = [label for label, _spec in options]
     try:
@@ -8724,22 +8724,22 @@ def _v3_set_dynamic_file_quality_ui(self, mode):
         return options
 
     if file_type in LOSSLESS_AUDIO_TYPES_V3:
-        self._v3_selected_file_quality = ""
+        self._v3_selected_file_quality =""
         self.dl_quality_label.grid_remove()
         self.dl_format.grid_remove()
     else:
         self.dl_quality_label.grid(row=0, column=1, sticky="w", padx=22, pady=(14, 4))
         self.dl_format.grid(row=1, column=1, sticky="ew", padx=22, pady=(0, 8))
-        default = labels[0] if labels else ""
-        mode = str(mode or "")
-        if mode == "playlist" and file_type in VIDEO_FILE_TYPES_V3:
-            default = "Best Option Separate"
+        default = labels[0] if labels else""
+        mode = str(mode or"")
+        if mode =="playlist" and file_type in VIDEO_FILE_TYPES_V3:
+            default ="Best Option Separate"
         if default and default in labels:
             self.dl_format.set(default)
             self._v3_selected_file_quality = default
         else:
             self.dl_format.set("")
-            self._v3_selected_file_quality = ""
+            self._v3_selected_file_quality =""
     return options
 
 
@@ -8749,10 +8749,10 @@ def _v3_file_type_changed_final(self, selected_label=None):
         file_type = _v3_file_type_id_final(label)
         self._v3_selected_file_type = file_type
         source = str(self._dl_preview_quality_source or self.dl_input.get()).strip()
-        mode = self.downloader_quality_mode_for_source(source) if source else "none"
-        if mode not in {"single", "playlist"}:
+        mode = self.downloader_quality_mode_for_source(source) if source else"none"
+        if mode not in {"single","playlist"}:
             self._dl_preview_quality_options = []
-            self._v3_selected_file_quality = ""
+            self._v3_selected_file_quality =""
             self.dl_quality_label.grid_remove()
             self.dl_format.grid_remove()
             return
@@ -8771,43 +8771,43 @@ def _v3_build_command_final(self, source_url, result, selected_format):
         raise RuntimeError("No valid file quality selection is available")
 
     output_dir = self.paths["downloader"]
-    file_type = str(spec.get("file_type") or getattr(self, "_v3_selected_file_type", "auto")).lower()
-    title = sanitize_filename(result.get("output_filename") or result.get("title") or "track")
-    if file_type == "auto" and spec.get("kind") == "video":
+    file_type = str(spec.get("file_type") or getattr(self,"_v3_selected_file_type","auto")).lower()
+    title = sanitize_filename(result.get("output_filename") or result.get("title") or"track")
+    if file_type =="auto" and spec.get("kind") =="video":
         try:
             height = int(spec.get("height") or 0)
         except (TypeError, ValueError):
             height = 0
-        actual_container = "mkv" if height >= 1080 else "mp4"
+        actual_container ="mkv" if height >= 1080 else"mp4"
     else:
         actual_container = file_type
 
     command = [
         get_ytdlp_command(),
-        "--newline",
-        "--windows-filenames",
-        "--part",
-        "--no-overwrites",
-        "--retries", "10",
-        "--fragment-retries", "10",
-        "--retry-sleep", "exponential",
-        "--socket-timeout", "20",
-        "--concurrent-fragments", str({"conservative": 2, "balanced": 4, "aggressive": 8}.get(getattr(self, "performance_mode", "balanced"), 4)),
-        "--format-sort", "res,fps,hdr:12,vcodec,channels,acodec,size,br,asr,proto,ext",
+"--newline",
+"--windows-filenames",
+"--part",
+"--no-overwrites",
+"--retries","10",
+"--fragment-retries","10",
+"--retry-sleep","exponential",
+"--socket-timeout","20",
+"--concurrent-fragments", str({"conservative": 2,"balanced": 4,"aggressive": 8}.get(getattr(self,"performance_mode","balanced"), 4)),
+"--format-sort","res,fps,hdr:12,vcodec,channels,acodec,size,br,asr,proto,ext",
     ]
 
     command.extend(get_browser_cookie_args(source_url))
 
-    extractor_arg = result.get("quality_extractor_arg") or getattr(self, "_dl_youtube_extractor_arg", None) or getattr(self, "_last_quality_extractor_arg", None)
+    extractor_arg = result.get("quality_extractor_arg") or getattr(self,"_dl_youtube_extractor_arg", None) or getattr(self,"_last_quality_extractor_arg", None)
     if extractor_arg:
         command.extend(youtube_extractor_args_list(extractor_arg))
 
-    if spec.get("kind") == "audio":
-        audio_format = str(spec.get("audio_format") or "flac")
-        command.extend(["-x", "--audio-format", audio_format])
+    if spec.get("kind") =="audio":
+        audio_format = str(spec.get("audio_format") or"flac")
+        command.extend(["-x","--audio-format", audio_format])
         if spec.get("quality") and not spec.get("lossless"):
             command.extend(["--audio-quality", str(spec["quality"])])
-    elif spec.get("kind") == "video":
+    elif spec.get("kind") =="video":
         try:
             height = int(spec.get("height") or 0)
         except (TypeError, ValueError):
@@ -8817,37 +8817,37 @@ def _v3_build_command_final(self, source_url, result, selected_format):
 
         # Explicit file type controls the container; Auto retains the app's
         # established 720p-and-below MP4 / 1080p+-lossless-MKV policy.
-        if actual_container == "mp4":
+        if actual_container =="mp4":
             selector = f"bestvideo[height<={height}]+bestaudio/best[height<={height}]"
-        elif actual_container == "webm":
+        elif actual_container =="webm":
             selector = f"bestvideo[height<={height}][ext=webm]+bestaudio[ext=webm]/bestvideo[height<={height}]+bestaudio/best[height<={height}]"
         else:
             selector = f"bestvideo[height<={height}]+bestaudio/best[height<={height}]"
-        command.extend(["-f", selector, "--merge-output-format", actual_container])
+        command.extend(["-f", selector,"--merge-output-format", actual_container])
     else:
         raise RuntimeError("No valid download type selected")
 
-    if getattr(self, "_selected_download_subtitles", False) and spec.get("kind") == "video" and actual_container in {"mp4", "mkv", "webm", "mov"}:
-        command.extend(["--write-sub", "--write-auto-sub", "--embed-subs", "--sub-lang", "en,ar"])
+    if getattr(self,"_selected_download_subtitles", False) and spec.get("kind") =="video" and actual_container in {"mp4","mkv","webm","mov"}:
+        command.extend(["--write-sub","--write-auto-sub","--embed-subs","--sub-lang","en,ar"])
 
-    command.extend(["-o", os.path.join(output_dir, f"{title}.%(ext)s"), "--", source_url])
+    command.extend(["-o", os.path.join(output_dir, f"{title}.%(ext)s"),"--", source_url])
     return command
 
 YTMMusicToolkit.build_yt_dlp_command = _v3_build_command_final
 
 
 def _v3_write_generic_audio_metadata_final(file_path, result, cover_bytes=None):
-    """Write common title/artist/album/year metadata for all supported audio outputs."""
+"""Write common title/artist/album/year metadata for all supported audio outputs."""
     suffix = Path(file_path).suffix.lower()
-    artist = ", ".join(result.get("artist_names") or [])
-    album = str(result.get("album") or "")
-    title = str(result.get("title") or "")
-    year = str(result.get("year") or "")
+    artist =",".join(result.get("artist_names") or [])
+    album = str(result.get("album") or"")
+    title = str(result.get("title") or"")
+    year = str(result.get("year") or"")
 
     try:
-        if suffix == ".mp3":
+        if suffix ==".mp3":
             audio = ID3(file_path)
-            for tag in ("TPE1", "TALB", "TIT2", "TDRC", "TPE2", "APIC"):
+            for tag in ("TPE1","TALB","TIT2","TDRC","TPE2","APIC"):
                 audio.delall(tag)
             if artist:
                 audio.add(TPE1(encoding=3, text=artist))
@@ -8863,9 +8863,9 @@ def _v3_write_generic_audio_metadata_final(file_path, result, cover_bytes=None):
             audio.save(file_path)
             return
 
-        if suffix == ".m4a":
+        if suffix ==".m4a":
             audio = MP4(file_path)
-            for key in ("©ART", "©alb", "©nam", "©day", "aART", "covr"):
+            for key in ("©ART","©alb","©nam","©day","aART","covr"):
                 audio.pop(key, None)
             if artist:
                 audio["©ART"] = [artist]
@@ -8881,7 +8881,7 @@ def _v3_write_generic_audio_metadata_final(file_path, result, cover_bytes=None):
             audio.save()
             return
 
-        if suffix == ".opus":
+        if suffix ==".opus":
             from mutagen.oggopus import OggOpus
             audio = OggOpus(file_path)
             audio.clear()
@@ -8896,7 +8896,7 @@ def _v3_write_generic_audio_metadata_final(file_path, result, cover_bytes=None):
             audio.save()
             return
 
-        if suffix == ".ogg":
+        if suffix ==".ogg":
             from mutagen.oggvorbis import OggVorbis
             audio = OggVorbis(file_path)
             audio.clear()
@@ -8911,7 +8911,7 @@ def _v3_write_generic_audio_metadata_final(file_path, result, cover_bytes=None):
             audio.save()
             return
 
-        if suffix == ".wav":
+        if suffix ==".wav":
             from mutagen.wave import WAVE
             audio = WAVE(file_path)
             if audio.tags is None:
@@ -8930,14 +8930,14 @@ def _v3_write_generic_audio_metadata_final(file_path, result, cover_bytes=None):
             audio.save()
             return
 
-        if suffix == ".aac":
+        if suffix ==".aac":
             # ADTS AAC has no universally portable embedded-cover field. Use
             # ID3v2 for text metadata without corrupting the elementary stream.
             try:
                 audio = ID3(file_path)
             except Exception:
                 audio = ID3()
-            for tag in ("TPE1", "TALB", "TIT2", "TDRC", "TPE2", "APIC"):
+            for tag in ("TPE1","TALB","TIT2","TDRC","TPE2","APIC"):
                 audio.delall(tag)
             if artist:
                 audio.add(TPE1(encoding=3, text=artist))
@@ -8958,12 +8958,12 @@ write_generic_audio_metadata = _v3_write_generic_audio_metadata_final
 
 
 def _v3_safe_metadata_backup(file_path):
-    """Snapshot current tags and first cover before destructive metadata rewrites."""
+"""Snapshot current tags and first cover before destructive metadata rewrites."""
     path = Path(file_path)
-    if path.suffix.lower() != ".flac" or not path.exists():
+    if path.suffix.lower() !=".flac" or not path.exists():
         return None
     try:
-        backup_dir = ensure_failure_log_dir() / "metadata_backups"
+        backup_dir = ensure_failure_log_dir() /"metadata_backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         stem = sanitize_filename(path.stem)
@@ -9000,16 +9000,16 @@ except Exception:
 
 # Richer media-details dialog.
 def _v3_show_media_details_final(self):
-    source = str(getattr(self, "_dl_preview_source", "") or self.dl_input.get()).strip()
+    source = str(getattr(self,"_dl_preview_source","") or self.dl_input.get()).strip()
     if not source:
-        messagebox.showinfo("Media Details", "Paste a YouTube link first.")
+        messagebox.showinfo("Media Details","Paste a YouTube link first.")
         return
-    fmts = getattr(self, "_v3_preview_formats", []) or []
+    fmts = getattr(self,"_v3_preview_formats", []) or []
     heights = detected_video_heights(fmts)
     tracks = build_audio_track_options(fmts)
     best = None
     try:
-        candidates = [f for f in fmts if str(f.get("vcodec") or "none") != "none"]
+        candidates = [f for f in fmts if str(f.get("vcodec") or"none") !="none"]
         if candidates:
             best = max(candidates, key=lambda f: (
                 int(f.get("height") or 0),
@@ -9023,23 +9023,23 @@ def _v3_show_media_details_final(self):
         max_abr = max(float(f.get("abr") or 0) for f in fmts if _format_is_audio_only(f))
     except Exception:
         pass
-    thumb = getattr(self, "_v3_preview_thumbnail_size", None)
+    thumb = getattr(self,"_v3_preview_thumbnail_size", None)
     lines = [
         f"Source: {source}",
         f"Mode: {self.downloader_quality_mode_for_source(source)}",
-        f"Video resolutions: {', '.join(str(h) + 'p' for h in heights) or 'none'}",
+        f"Video resolutions: {','.join(str(h) +'p' for h in heights) or'none'}",
         f"Audio tracks: {len(tracks)}",
-        f"Source max audio bitrate: {max_abr:.0f} kbps" if max_abr else "Source max audio bitrate: unknown",
+        f"Source max audio bitrate: {max_abr:.0f} kbps" if max_abr else"Source max audio bitrate: unknown",
     ]
     if thumb:
         lines.append(f"Thumbnail: {thumb[0]}×{thumb[1]}")
     if best:
         lines.append(
-            f"Top video candidate: {best.get('height') or 0}p · {best.get('fps') or 0:g}fps · {best.get('vcodec') or 'unknown'} · {best.get('dynamic_range') or 'SDR'}"
+            f"Top video candidate: {best.get('height') or 0}p · {best.get('fps') or 0:g}fps · {best.get('vcodec') or'unknown'} · {best.get('dynamic_range') or'SDR'}"
         )
     if tracks:
-        lines.append("Audio languages: " + ", ".join(str(t.get("label") or t.get("language") or "Unknown") for t in tracks))
-    messagebox.showinfo("Media Details", "\n".join(lines))
+        lines.append("Audio languages:" +",".join(str(t.get("label") or t.get("language") or"Unknown") for t in tracks))
+    messagebox.showinfo("Media Details","\n".join(lines))
 
 
 YTMMusicToolkit._v3_show_media_details = _v3_show_media_details_final
@@ -9049,19 +9049,19 @@ YTMMusicToolkit._v3_show_media_details = _v3_show_media_details_final
 def _v3_queue_current_final(self):
     value = self.dl_input.get().strip()
     if not value or not is_youtube_url(value):
-        messagebox.showerror("Queue", "Enter a valid YouTube or YouTube Music URL first.")
+        messagebox.showerror("Queue","Enter a valid YouTube or YouTube Music URL first.")
         return
-    file_type = _v3_file_type_id_final(self.dl_file_type.get()) if getattr(self, "dl_file_type", None) else "auto"
-    quality = self.dl_format.get().strip() if getattr(self, "dl_format", None) and self._dl_quality_visible else ""
+    file_type = _v3_file_type_id_final(self.dl_file_type.get()) if getattr(self,"dl_file_type", None) else"auto"
+    quality = self.dl_format.get().strip() if getattr(self,"dl_format", None) and self._dl_quality_visible else""
     if file_type in LOSSLESS_AUDIO_TYPES_V3:
         quality = _v3_audio_quality_options_final(file_type)[0][0]
     item = {
-        "url": value,
-        "file_type": file_type,
-        "quality": quality,
-        "subtitles": bool(self.dl_subs.get()) if hasattr(self, "dl_subs") else False,
+"url": value,
+"file_type": file_type,
+"quality": quality,
+"subtitles": bool(self.dl_subs.get()) if hasattr(self,"dl_subs") else False,
     }
-    self._v3_queue = getattr(self, "_v3_queue", [])
+    self._v3_queue = getattr(self,"_v3_queue", [])
     if any(str(x.get("url")) == value and x.get("file_type") == file_type and x.get("quality") == quality for x in self._v3_queue):
         return
     self._v3_queue.append(item)
@@ -9072,11 +9072,11 @@ def _v3_queue_current_final(self):
 
 
 def _v3_process_queue(self):
-    if getattr(self, "download_running", False) or getattr(self, "_v3_queue_active", False):
+    if getattr(self,"download_running", False) or getattr(self,"_v3_queue_active", False):
         return
-    items = list(getattr(self, "_v3_queue", []) or [])
+    items = list(getattr(self,"_v3_queue", []) or [])
     if not items:
-        messagebox.showinfo("Queue", "The queue is empty.")
+        messagebox.showinfo("Queue","The queue is empty.")
         return
     self._v3_queue = []
     self._v3_queue_active = True
@@ -9094,8 +9094,8 @@ def _v3_queue_worker(self, items):
         for index, item in enumerate(items, 1):
             if self.stop_requested:
                 break
-            self._v3_selected_file_type = item.get("file_type") or "auto"
-            self._v3_selected_file_quality = item.get("quality") or ""
+            self._v3_selected_file_type = item.get("file_type") or"auto"
+            self._v3_selected_file_quality = item.get("quality") or""
             self._selected_file_type = self._v3_selected_file_type
             self._selected_file_quality = self._v3_selected_file_quality
             self._selected_download_format = self._v3_selected_file_quality
@@ -9129,7 +9129,7 @@ YTMMusicToolkit._v3_queue_worker = _v3_queue_worker
 def _v3_check_ytdlp_update(self):
     try:
         local = subprocess.run(
-            [get_ytdlp_command(), "--version"],
+            [get_ytdlp_command(),"--version"],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -9137,14 +9137,14 @@ def _v3_check_ytdlp_update(self):
             timeout=20,
             **get_hidden_subprocess_kwargs(),
         )
-        installed = local.stdout.strip() or "unknown"
+        installed = local.stdout.strip() or"unknown"
         response = session.get(
-            "https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest",
+"https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest",
             timeout=15,
-            headers={"Accept": "application/vnd.github+json"},
+            headers={"Accept":"application/vnd.github+json"},
         )
         response.raise_for_status()
-        latest = str(response.json().get("tag_name") or "unknown").lstrip("v")
+        latest = str(response.json().get("tag_name") or"unknown").lstrip("v")
         messagebox.showinfo("yt-dlp Update Check", f"Installed: {installed}\nLatest release: {latest}\n\nNo update was downloaded.")
     except Exception as exc:
         log_path = write_failure_log("v3_ytdlp_update_check", exc)
@@ -9159,14 +9159,14 @@ _original_v3_build_downloader_final = YTMMusicToolkit.build_downloader_tab
 
 
 def _v4_install_preview_menu(self):
-    """Install a compact three-dot utility menu on the preview card."""
+"""Install a compact three-dot utility menu on the preview card."""
     # Remove the visible utility action buttons from the options card.
     try:
         utility = self.dl_queue_count.master
         for widget in list(utility.winfo_children()):
             if isinstance(widget, ctk.CTkButton):
-                text_value = str(widget.cget("text") or "").lower()
-                if any(token in text_value for token in ("inspect details", "queue", "process queue", "check yt-dlp")):
+                text_value = str(widget.cget("text") or"").lower()
+                if any(token in text_value for token in ("inspect details","queue","process queue","check yt-dlp")):
                     widget.destroy()
         self.dl_queue_count.grid_remove()
     except Exception as exc:
@@ -9181,7 +9181,7 @@ def _v4_install_preview_menu(self):
             text="⋯",
             width=34,
             height=34,
-            font=(APP_FONT, 18, "bold"),
+            font=(APP_FONT, 18,"bold"),
             fg_color="transparent",
             hover_color="#101827",
             text_color="#94a3b8",
@@ -9201,7 +9201,7 @@ def _v4_install_preview_menu(self):
 
 
 def _v4_preview_menu(self):
-    """Build the current preview utility menu with a live queue count."""
+"""Build the current preview utility menu with a live queue count."""
     import tkinter as tk
 
     menu = tk.Menu(
@@ -9215,10 +9215,10 @@ def _v4_preview_menu(self):
         relief="solid",
         font=(APP_FONT, 10),
     )
-    queue_count = len(getattr(self, "_v3_queue", []) or [])
+    queue_count = len(getattr(self,"_v3_queue", []) or [])
     menu.add_command(label="ⓘ  Inspect Details", command=self._v3_show_media_details)
     menu.add_command(label=f"＋  Add to Queue   ({queue_count})", command=self._v3_queue_current)
-    menu.add_command(label="▶  Process Queue", command=self._v3_process_queue)
+    menu.add_command(label="  Process Queue", command=self._v3_process_queue)
     menu.add_separator()
     menu.add_command(label="↻  Check yt-dlp", command=self._v3_check_ytdlp_update)
     return menu
@@ -9260,8 +9260,8 @@ _original_final_save = YTMMusicToolkit.save_config
 def _v3_load_config_final(self):
     _original_final_load(self)
     self.config_version = 4
-    self.performance_mode = getattr(self, "performance_mode", "balanced") or "balanced"
-    self.conflict_mode = getattr(self, "conflict_mode", "rename") or "rename"
+    self.performance_mode = getattr(self,"performance_mode","balanced") or"balanced"
+    self.conflict_mode = getattr(self,"conflict_mode","rename") or"rename"
     try:
         if os.path.exists(CONFIG_FILE):
             data = json.loads(Path(CONFIG_FILE).read_text(encoding="utf-8"))
@@ -9279,9 +9279,9 @@ def _v3_save_config_final(self):
         else:
             data = {}
         data.update({
-            "config_version": 4,
-            "performance_mode": getattr(self, "performance_mode", "balanced"),
-            "conflict_mode": getattr(self, "conflict_mode", "rename"),
+"config_version": 4,
+"performance_mode": getattr(self,"performance_mode","balanced"),
+"conflict_mode": getattr(self,"conflict_mode","rename"),
         })
         Path(CONFIG_FILE).write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     except Exception as exc:
@@ -9303,28 +9303,28 @@ YTMMusicToolkit.build_downloader_tab = _v4_build_downloader_tab
 # are now always on screen. Before a preview exists, the quality dropdown shows
 # a placeholder ("Best Quality" for video, bitrates for lossy audio); the real
 # per-video resolutions replace it as soon as the preview/inspection completes.
-# The placeholder never marks the selector as "matched to a source", so the
+# The placeholder never marks the selector as"matched to a source", so the
 # download worker still inspects the exact link and picks the real best option.
 
 def _v5_generic_video_options(file_type):
-    """Full resolution ladder used before (or without) a successful inspection."""
-    file_type = str(file_type or "auto").lower()
+"""Full resolution ladder used before (or without) a successful inspection."""
+    file_type = str(file_type or"auto").lower()
     top = max(VIDEO_QUALITY_LABELS)
     options = [(
-        "🎬 Best Quality",
-        {"kind": "video", "height": top, "best": True, "file_type": file_type},
+" Best Quality",
+        {"kind":"video","height": top,"best": True,"file_type": file_type},
     )]
     for height in sorted(VIDEO_QUALITY_LABELS, reverse=True):
         options.append((
             VIDEO_QUALITY_LABELS[height],
-            {"kind": "video", "height": height, "best": False, "file_type": file_type},
+            {"kind":"video","height": height,"best": False,"file_type": file_type},
         ))
     return options
 
 
 def _v5_show_selector_placeholder(self):
     try:
-        file_type = str(getattr(self, "_v3_selected_file_type", "auto") or "auto")
+        file_type = str(getattr(self,"_v3_selected_file_type","auto") or"auto")
         self.dl_file_type_label.grid(row=0, column=0, sticky="w", padx=22, pady=(14, 4))
         self.dl_file_type.grid(row=1, column=0, sticky="ew", padx=22, pady=(0, 8))
         self.dl_file_type.set(FILE_LABEL_BY_TYPE_V3.get(file_type, FILE_LABEL_BY_TYPE_V3["auto"]))
@@ -9334,15 +9334,15 @@ def _v5_show_selector_placeholder(self):
             self.dl_format.grid_remove()
             return
 
-        options = _v3_quality_options_final([], file_type, "single")
+        options = _v3_quality_options_final([], file_type,"single")
         labels = [label for label, _spec in options]
         self._dl_preview_quality_options = options
 
-        self.dl_quality_label.configure(text="⚡ File Quality")
+        self.dl_quality_label.configure(text=" File Quality")
         self.dl_quality_label.grid(row=0, column=1, sticky="w", padx=22, pady=(14, 4))
         self.dl_format.grid(row=1, column=1, sticky="ew", padx=22, pady=(0, 8))
         self.dl_format.configure(values=labels)
-        self.dl_format.set(labels[0] if labels else "")
+        self.dl_format.set(labels[0] if labels else"")
         # Deliberately NOT marking the selector as source-matched.
         self._dl_quality_visible = False
     except Exception as exc:
@@ -9350,16 +9350,16 @@ def _v5_show_selector_placeholder(self):
 
 
 def _v5_hide_selector(self):
-    """Reset preview state exactly as before, but keep the dropdowns on screen."""
+"""Reset preview state exactly as before, but keep the dropdowns on screen."""
     _v3_hide_selector(self)
-    if getattr(self, "dl_file_type", None) is not None:
+    if getattr(self,"dl_file_type", None) is not None:
         _v5_show_selector_placeholder(self)
 
 
 def _v5_file_type_changed(self, selected_label=None):
     try:
-        source = str(getattr(self, "_dl_preview_quality_source", "") or "").strip()
-        if source and self.downloader_quality_mode_for_source(source) in {"single", "playlist"}:
+        source = str(getattr(self,"_dl_preview_quality_source","") or"").strip()
+        if source and self.downloader_quality_mode_for_source(source) in {"single","playlist"}:
             return _v3_file_type_changed_final(self, selected_label)
         label = str(selected_label or self.dl_file_type.get())
         self._v3_selected_file_type = _v3_file_type_id_final(label)
@@ -9377,17 +9377,17 @@ _v5_original_build_command = YTMMusicToolkit.build_yt_dlp_command
 
 
 def _v5_build_command(self, source_url, result, selected_format):
-    pending = getattr(self, "_v5_pending_spec", None)
+    pending = getattr(self,"_v5_pending_spec", None)
     if pending:
         selected_format = dict(pending)
     if not _v3_selected_quality_spec(self, selected_format):
-        file_type = str(getattr(self, "_v3_selected_file_type", "auto") or "auto").lower()
+        file_type = str(getattr(self,"_v3_selected_file_type","auto") or"auto").lower()
         if file_type in AUDIO_FILE_TYPES_V3:
             options = _v3_audio_quality_options_final(file_type)
             spec = dict(options[0][1]) if options else {}
         else:
             # Unknown resolutions: ask for the best available (4320p ceiling).
-            spec = {"kind": "video", "height": 4320, "best": True, "file_type": file_type}
+            spec = {"kind":"video","height": 4320,"best": True,"file_type": file_type}
         if spec:
             selected_format = spec
     return _v5_original_build_command(self, source_url, result, selected_format)
@@ -9399,13 +9399,13 @@ _v5_original_start_download = YTMMusicToolkit.start_download
 
 
 def _v5_start_download(self):
-    """Remember a quality picked before any real inspection finished."""
+"""Remember a quality picked before any real inspection finished."""
     self._v5_pending_spec = None
     try:
         if not self._dl_quality_visible and self.dl_format.winfo_ismapped():
             label = self.dl_format.get().strip()
-            file_type = str(getattr(self, "_v3_selected_file_type", "auto") or "auto")
-            for opt_label, spec in _v3_quality_options_final([], file_type, "single"):
+            file_type = str(getattr(self,"_v3_selected_file_type","auto") or"auto")
+            for opt_label, spec in _v3_quality_options_final([], file_type,"single"):
                 if opt_label == label:
                     self._v5_pending_spec = dict(spec)
                     break
@@ -9421,13 +9421,13 @@ YTMMusicToolkit.start_download = _v5_start_download
 # ENTRY POINT
 # ============================================================
 
-if __name__ == "__main__":
+if __name__ =="__main__":
     try:
         app = YTMMusicToolkit()
         app.mainloop()
     except Exception as fatal:
         log_path = write_failure_log(
-            "fatal_startup",
+"fatal_startup",
             fatal,
         )
         try:
