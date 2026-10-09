@@ -913,56 +913,20 @@ def build_audio_track_options(formats):
 _INSPECT_CACHE = {}
 _INSPECT_CACHE_TTL = 600  # seconds
 
-# Automatic browser authentication
-# yt-dlp currently supports these browser identifiers for --cookies-from-browser.
-# On Windows, Opera GX is handled as an explicit Opera profile path because it
-# is stored separately from regular Opera. No cookie values are exported or
-# persisted by this toolkit; yt-dlp reads the browser session directly.
-_BROWSER_AUTH_CACHE = {}
-_BROWSER_AUTH_LOCK = threading.Lock()
-_BROWSER_AUTH_TTL = 900  # seconds
-_BROWSER_AUTH_CANDIDATES = (
-    ("Opera GX", "opera_gx"),
-    ("Opera", "opera"),
-    ("Chrome", "chrome"),
-    ("Edge", "edge"),
-    ("Brave", "brave"),
-    ("Vivaldi", "vivaldi"),
-    ("Chromium", "chromium"),
-    ("Whale", "whale"),
-    ("Firefox", "firefox"),
-)
-
-
-# Browser-session authentication (the ONLY auth mode)
-# Every yt-dlp call reads the cookies of a browser that is currently running
-# with YouTube open, via --cookies-from-browser. Nothing is ever exported to a
-# file. If no such session exists the app refuses to fetch/download and tells
-# the user to open YouTube in their browser. A browser whose cookie DB cannot
-# be read (locked / app-bound encryption) is skipped for the rest of the run.
-_BAD_COOKIE_SOURCES = set()
-_COOKIE_ERR_RE = re.compile(
-    r"could not copy .{0,30}cookie database|cookie database|failed to decrypt"
-    r"|could not find .{0,30}cookies|unable to (?:read|decrypt).{0,30}cookie",
-    re.I,
-)
-_AUTH_ERR_RE = re.compile(
-    r"sign[ -]?in|log ?in|confirm you.{0,3}re not a bot|age[- ]restricted"
-    r"|private (?:video|playlist)|playlist is private|members[- ]only"
-    r"|join this channel|this video is private|authentication required"
-    r"|login required|not authorized to access",
-    re.I,
-)
-_BROWSER_SESSION_LISTENER = None
-_PROBE_URL = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+# Cookie-file authentication (no browser scanning or browser cookie extraction)
+COOKIE_FILE_ENV = "YTM_MUSIC_TOOLKIT_COOKIES"
+COOKIE_FILE_NAME = "cookies.txt"
 
 
 class BrowserSessionError(RuntimeError):
-    """No usable, running browser session with YouTube was found."""
+    """The required Netscape-format cookies.txt file is missing or unavailable."""
+
+
+_BROWSER_SESSION_LISTENER = None
 
 
 def set_browser_session_listener(callback):
-    """callback(label_or_None) is called whenever the session choice changes."""
+    """Register a callback used by the existing status label."""
     global _BROWSER_SESSION_LISTENER
     _BROWSER_SESSION_LISTENER = callback
 
@@ -976,425 +940,74 @@ def _notify_browser_session(label, reason=""):
             pass
 
 
-def _short_failure_reason():
-    reasons = dict(_PROBE_REASONS)
-    running_note = reasons.pop("__running__", "")
-    parts = [f"{name}: {why}" for name, why in reasons.items()]
-    if running_note:
-        parts.append(running_note)
-    return "; ".join(parts) or "no YouTube cookies found"
+def _cookie_file_candidates():
+    """Return a few explicit file locations; never inspect browser profiles."""
+    candidates = []
 
+    override = os.environ.get(COOKIE_FILE_ENV, "").strip().strip('"')
+    if override:
+        candidates.append(Path(os.path.expandvars(os.path.expanduser(override))))
 
-def _cookie_source_from_args(args):
-    args = list(args or [])
-    if "--cookies-from-browser" in args:
-        idx = args.index("--cookies-from-browser")
-        if idx + 1 < len(args):
-            return str(args[idx + 1])
-    return ""
+    if getattr(sys, "frozen", False):
+        app_dir = Path(sys.executable).resolve().parent
+    else:
+        app_dir = Path(__file__).resolve().parent
 
+    candidates.extend([
+        app_dir / COOKIE_FILE_NAME,
+        Path.home() / "Documents" / "YTDLP" / COOKIE_FILE_NAME,
+        Path.home() / COOKIE_FILE_NAME,
+    ])
 
-def _replace_browser_cookie_args(command, cookie_args):
-    """Replace only the browser-cookie option while preserving every other argument."""
-    result = list(command or [])
-    try:
-        idx = result.index("--cookies-from-browser")
-        del result[idx:idx + 2]
-    except ValueError:
-        pass
-    try:
-        delimiter = result.index("--")
-        result[delimiter:delimiter] = list(cookie_args or [])
-    except ValueError:
-        result.extend(cookie_args or [])
+    result = []
+    seen = set()
+    for candidate in candidates:
+        try:
+            resolved = candidate.resolve()
+            key = os.path.normcase(str(resolved))
+            if key not in seen:
+                seen.add(key)
+                result.append(resolved)
+        except Exception:
+            continue
     return result
 
 
-def _url_from_ytdlp_command(command):
-    result = list(command or [])
-    try:
-        delimiter = result.index("--")
-        if delimiter + 1 < len(result):
-            return str(result[delimiter + 1])
-    except ValueError:
-        pass
+def get_cookie_file_path():
+    """Return the first existing cookies.txt file, without reading cookie values."""
+    for candidate in _cookie_file_candidates():
+        try:
+            if candidate.is_file() and os.access(str(candidate), os.R_OK):
+                return str(candidate)
+        except OSError:
+            continue
     return ""
 
 
-def _mark_cookie_source_bad(source):
-    source = str(source or "")
-    if not source:
-        return
-    _BAD_COOKIE_SOURCES.add(source)
-    with _BROWSER_AUTH_LOCK:
-        for key in list(_BROWSER_AUTH_CACHE):
-            if str(_BROWSER_AUTH_CACHE[key].get("source")) == source:
-                _BROWSER_AUTH_CACHE.pop(key, None)
-    _PROBE_NEG_CACHE["time"] = 0.0
-
-
-def _forget_browser_session(url):
-    with _BROWSER_AUTH_LOCK:
-        _BROWSER_AUTH_CACHE.clear()
-    _PROBE_NEG_CACHE["time"] = 0.0
-
-
 def _no_session_message():
-    msg = (
-        "No browser session with YouTube found. Open YouTube in your browser "
-        "(Firefox, Chrome, Edge, Brave, Opera/GX, Vivaldi), make sure you are "
-        "signed in, keep the browser running, then try again."
+    return (
+        "Cookie file not found. Put a Netscape-format cookies.txt next to "
+        "YTM Music Toolkit or at Documents\\YTDLP\\cookies.txt. "
+        "You can also set the YTM_MUSIC_TOOLKIT_COOKIES environment variable "
+        "to the full file path. The app no longer reads cookies from browsers."
     )
-    reasons = dict(_PROBE_REASONS)
-    running_note = reasons.pop("__running__", "")
-    details = [f"{name}: {why}" for name, why in reasons.items()]
-    if running_note:
-        details.append(running_note)
-    if _BAD_COOKIE_SOURCES:
-        details.append("skipped after errors: " + ", ".join(sorted(_BAD_COOKIE_SOURCES)))
-    if details:
-        msg += " Details -> " + "; ".join(details) + "."
-    return msg
 
 
 def ytdlp_retry_on_cookie_failure(url, attempt):
-    """Run an extraction with live browser cookies, rotating failed sessions.
-
-    Unreadable cookie stores are marked unusable for this run. Login walls and
-    private-resource errors exclude that session only for the current request,
-    so another browser/account can be tried without permanently blacklisting it.
-    """
-    tried_sources = set()
-    last_error = None
-    max_attempts = len(_BROWSER_AUTH_CANDIDATES) + 1
-
-    for _ in range(max_attempts):
-        try:
-            cookie_args = get_browser_cookie_args(
-                url,
-                force=bool(tried_sources),
-                exclude_sources=tried_sources,
-            )
-        except BrowserSessionError as session_error:
-            if last_error is not None:
-                raise RuntimeError(
-                    f"{last_error}\nNo alternate browser session was available. "
-                    f"{session_error}"
-                ) from last_error
-            raise
-
-        source = _cookie_source_from_args(cookie_args)
-        try:
-            return attempt(cookie_args)
-        except BrowserSessionError:
-            raise
-        except RuntimeError as exc:
-            message = str(exc)
-            last_error = exc
-
-            if source and _COOKIE_ERR_RE.search(message):
-                _mark_cookie_source_bad(source)
-                tried_sources.add(source)
-                _forget_browser_session(url)
-                continue
-
-            if source and _AUTH_ERR_RE.search(message):
-                tried_sources.add(source)
-                _forget_browser_session(url)
-                continue
-
-            raise
-
-    if last_error is not None:
-        raise last_error
-    raise BrowserSessionError(_no_session_message())
-
-
-def _windows_browser_profile_roots():
-    """Return likely Windows profile roots for supported browsers."""
-    local = os.environ.get("LOCALAPPDATA", "")
-    roaming = os.environ.get("APPDATA", "")
-    roots = {
-        "opera_gx": os.path.join(roaming, "Opera Software", "Opera GX Stable"),
-        "opera": os.path.join(roaming, "Opera Software", "Opera Stable"),
-        "chrome": os.path.join(local, "Google", "Chrome", "User Data"),
-        "edge": os.path.join(local, "Microsoft", "Edge", "User Data"),
-        "brave": os.path.join(local, "BraveSoftware", "Brave-Browser", "User Data"),
-        "vivaldi": os.path.join(local, "Vivaldi", "User Data"),
-        "chromium": os.path.join(local, "Chromium", "User Data"),
-        "whale": os.path.join(local, "Naver", "Naver Whale", "User Data"),
-        "firefox": os.path.join(roaming, "Mozilla", "Firefox"),
-    }
-    return roots
-
-
-def _available_browser_cookie_candidates():
-    """Find installed supported browsers without reading or exporting cookies."""
-    if os.name != "nt":
-        return [(label, browser) for label, browser in _BROWSER_AUTH_CANDIDATES if browser != "opera_gx"]
-
-    roots = _windows_browser_profile_roots()
-    candidates = []
-    seen = set()
-    for label, browser in _BROWSER_AUTH_CANDIDATES:
-        root = roots.get(browser, "")
-        if not root or not os.path.exists(root):
-            continue
-        if browser == "opera_gx":
-            # yt-dlp accepts an Opera profile path after the browser identifier.
-            source = f"opera:{root}"
-        else:
-            source = browser
-        if source in seen:
-            continue
-        seen.add(source)
-        candidates.append((label, source))
-    return candidates
-
-
-_BROWSER_PROCESS_NAMES = {
-    "chrome": {"chrome", "google chrome"},
-    "edge": {"msedge", "microsoft-edge", "microsoft edge"},
-    "brave": {"brave", "brave-browser", "brave browser"},
-    "vivaldi": {"vivaldi", "vivaldi-bin"},
-    "chromium": {"chromium", "chromium-browser"},
-    "whale": {"whale"},
-    "firefox": {"firefox"},
-    "opera": {"opera"},
-}
-
-
-def _running_browser_ids():
-    """Set of browser ids with a live process, or None if it can't be told."""
-    try:
-        import psutil
-    except Exception:
-        return None
-    names = set()
-    try:
-        for proc in psutil.process_iter(["name"]):
-            name = str((proc.info or {}).get("name") or "").lower()
-            if name.endswith(".exe"):
-                name = name[:-4]
-            if name:
-                names.add(name)
-    except Exception:
-        return None
-    found = set()
-    for browser, known in _BROWSER_PROCESS_NAMES.items():
-        for name in names:
-            if name in known or any(name.startswith(k) for k in known):
-                found.add(browser)
-                break
-    return found
-
-
-def _browser_id_from_source(source):
-    return str(source or "").split(":", 1)[0].strip().lower()
-
-
-_PROBE_REASONS = {}
-_PROBE_NEG_CACHE = {"time": 0.0}
-_PROBE_NEG_TTL = 30  # seconds: don't re-probe on every call while nothing works
-
-
-def _as_text(value):
-    if value is None:
-        return ""
-    if isinstance(value, bytes):
-        return value.decode("utf-8", errors="replace")
-    return str(value)
-
-
-def _probe_browser_auth(label, source, timeout=60):
-    """Ask yt-dlp whether this browser holds YouTube cookies (nothing is saved).
-
-    A slow extraction no longer discards the result: on timeout whatever
-    yt-dlp already printed (the cookie-load lines come first) is still used.
-    """
-    command = [
-        get_ytdlp_command(),
-        "--dump-single-json",
-        "--skip-download",
-        "--no-playlist",
-        "--no-warnings",
-        "-v",
-        "--socket-timeout", "8",
-        "--cookies-from-browser", source,
-        "--",
-        _PROBE_URL,
-    ]
-    timed_out = False
-    try:
-        proc = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-            **get_hidden_subprocess_kwargs(),
-        )
-        combined = f"{_as_text(proc.stdout)}\n{_as_text(proc.stderr)}"
-    except subprocess.TimeoutExpired as exc:
-        timed_out = True
-        combined = f"{_as_text(exc.stdout)}\n{_as_text(exc.stderr)}"
-    except Exception as exc:
-        _PROBE_REASONS[label] = f"could not run yt-dlp ({exc})"
-        return None
-
-    account_cookies = bool(re.search(r"Found YouTube account cookies", combined, re.I))
-    match = re.search(r"Extracted\s+(\d+)\s+cookies\s+from", combined, re.I)
-    extracted_count = int(match.group(1)) if match else 0
-
-    if account_cookies:
-        score = 3
-    elif extracted_count > 0:
-        score = 2
-    else:
-        if _COOKIE_ERR_RE.search(combined) or re.search(r"DPAPI|app.?bound|decrypt", combined, re.I):
-            reason = "cookie database locked or encrypted (close it or use Firefox)"
-        elif timed_out:
-            reason = "timed out before cookies loaded"
-        else:
-            reason = "no cookies could be read"
-        _PROBE_REASONS[label] = reason
-        try:
-            tail = "\n".join(combined.strip().splitlines()[-25:])
-            write_failure_log(
-                "browser_session_probe",
-                RuntimeError(f"{label}: {reason}"),
-                details=f"Source: {source}\n{tail}",
-            )
-        except Exception:
-            pass
-        return None
-
-    _PROBE_REASONS.pop(label, None)
-    return {
-        "label": label,
-        "source": source,
-        "score": score,
-        "account_cookies": account_cookies,
-        "extracted_count": extracted_count,
-    }
-
-
-def auto_browser_cookie_source(url="", force=False, exclude_sources=None):
-    """Pick a live browser session, preferring detected YouTube account cookies.
-
-    exclude_sources lets a failed request try other browsers without making
-    a valid session globally unavailable. Cookie values are never cached.
-    """
-    excluded_sources = {
-        str(source) for source in (exclude_sources or ()) if str(source)
-    }
-    cache_key = "youtube"
-    now = time.time()
-    if not force:
-        with _BROWSER_AUTH_LOCK:
-            cached = _BROWSER_AUTH_CACHE.get(cache_key)
-            if (
-                cached
-                and cached.get("source") not in excluded_sources
-                and (now - cached["time"]) < _BROWSER_AUTH_TTL
-            ):
-                return cached["source"]
-        if (
-            not excluded_sources
-            and (now - _PROBE_NEG_CACHE["time"]) < _PROBE_NEG_TTL
-        ):
-            return ""
-    _PROBE_REASONS.pop("__running__", None)
-
-    candidates = [
-        c for c in _available_browser_cookie_candidates()
-        if c[1] not in _BAD_COOKIE_SOURCES
-        and c[1] not in excluded_sources
-    ]
-    running = _running_browser_ids()
-    if running is not None:
-        candidates = [
-            c for c in candidates
-            if _browser_id_from_source(c[1]) in running
-        ]
-    if not candidates:
-        if excluded_sources:
-            reason = "no alternate browser session remains after a previous authentication failure"
-        elif _BAD_COOKIE_SOURCES:
-            reason = "no usable browser cookie source remains; previously failed sources were skipped"
-        else:
-            reason = (
-                "no supported browser detected running"
-                if running is not None else "no supported browser installed"
-            )
-        _PROBE_REASONS["__running__"] = reason
-        _PROBE_NEG_CACHE["time"] = time.time() if not excluded_sources else 0.0
-        try:
-            write_failure_log(
-                "browser_session_none_running",
-                RuntimeError(_PROBE_REASONS["__running__"]),
-                details=(
-                    f"installed: {[c[1] for c in _available_browser_cookie_candidates()]}\n"
-                    f"running: {sorted(running) if running is not None else 'unknown'}\n"
-                    f"excluded for this request: {sorted(excluded_sources)}"
-                ),
-            )
-        except Exception:
-            pass
-        _notify_browser_session(None, _short_failure_reason())
-        return ""
-
-    results = []
-    with ThreadPoolExecutor(max_workers=min(len(candidates), 6)) as pool:
-        futures = [
-            pool.submit(_probe_browser_auth, label, source)
-            for label, source in candidates
-        ]
-        for future in futures:
-            try:
-                result = future.result()
-            except Exception:
-                result = None
-            if result:
-                results.append(result)
-
-    if not results:
-        _PROBE_NEG_CACHE["time"] = time.time() if not excluded_sources else 0.0
-        _notify_browser_session(None, _short_failure_reason())
-        return ""
-
-    _PROBE_NEG_CACHE["time"] = 0.0
-    best = max(results, key=lambda item: item["score"])  # ties keep candidate order
-    with _BROWSER_AUTH_LOCK:
-        _BROWSER_AUTH_CACHE[cache_key] = {
-            "time": now,
-            "source": best["source"],
-            "label": best["label"],
-            "account_cookies": best["account_cookies"],
-        }
-    _notify_browser_session(best["label"])
-    return best["source"]
+    """Run once using the configured cookies file; never switch browsers."""
+    cookie_args = get_browser_cookie_args(url)
+    return attempt(cookie_args)
 
 
 def get_browser_cookie_args(url="", force=False, exclude_sources=None):
-    """Return browser-cookie args, optionally excluding sessions tried for this URL."""
-    source = auto_browser_cookie_source(
-        url,
-        force=force,
-        exclude_sources=exclude_sources,
-    )
-    if not source:
+    """Compatibility wrapper returning yt-dlp's file-based --cookies argument."""
+    cookie_path = get_cookie_file_path()
+    if not cookie_path:
+        _notify_browser_session(None, _no_session_message())
         raise BrowserSessionError(_no_session_message())
-    return ["--cookies-from-browser", source]
 
-
-def selected_auto_browser_label(url=""):
-    """Human-readable name of the selected browser session."""
-    cached = _BROWSER_AUTH_CACHE.get("youtube")
-    if cached:
-        return str(cached.get("label") or "Browser")
-    return "Browser"
+    _notify_browser_session(COOKIE_FILE_NAME, cookie_path)
+    return ["--cookies", cookie_path]
 
 
 def _run_ytdlp_info(url, strategy, timeout):
@@ -2780,7 +2393,7 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.cookie_status = ctk.CTkLabel(
             meta,
-            text="🔐 Browser session: open YouTube",
+            text="🔐 Cookie file: checking...",
             font=(APP_FONT, 10),
             text_color="#64748b",
         )
@@ -2789,20 +2402,20 @@ class YTMMusicToolkit(ctk.CTk):
             padx=(0, 8),
         )
 
-        def _on_browser_session(label, reason=""):
+        def _on_cookie_file_status(label, details=""):
             def apply():
                 try:
                     if label:
                         self.cookie_status.configure(
-                            text=f"🔐 {label} session",
+                            text=f"🔐 Cookies: {label}",
                             text_color="#67e8f9",
                         )
-                    else:
-                        short = str(reason or "").strip()
-                        if len(short) > 90:
-                            short = short[:87] + "..."
                         self.cookie_status.configure(
-                            text="⚠ " + (short or "Open YouTube in your browser"),
+                            tooltip_text=details,
+                        ) if hasattr(self.cookie_status, "tooltip_text") else None
+                    else:
+                        self.cookie_status.configure(
+                            text="⚠ Missing cookies.txt",
                             text_color="#f87171",
                         )
                 except Exception:
@@ -2812,7 +2425,12 @@ class YTMMusicToolkit(ctk.CTk):
             except Exception:
                 pass
 
-        set_browser_session_listener(_on_browser_session)
+        set_browser_session_listener(_on_cookie_file_status)
+        cookie_path = get_cookie_file_path()
+        if cookie_path:
+            _on_cookie_file_status(Path(cookie_path).name, cookie_path)
+        else:
+            _on_cookie_file_status(None, _no_session_message())
 
     def build_tabs(self):
         self.tabs = ctk.CTkTabview(
@@ -5144,148 +4762,84 @@ class YTMMusicToolkit(ctk.CTk):
             f"[{stage_name}] starting...",
         )
 
-        current_command = list(command)
-        tried_sources = set()
-        all_output_lines = []
-        output_lines = []
-        return_code = -1
-        retry_note = ""
-        attempt_number = 0
-        max_attempts = len(_BROWSER_AUTH_CANDIDATES) + 1
-
-        while attempt_number < max_attempts:
-            attempt_number += 1
-            if self.stop_requested:
-                raise DownloadCancelled("Download stopped by user.")
-
-            if attempt_number > 1:
-                self.append_log(
-                    self.dl_log,
-                    f"[{stage_name}] retrying with another browser session (attempt {attempt_number})...",
-                )
-                self.set_operation_progress(
-                    "dl",
-                    progress_start * 100.0,
-                    f"{stage_name.title()} — retrying authentication...",
-                    taskbar=True,
-                )
-
-            try:
-                process = subprocess.Popen(
-                    current_command,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    encoding="utf-8",
-                    errors="replace",
-                    bufsize=1,
-                    **get_hidden_subprocess_kwargs(),
-                )
-                self.active_process = process
-            except Exception as exc:
-                self.active_process = None
-                log_path = write_failure_log(
-                    f"download_{stage_name}",
-                    exc,
-                    details=f"Failed to start yt-dlp subprocess.\nCommand: {current_command!r}",
-                )
-                raise RuntimeError(
-                    f"Could not start {stage_name}. Failure log: {log_path or FAILURE_LOG_DIR}"
-                ) from exc
-
-            output_lines = []
-            while True:
-                if self.stop_requested and process.poll() is None:
-                    try:
-                        process.terminate()
-                    except Exception:
-                        pass
-
-                line = process.stdout.readline()
-                if not line and process.poll() is not None:
-                    break
-                if not line:
-                    continue
-
-                clean_line = line.strip()
-                output_lines.append(clean_line)
-
-                if len(output_lines) <= 20:
-                    self.append_log(self.dl_log, clean_line)
-
-                match = re.search(r"(\d+(?:\.\d+)?)%", clean_line)
-                if match:
-                    percent = max(0.0, min(100.0, float(match.group(1))))
-                    overall = progress_start + (progress_end - progress_start) * (percent / 100.0)
-                    self.set_operation_progress(
-                        "dl",
-                        overall * 100.0,
-                        f"{stage_name.title()} — {percent:.0f}%",
-                        taskbar=True,
-                    )
-
-            return_code = process.poll()
+        try:
+            process = subprocess.Popen(
+                command,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                bufsize=1,
+                **get_hidden_subprocess_kwargs(),
+            )
+            self.active_process = process
+        except Exception as exc:
             self.active_process = None
-            all_output_lines.append(f"--- {stage_name} attempt {attempt_number} ---")
-            all_output_lines.extend(output_lines)
+            log_path = write_failure_log(
+                f"download_{stage_name}",
+                exc,
+                details="Failed to start yt-dlp subprocess.",
+            )
+            raise RuntimeError(
+                f"Could not start {stage_name}. Failure log: {log_path or FAILURE_LOG_DIR}"
+            ) from exc
 
-            if self.stop_requested:
-                raise DownloadCancelled("Download stopped by user.")
-
-            if return_code == 0:
-                self.set_operation_progress(
-                    "dl",
-                    progress_end * 100.0,
-                    f"{stage_name.title()} complete",
-                    taskbar=True,
-                )
-                return output_lines
-
-            output_text = "\n".join(output_lines)
-            source = _cookie_source_from_args(current_command)
-            cookie_failure = bool(_COOKIE_ERR_RE.search(output_text))
-            auth_failure = bool(_AUTH_ERR_RE.search(output_text))
-
-            if source and (cookie_failure or auth_failure) and attempt_number < max_attempts:
-                if cookie_failure:
-                    _mark_cookie_source_bad(source)
-                tried_sources.add(source)
-                source_url = _url_from_ytdlp_command(current_command)
-                _forget_browser_session(source_url)
-
+        output_lines = []
+        while True:
+            if self.stop_requested and process.poll() is None:
                 try:
-                    next_cookie_args = get_browser_cookie_args(
-                        source_url,
-                        force=True,
-                        exclude_sources=tried_sources,
-                    )
-                except BrowserSessionError as exc:
-                    retry_note = (
-                        "Authentication retry stopped because no alternate browser "
-                        f"session was available: {exc}"
-                    )
-                    all_output_lines.append(retry_note)
-                    break
+                    process.terminate()
+                except Exception:
+                    pass
 
-                current_command = _replace_browser_cookie_args(
-                    current_command,
-                    next_cookie_args,
-                )
+            line = process.stdout.readline()
+            if not line and process.poll() is not None:
+                break
+            if not line:
                 continue
 
-            break
+            clean_line = line.strip()
+            output_lines.append(clean_line)
 
-        log_details = "\n".join(all_output_lines or output_lines)
-        if retry_note:
-            log_details += "\n" + retry_note
-        log_path = write_failure_log(
-            f"download_{stage_name}",
-            RuntimeError(f"yt-dlp exit code {return_code}"),
-            details=log_details,
+            if len(output_lines) <= 20:
+                self.append_log(self.dl_log, clean_line)
+
+            match = re.search(r"(\d+(?:\.\d+)?)%", clean_line)
+            if match:
+                percent = max(0.0, min(100.0, float(match.group(1))))
+                overall = progress_start + (progress_end - progress_start) * (percent / 100.0)
+                self.set_operation_progress(
+                    "dl",
+                    overall * 100.0,
+                    f"{stage_name.title()} — {percent:.0f}%",
+                    taskbar=True,
+                )
+
+        return_code = process.poll()
+        self.active_process = None
+
+        if self.stop_requested:
+            raise DownloadCancelled("Download stopped by user.")
+
+        if return_code != 0:
+            log_path = write_failure_log(
+                f"download_{stage_name}",
+                RuntimeError(f"yt-dlp exit code {return_code}"),
+                details="\n".join(output_lines),
+            )
+            raise RuntimeError(
+                f"{stage_name} failed. Failure log: {log_path or FAILURE_LOG_DIR}"
+            )
+
+        self.set_operation_progress(
+            "dl",
+            progress_end * 100.0,
+            f"{stage_name.title()} complete",
+            taskbar=True,
         )
-        raise RuntimeError(
-            f"{stage_name} failed. Failure log: {log_path or FAILURE_LOG_DIR}"
-        )
+        return output_lines
+
 
     def strip_audio_from_video(self, video_path, silent_output_path, progress_start=0.0, progress_end=1.0):
         """Copy only the video stream into a new container, guaranteeing no audio remains."""
