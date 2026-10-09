@@ -974,12 +974,16 @@ def _cookie_file_candidates():
 
 
 def get_cookie_file_path():
-    """Return the first existing cookies.txt file, without reading cookie values."""
+    """Return the first readable Netscape-format cookies.txt file."""
     for candidate in _cookie_file_candidates():
         try:
-            if candidate.is_file() and os.access(str(candidate), os.R_OK):
+            if not candidate.is_file() or not os.access(str(candidate), os.R_OK):
+                continue
+            with candidate.open("r", encoding="utf-8-sig", errors="replace") as handle:
+                first_line = handle.readline().strip()
+            if first_line in ("# HTTP Cookie File", "# Netscape HTTP Cookie File"):
                 return str(candidate)
-        except OSError:
+        except (OSError, UnicodeError):
             continue
     return ""
 
