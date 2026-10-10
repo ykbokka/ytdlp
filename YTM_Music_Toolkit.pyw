@@ -1045,7 +1045,7 @@ def _create_temporary_ytmusic_auth_from_cookie_file(cookie_path):
             "Choose a fresh Netscape-format export from your signed-in YouTube session."
         )
 
-    if not re.search(r"(?:^|;\\s*)__Secure-3PAPISID=", cookie_header, re.IGNORECASE):
+    if not re.search(r"(?:^|;\s*)__Secure-3PAPISID=", cookie_header, re.IGNORECASE):
         raise RuntimeError(
             "The selected cookies.txt file does not include an active __Secure-3PAPISID "
             "cookie for YouTube Music. Export a fresh cookies.txt from your signed-in "
