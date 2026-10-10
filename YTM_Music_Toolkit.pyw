@@ -1774,6 +1774,83 @@ class YTMResolver:
             "requested_title": title,
         }
 
+    def metadata_from_playlist_entry(self, entry, source_url):
+        """Build usable per-track metadata from yt-dlp's flat playlist entry.
+
+        A playlist listing already contains the video ID and title. Reuse that
+        information instead of running a second metadata extraction for every
+        track, which can fail independently and cause the worker to skip items.
+        """
+        if not isinstance(entry, dict):
+            return None
+
+        video_id = str(entry.get("video_id") or entry.get("id") or entry.get("videoId") or "").strip()
+        title = str(entry.get("track") or entry.get("title") or entry.get("fulltitle") or "").strip()
+        if not video_id or not title:
+            return None
+
+        artist_value = entry.get("artist") or entry.get("creator") or entry.get("uploader") or entry.get("channel") or ""
+        if isinstance(artist_value, (list, tuple)):
+            artist = ", ".join(str(value).strip() for value in artist_value if str(value).strip())
+        else:
+            artist = str(artist_value or "").strip()
+
+        if not artist:
+            artists_value = entry.get("artists") or []
+            if isinstance(artists_value, list):
+                artist_names = [
+                    str(item.get("name") if isinstance(item, dict) else item).strip()
+                    for item in artists_value
+                    if str(item.get("name") if isinstance(item, dict) else item).strip()
+                ]
+                artist = ", ".join(artist_names)
+
+        album_value = entry.get("album") or ""
+        if isinstance(album_value, dict):
+            album = str(album_value.get("name") or "").strip()
+        else:
+            album = str(album_value or "").strip()
+
+        upload_date = str(entry.get("upload_date") or "")
+        year = upload_date[:4] if len(upload_date) >= 4 else str(entry.get("release_year") or "")
+
+        thumbs = entry.get("thumbnails") or []
+        ranked_thumbnails = sorted(
+            [item for item in thumbs if isinstance(item, dict) and item.get("url")],
+            key=lambda item: (
+                int(item.get("width") or 0) * int(item.get("height") or 0)
+            ),
+            reverse=True,
+        )
+        thumbnail = str(entry.get("thumbnail") or "")
+        if not thumbnail and ranked_thumbnails:
+            thumbnail = str(ranked_thumbnails[0].get("url") or "")
+
+        thumbnail_candidates = []
+        direct_thumbnail = canonicalize_thumbnail_url(thumbnail)
+        if direct_thumbnail:
+            thumbnail_candidates.append(direct_thumbnail)
+        for item in ranked_thumbnails:
+            candidate = canonicalize_thumbnail_url(item.get("url") or "")
+            if candidate and candidate not in thumbnail_candidates:
+                thumbnail_candidates.append(candidate)
+        for candidate in youtube_thumbnail_candidates(source_url):
+            if candidate and candidate not in thumbnail_candidates:
+                thumbnail_candidates.append(candidate)
+
+        return {
+            "artist": artist,
+            "title": title,
+            "album": album,
+            "year": year,
+            "video_id": video_id,
+            "thumbnail": direct_thumbnail,
+            "thumbnail_candidates": thumbnail_candidates,
+            "source_thumbnail_url": direct_thumbnail,
+            "source_title": title,
+            "source_url": source_url,
+        }
+
     def resolve_input(self, user_input):
         user_input = str(user_input or "").strip()
 
@@ -1908,9 +1985,17 @@ class YTMResolver:
                     or ""
                 )
                 if isinstance(exact_url, str) and exact_url.startswith("http"):
-                    results.append(exact_url)
+                    source_url = exact_url
                 else:
-                    results.append(f"https://www.youtube.com/watch?v={video_id}")
+                    source_url = f"https://www.youtube.com/watch?v={video_id}"
+
+                # Preserve the flat playlist metadata as well as the exact URL.
+                # The worker can use the listing's ID/title immediately and does
+                # not need a separate metadata extraction for every playlist item.
+                playlist_item = dict(entry)
+                playlist_item["video_id"] = video_id
+                playlist_item["source_url"] = source_url
+                results.append(playlist_item)
 
             return results
         except BrowserSessionError:
@@ -6707,22 +6792,31 @@ class YTMMusicToolkit(ctk.CTk):
                 total = len(urls)
                 playlist_stats["total"] = total
 
-                for index, url in enumerate(urls, 1):
+                for index, playlist_entry in enumerate(urls, 1):
                     if self.stop_requested:
                         raise DownloadCancelled("Download stopped by user.")
+
+                    resolver = self.ensure_resolver()
+                    if isinstance(playlist_entry, dict):
+                        url = str(playlist_entry.get("source_url") or "").strip()
+                        meta = resolver.metadata_from_playlist_entry(playlist_entry, url)
+                    else:
+                        url = str(playlist_entry or "").strip()
+                        meta = None
 
                     self.set_collection_progress(
                         "dl",
                         index,
                         total,
                         0.0,
-                        f"Playlist {index}/{total} — reading source metadata...",
+                        f"Playlist {index}/{total} — preparing item metadata...",
                         taskbar=True,
                     )
 
-                    meta = self.ensure_resolver().metadata_from_url(
-                        url,
-                    )
+                    # Flat playlist metadata is normally sufficient. Only make
+                    # another extractor call when the listing omitted its ID/title.
+                    if not meta and url:
+                        meta = resolver.metadata_from_url(url)
 
                     if not meta:
                         playlist_stats["metadata_failures"] += 1
@@ -6733,8 +6827,6 @@ class YTMMusicToolkit(ctk.CTk):
                             details=f"Item {index}/{total}: {url}",
                         )
                         continue
-
-                    resolver = self.ensure_resolver()
 
                     # IMPORTANT: a playlist item must always download the
                     # exact video that exists in the playlist. Previously,
