@@ -666,36 +666,21 @@ def select_best_video_quality_spec(quality_options, maximum_height=None):
 
 
 def youtube_format_extractor_arg_sets():
-    """Return format-inspection client strategies in safest-first order.
+    """Use the currently supported embedded-web client combination.
 
-    Recent YouTube changes can make yt-dlp's default client expose only a
-    low-resolution progressive format (commonly 360p). When that happens,
-    retry with web_embedded and, as a final fallback, the TV client.
-    The successful strategy is carried into the actual download command so
-    the quality menu and downloader inspect the same format universe.
+    Recent yt-dlp reports show the logged-in tv_downgraded client can return
+    an UNPLAYABLE response ("The page needs to be reloaded"). Keep inspection
+    and download commands on the same explicit default + web_embedded setup.
+    This does not supply or fabricate a PO Token; if YouTube requires one for
+    a particular media format, yt-dlp will report that limitation.
     """
-    strategies = [
-        None,
-        "youtube:player_client=default,web_embedded",
-        "youtube:player_client=tv",
-    ]
-
-    # Avoid duplicate work if a future yt-dlp build collapses one of these.
-    seen = set()
-    result = []
-    for value in strategies:
-        key = value or "<default>"
-        if key in seen:
-            continue
-        seen.add(key)
-        result.append(value)
-
-    return result
+    return ["youtube:player_client=default,web_embedded"]
 
 
 def youtube_extractor_args_list(strategy):
-    if not strategy:
-        return []
+    # Use the supported fallback consistently for metadata inspection and
+    # final media transfers, including audio-only and playlist items.
+    strategy = strategy or "youtube:player_client=default,web_embedded"
     return ["--extractor-args", strategy]
 
 
