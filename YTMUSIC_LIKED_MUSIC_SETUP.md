@@ -6,11 +6,12 @@ You can download your personal Liked Music shelf directly with the toolkit:
 
 **No separate `ytmusicapi_browser.json` file or manual browser-header setup is required.**
 
-1. In the toolkit, select the same `cookies.txt` file you use for YouTube downloads.
-2. Paste the Liked Music URL into the downloader and start the download.
+1. Open `https://music.youtube.com` in Opera GX and confirm you're signed in to the account whose likes you want.
+2. Export a fresh Netscape-format `cookies.txt` while on YouTube Music. Some cookie exporters filter cookies by the current site, so a file exported from `youtube.com` may not contain the session cookies needed for the Music API.
+3. In the toolkit, select that `cookies.txt` file, then paste the Liked Music URL and start the download.
 
-For this special shelf, the toolkit now uses your existing cookie file to authenticate the YouTube Music API, retrieves the liked tracks, and sends each track through the normal download pipeline. Any temporary API-auth file is created locally and removed after the client loads it; your cookies are not uploaded to GitHub.
+For this special shelf, the toolkit uses the selected cookie file to authenticate the YouTube Music API, retrieve the liked tracks, and send each track through the normal download pipeline. Any temporary API-auth file is created locally and removed after the client loads it; your cookies are not uploaded to GitHub.
 
-If authentication fails, the cookie export may be expired or missing the active `__Secure-3PAPISID` cookie required by YouTube Music. Export a fresh Netscape-format `cookies.txt` from your signed-in YouTube session, then select that file in the toolkit again.
+If the toolkit says YouTube Music returned its signed-out Liked Music screen, the cookies were readable but were not accepted for the authenticated library request. Refresh the export from the signed-in YouTube Music site and try again. If that still fails, the account session or the export itself may need attention.
 
 **Keep `cookies.txt` private.** It contains account-session credentials. Never upload or send it to anyone.
