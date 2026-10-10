@@ -8396,7 +8396,7 @@ def _v3_build_command(self, source_url, result, selected_format):
     command = [
         get_ytdlp_command(), "--newline", "--windows-filenames",
         "--concurrent-fragments", str({"conservative": 2, "balanced": 4, "aggressive": 8}.get(getattr(self, "performance_mode", "balanced"), 4)),
-        "--retries", "10", "--fragment-retries", "10", "--retry-sleep", "exponential",
+        "--retries", "10", "--fragment-retries", "10", "--retry-sleep", "exp=1:30",
         "--no-overwrites", "--format-sort", "res,fps,hdr:12,vcodec,channels,acodec,size,br,asr,proto,ext",
     ]
     command.extend(get_browser_cookie_args(source_url))
@@ -8839,7 +8839,7 @@ def _v3_build_command_final(self, source_url, result, selected_format):
         "--no-overwrites",
         "--retries", "10",
         "--fragment-retries", "10",
-        "--retry-sleep", "exponential",
+        "--retry-sleep", "exp=1:30",
         "--socket-timeout", "20",
         "--concurrent-fragments", str({"conservative": 2, "balanced": 4, "aggressive": 8}.get(getattr(self, "performance_mode", "balanced"), 4)),
         "--format-sort", "res,fps,hdr:12,vcodec,channels,acodec,size,br,asr,proto,ext",
