@@ -1919,7 +1919,56 @@ class YTMResolver:
         result["requested_title"] = title
         return result, ""
 
+    def _resolve_liked_music_entries(self, auth_path):
+        """Resolve YouTube Music's account-bound Liked Music shelf using ytmusicapi.
+
+        The special list=LM URL is not an ordinary YouTube playlist and yt-dlp
+        redirects it to youtube.com, where it reports that the playlist does not
+        exist. Use the signed-in YouTube Music API client for listing only; the
+        individual source video URLs are still passed through the normal media
+        pipeline and are never replaced by search results.
+        """
+        auth_client = YTMusic(str(auth_path))
+        payload = auth_client.get_liked_songs(limit=5000)
+        tracks = payload.get("tracks") if isinstance(payload, dict) else None
+        if not isinstance(tracks, list):
+            tracks = []
+
+        results = []
+        for track in tracks:
+            if not isinstance(track, dict):
+                continue
+            video_id = str(track.get("videoId") or track.get("video_id") or "").strip()
+            title = str(track.get("title") or track.get("track") or "").strip()
+            if not video_id or not title:
+                continue
+
+            entry = dict(track)
+            entry["id"] = video_id
+            entry["video_id"] = video_id
+            entry["track"] = title
+            entry["title"] = title
+            entry["source_url"] = f"https://music.youtube.com/watch?v={video_id}"
+            entry["ytmusic_liked_entry"] = True
+            results.append(entry)
+
+        if not results:
+            raise RuntimeError(
+                "The authenticated YouTube Music API returned no usable Liked Music tracks. "
+                "Confirm the browser-auth file belongs to the account that owns these likes."
+            )
+        return results
+
+
     def resolve_playlist_urls(self, playlist_url):
+        parsed_url = urllib.parse.urlparse(playlist_url)
+        parsed_query = urllib.parse.parse_qs(parsed_url.query)
+        playlist_id = (parsed_query.get("list") or [""])[0]
+        is_liked_music = (
+            parsed_url.hostname in {"music.youtube.com", "www.music.youtube.com"}
+            and playlist_id == "LM"
+        )
+
         def _attempt(cookie_args):
             proc = subprocess.run(
                 [
@@ -1977,11 +2026,40 @@ class YTMResolver:
             return payload
 
         try:
+            if is_liked_music:
+                auth_candidates = []
+                env_auth = os.environ.get("YTM_MUSIC_TOOLKIT_YTMUSIC_AUTH_FILE", "").strip()
+                if env_auth:
+                    auth_candidates.append(Path(env_auth).expanduser())
+                documents_dir = Path(os.path.expanduser("~")) / "Documents" / "YTDLP"
+                auth_candidates.extend([
+                    documents_dir / "ytmusicapi_browser.json",
+                    documents_dir / "browser.json",
+                    Path(RESOURCE_DIR) / "ytmusicapi_browser.json",
+                ])
+                auth_path = next((candidate for candidate in auth_candidates if candidate.is_file()), None)
+                if auth_path is None:
+                    raise RuntimeError(
+                        "This URL is YouTube Music's personal Liked Music shelf (list=LM), not a normal playlist. "
+                        "yt-dlp cannot enumerate it directly. Create a local authenticated ytmusicapi header file at "
+                        f"{documents_dir / 'ytmusicapi_browser.json'} using a signed-in YouTube Music /browse request "
+                        "from your browser, then retry. This file contains account-session credentials: keep it private "
+                        "and never commit or upload it."
+                    )
+                try:
+                    return self._resolve_liked_music_entries(auth_path)
+                except Exception as exc:
+                    raise RuntimeError(
+                        "Could not read YouTube Music Liked Music through the authenticated API. "
+                        f"Check that {auth_path} contains current YouTube Music browser-auth headers. "
+                        "The file grants access to your account, so do not share it. "
+                        f"Underlying error: {type(exc).__name__}: {exc}"
+                    ) from exc
+
             data = ytdlp_retry_on_cookie_failure(playlist_url, _attempt)
             entries = data.get("entries") or []
             results = []
 
-            playlist_id = (urllib.parse.parse_qs(urllib.parse.urlparse(playlist_url).query).get("list") or [""])[0]
             for entry in entries:
                 if not isinstance(entry, dict):
                     continue
@@ -6856,8 +6934,15 @@ class YTMMusicToolkit(ctk.CTk):
                     # ID. A weak/ambiguous match could therefore download a
                     # completely different song.
                     source_result = resolver.direct_result_from_metadata(meta)
+                    if source_result and isinstance(playlist_entry, dict) and playlist_entry.get("ytmusic_liked_entry"):
+                        source_result["source"] = "YouTube Music Liked Music (authenticated library)"
+                        source_result["ytm_matched"] = True
 
-                    if playlist_uses_ytm:
+                    is_liked_music_entry = (
+                        isinstance(playlist_entry, dict)
+                        and bool(playlist_entry.get("ytmusic_liked_entry"))
+                    )
+                    if playlist_uses_ytm and not is_liked_music_entry:
                         ytm_result = None
                         try:
                             ytm_result = resolver.search(
