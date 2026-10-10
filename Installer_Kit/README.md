@@ -47,7 +47,7 @@ Delete those separately yourself if you no longer need them.
 
 ## Troubleshooting
 
-- **Python not found:** install Python 3.12 from the official Python publisher through WinGet, then rerun `Install.bat`.
+- **Python not found:** the installer checks for an already-installed Python 3.14, 3.13, 3.12, 3.11, or 3.10 before offering to install Python 3.12 through WinGet. If you just installed Python, close the installer window and run `Install.bat` again.
 - **Deno / JavaScript challenge errors:** make sure Deno is installed, then close and relaunch the toolkit. The launcher adds WinGet's standard executable-link directory to PATH.
 - **FFmpeg not found:** install FFmpeg using WinGet, then rerun the installer. The app needs FFmpeg for operations such as merging separate audio/video streams and conversions.
 - **Cookies/authentication:** choose a fresh Netscape-format cookies file from the app's Browse button. Never share or commit cookies; they can grant access to your account.
