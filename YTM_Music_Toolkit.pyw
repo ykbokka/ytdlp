@@ -9,6 +9,8 @@ import shutil
 import traceback
 import urllib.parse
 import tempfile
+import http.cookiejar
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from io import BytesIO
@@ -1019,6 +1021,68 @@ def get_cookie_file_path():
     return ""
 
 
+def _create_temporary_ytmusic_auth_from_cookie_file(cookie_path):
+    """Convert the selected Netscape cookie jar to short-lived ytmusicapi browser auth.
+
+    This keeps Liked Music setup automatic: no manually copied request headers
+    or persistent second credentials file are required.
+    """
+    cookie_path = Path(cookie_path)
+    jar = http.cookiejar.MozillaCookieJar(str(cookie_path))
+    try:
+        jar.load(ignore_discard=True, ignore_expires=False)
+    except Exception as exc:
+        raise RuntimeError(
+            f"Could not read the selected cookies.txt file: {type(exc).__name__}: {exc}"
+        ) from exc
+
+    request = urllib.request.Request("https://music.youtube.com/browse")
+    jar.add_cookie_header(request)
+    cookie_header = request.get_header("Cookie") or ""
+    if not cookie_header:
+        raise RuntimeError(
+            "The selected cookies.txt file contains no active cookies for music.youtube.com. "
+            "Choose a fresh Netscape-format export from your signed-in YouTube session."
+        )
+
+    if not re.search(r"(?:^|;\\s*)__Secure-3PAPISID=", cookie_header, re.IGNORECASE):
+        raise RuntimeError(
+            "The selected cookies.txt file does not include an active __Secure-3PAPISID "
+            "cookie for YouTube Music. Export a fresh cookies.txt from your signed-in "
+            "YouTube session, making sure cookies for .youtube.com are included."
+        )
+
+    auth_headers = {
+        "Accept": "*/*",
+        "Content-Type": "application/json",
+        "X-Goog-AuthUser": "0",
+        "x-origin": "https://music.youtube.com",
+        "Cookie": cookie_header,
+        "User-Agent": USER_AGENT,
+    }
+
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            prefix=".ytmusic-auth-",
+            suffix=".json",
+            dir=str(ensure_failure_log_dir()),
+            delete=False,
+        ) as handle:
+            json.dump(auth_headers, handle, ensure_ascii=False)
+            temp_path = Path(handle.name)
+        return temp_path
+    except Exception:
+        if temp_path:
+            try:
+                temp_path.unlink(missing_ok=True)
+            except Exception:
+                pass
+        raise
+
+
 def _no_session_message():
     return (
         "Cookie file not found. Put a Netscape-format cookies.txt next to "
@@ -1919,16 +1983,34 @@ class YTMResolver:
         result["requested_title"] = title
         return result, ""
 
-    def _resolve_liked_music_entries(self, auth_path):
-        """Resolve YouTube Music's account-bound Liked Music shelf using ytmusicapi.
+    def _resolve_liked_music_entries(self, auth_path=None, cookie_path=None):
+        """Resolve the account-bound Liked Music shelf through authenticated ytmusicapi.
 
-        The special list=LM URL is not an ordinary YouTube playlist and yt-dlp
-        redirects it to youtube.com, where it reports that the playlist does not
-        exist. Use the signed-in YouTube Music API client for listing only; the
-        individual source video URLs are still passed through the normal media
-        pipeline and are never replaced by search results.
+        Prefer a user-supplied ytmusicapi browser-auth file when one exists.
+        Otherwise, derive temporary browser headers from the toolkit's existing
+        cookies.txt, then delete that temporary file immediately after loading
+        the authenticated API client.
         """
-        auth_client = YTMusic(str(auth_path))
+        temporary_auth_path = None
+        if auth_path is None:
+            cookie_path = cookie_path or get_cookie_file_path()
+            if not cookie_path:
+                raise RuntimeError(
+                    "No usable cookies.txt file was found. Select your existing YouTube "
+                    "cookies file in the toolkit, then retry Liked Music."
+                )
+            temporary_auth_path = _create_temporary_ytmusic_auth_from_cookie_file(cookie_path)
+            auth_path = temporary_auth_path
+
+        try:
+            auth_client = YTMusic(str(auth_path))
+        finally:
+            if temporary_auth_path is not None:
+                try:
+                    temporary_auth_path.unlink(missing_ok=True)
+                except Exception:
+                    pass
+
         payload = auth_client.get_liked_songs(limit=5000)
         tracks = payload.get("tracks") if isinstance(payload, dict) else None
         if not isinstance(tracks, list):
@@ -2038,23 +2120,37 @@ class YTMResolver:
                     Path(RESOURCE_DIR) / "ytmusicapi_browser.json",
                 ])
                 auth_path = next((candidate for candidate in auth_candidates if candidate.is_file()), None)
-                if auth_path is None:
-                    raise RuntimeError(
-                        "This URL is YouTube Music's personal Liked Music shelf (list=LM), not a normal playlist. "
-                        "yt-dlp cannot enumerate it directly. Create a local authenticated ytmusicapi header file at "
-                        f"{documents_dir / 'ytmusicapi_browser.json'} using a signed-in YouTube Music /browse request "
-                        "from your browser, then retry. This file contains account-session credentials: keep it private "
-                        "and never commit or upload it."
+
+                auth_errors = []
+                if auth_path is not None:
+                    try:
+                        return self._resolve_liked_music_entries(auth_path)
+                    except Exception as exc:
+                        auth_errors.append(
+                            f"browser-auth file ({auth_path.name}): {type(exc).__name__}: {exc}"
+                        )
+
+                cookie_path = get_cookie_file_path()
+                if cookie_path:
+                    try:
+                        return self._resolve_liked_music_entries(None, cookie_path)
+                    except Exception as exc:
+                        auth_errors.append(
+                            f"cookies.txt ({Path(cookie_path).name}): {type(exc).__name__}: {exc}"
+                        )
+
+                if not cookie_path and auth_path is None:
+                    auth_errors.append(
+                        "No cookies.txt file is configured. Select the YouTube cookies file "
+                        "you already use for downloads in the toolkit."
                     )
-                try:
-                    return self._resolve_liked_music_entries(auth_path)
-                except Exception as exc:
-                    raise RuntimeError(
-                        "Could not read YouTube Music Liked Music through the authenticated API. "
-                        f"Check that {auth_path} contains current YouTube Music browser-auth headers. "
-                        "The file grants access to your account, so do not share it. "
-                        f"Underlying error: {type(exc).__name__}: {exc}"
-                    ) from exc
+
+                raise RuntimeError(
+                    "Could not read YouTube Music Liked Music. The toolkit now tries an existing "
+                    "ytmusicapi auth file first and then automatically builds temporary API headers "
+                    "from your selected cookies.txt. "
+                    + " | ".join(auth_errors)
+                )
 
             data = ytdlp_retry_on_cookie_failure(playlist_url, _attempt)
             entries = data.get("entries") or []
