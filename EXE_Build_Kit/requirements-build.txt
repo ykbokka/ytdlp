@@ -1,0 +1,7 @@
+customtkinter
+requests
+Pillow
+mutagen
+ytmusicapi
+comtypes
+pyinstaller
