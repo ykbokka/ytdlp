@@ -1927,7 +1927,6 @@ class YTMResolver:
                     "--dump-single-json",
                     "--flat-playlist",
                     "--skip-download",
-                    "--no-warnings",
                     "--ignore-errors",
                     *cookie_args,
                     "--",
