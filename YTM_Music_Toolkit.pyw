@@ -27,6 +27,14 @@ from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, APIC
 from mutagen.mp4 import MP4, MP4Cover
 from ytmusicapi import YTMusic
 
+try:
+    from ytmusicapi.constants import USER_AGENT as YTMUSICAPI_USER_AGENT
+except ImportError:
+    YTMUSICAPI_USER_AGENT = (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) "
+        "Gecko/20100101 Firefox/88.0"
+    )
+
 
 # ============================================================
 # YTM MUSIC TOOLKIT
@@ -1082,14 +1090,19 @@ def _create_temporary_ytmusic_auth_from_cookie_file(cookie_path):
     ).hexdigest()
     authorization = f"SAPISIDHASH {timestamp}_{digest}"
 
+    # Match ytmusicapi's initialize_headers() defaults. When a JSON auth file
+    # is passed directly, YTMusic uses its headers as-is instead of merging these.
     auth_headers = {
         "Accept": "*/*",
+        "Accept-Encoding": "gzip, deflate",
         "Authorization": authorization,
+        "Content-Encoding": "gzip",
         "Content-Type": "application/json",
+        "Origin": "https://music.youtube.com",
         "X-Goog-AuthUser": "0",
         "x-origin": "https://music.youtube.com",
         "Cookie": cookie_header,
-        "User-Agent": USER_AGENT,
+        "User-Agent": YTMUSICAPI_USER_AGENT,
     }
 
     temp_path = None
