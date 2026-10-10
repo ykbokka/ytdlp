@@ -6297,8 +6297,7 @@ class YTMMusicToolkit(ctk.CTk):
                 "--no-overwrites",
             ]
 
-            if extractor_arg:
-                command.extend(youtube_extractor_args_list(extractor_arg))
+            command.extend(youtube_extractor_args_list(extractor_arg))
 
             command.extend(get_browser_cookie_args(source_url))
 
@@ -8520,8 +8519,7 @@ def _v3_build_command(self, source_url, result, selected_format):
     ]
     command.extend(get_browser_cookie_args(source_url))
     extractor_arg = result.get("quality_extractor_arg") or getattr(self, "_dl_youtube_extractor_arg", None) or getattr(self, "_last_quality_extractor_arg", None)
-    if extractor_arg:
-        command.extend(youtube_extractor_args_list(extractor_arg))
+    command.extend(youtube_extractor_args_list(extractor_arg))
 
     if spec.get("kind") == "audio":
         audio_format = spec.get("audio_format") or "flac"
@@ -8967,8 +8965,7 @@ def _v3_build_command_final(self, source_url, result, selected_format):
     command.extend(get_browser_cookie_args(source_url))
 
     extractor_arg = result.get("quality_extractor_arg") or getattr(self, "_dl_youtube_extractor_arg", None) or getattr(self, "_last_quality_extractor_arg", None)
-    if extractor_arg:
-        command.extend(youtube_extractor_args_list(extractor_arg))
+    command.extend(youtube_extractor_args_list(extractor_arg))
 
     if spec.get("kind") == "audio":
         audio_format = str(spec.get("audio_format") or "flac")
