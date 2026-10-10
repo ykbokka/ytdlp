@@ -197,6 +197,22 @@ def get_ytdlp_command():
     return exe or "yt-dlp"
 
 
+def get_ytdlp_runtime_args():
+    """Enable current EJS scripts and explicitly use Deno when it is installed."""
+    args = ["--remote-components", "ejs:github"]
+
+    deno = find_executable("deno")
+    if not deno:
+        default_deno = Path.home() / ".deno" / "bin" / "deno.exe"
+        if default_deno.is_file():
+            deno = str(default_deno)
+
+    if deno:
+        args.extend(["--js-runtimes", f"deno:{deno}"])
+
+    return args
+
+
 def get_ffmpeg_command():
     exe = find_executable("ffmpeg")
     return exe or "ffmpeg"
@@ -689,15 +705,11 @@ def select_best_video_quality_spec(quality_options, maximum_height=None):
     return dict(max(candidates, key=lambda item: item[0])[1])
 
 
-def youtube_format_extractor_arg_sets():
-    """Use the currently supported embedded-web client combination.
+LIKED_MUSIC_EXTRACTOR_ARG = "youtube:player_client=web_embedded,web_safari"
 
-    Recent yt-dlp reports show the logged-in tv_downgraded client can return
-    an UNPLAYABLE response ("The page needs to be reloaded"). Keep inspection
-    and download commands on the same explicit default + web_embedded setup.
-    This does not supply or fabricate a PO Token; if YouTube requires one for
-    a particular media format, yt-dlp will report that limitation.
-    """
+
+def youtube_format_extractor_arg_sets():
+    """Use the normal default client set for regular YouTube URLs."""
     return ["youtube:player_client=default,web_embedded"]
 
 
@@ -1163,6 +1175,7 @@ def _run_ytdlp_info(url, strategy, timeout):
 def _run_ytdlp_info_once(url, strategy, cookie_args, timeout):
     command = [
         get_ytdlp_command(),
+        *get_ytdlp_runtime_args(),
         "--dump-single-json",
         "--skip-download",
         "--no-playlist",
@@ -1192,14 +1205,18 @@ def _run_ytdlp_info_once(url, strategy, cookie_args, timeout):
     return json.loads(raw)
 
 
-def inspect_youtube_info(url, timeout=30):
-    """Inspect title, thumbnail, and formats, recovering if the default client fails."""
-    cache_key = (url, "")
+def inspect_youtube_info(url, timeout=30, preferred_strategy=None):
+    """Inspect metadata and formats with the normal or item-specific client set."""
+    cache_key = (url, preferred_strategy or "")
     cached = _INSPECT_CACHE.get(cache_key)
     if cached and (time.time() - cached[0]) < _INSPECT_CACHE_TTL:
         return cached[1]
 
-    strategies = youtube_format_extractor_arg_sets()
+    strategies = (
+        [preferred_strategy]
+        if preferred_strategy
+        else youtube_format_extractor_arg_sets()
+    )
     primary_data = None
     primary_error = None
 
@@ -1295,9 +1312,13 @@ def fetch_youtube_data(url, timeout=30):
     return _run_ytdlp_info(url, None, timeout)
 
 
-def inspect_youtube_formats(url, timeout=30):
-    """Backwards-compatible wrapper: returns (formats, extractor_arg)."""
-    _data, formats, strategy = inspect_youtube_info(url, timeout)
+def inspect_youtube_formats(url, timeout=30, preferred_strategy=None):
+    """Return formats and the exact extractor strategy used for inspection."""
+    _data, formats, strategy = inspect_youtube_info(
+        url,
+        timeout,
+        preferred_strategy=preferred_strategy,
+    )
     return formats, strategy
 
 
@@ -1649,6 +1670,7 @@ class YTMResolver:
                 def _playlist_attempt(cookie_args):
                     return run_json([
                         get_ytdlp_command(),
+                        *get_ytdlp_runtime_args(),
                         "--dump-single-json",
                         "--flat-playlist",
                         "--skip-download",
@@ -2107,7 +2129,10 @@ class YTMResolver:
             entry["video_id"] = video_id
             entry["track"] = title
             entry["title"] = title
-            entry["source_url"] = f"https://music.youtube.com/watch?v={video_id}"
+            # Use YouTube Music only to enumerate the authenticated shelf.
+            # A normal YouTube watch URL avoids auto-selecting the web_music
+            # client, whose GVS formats now require a PO Token.
+            entry["source_url"] = f"https://www.youtube.com/watch?v={video_id}"
             entry["ytmusic_liked_entry"] = True
             results.append(entry)
 
@@ -2129,6 +2154,7 @@ class YTMResolver:
             proc = subprocess.run(
                 [
                     get_ytdlp_command(),
+                    *get_ytdlp_runtime_args(),
                     "--dump-single-json",
                     "--flat-playlist",
                     "--skip-download",
@@ -5219,9 +5245,15 @@ class YTMMusicToolkit(ctk.CTk):
         source_url = f"https://www.youtube.com/watch?v={video_id}"
 
         try:
+            preferred_strategy = (
+                LIKED_MUSIC_EXTRACTOR_ARG
+                if result.get("ytmusic_liked_entry")
+                else None
+            )
             formats, extractor_arg = inspect_youtube_formats(
                 source_url,
                 timeout=30,
+                preferred_strategy=preferred_strategy,
             )
             self._last_quality_extractor_arg = extractor_arg
             return combine_quality_options(formats)
@@ -5983,6 +6015,7 @@ class YTMMusicToolkit(ctk.CTk):
 
         command = [
             get_ytdlp_command(),
+            *get_ytdlp_runtime_args(),
             "--newline",
             "--windows-filenames",
             "--concurrent-fragments",
@@ -6236,6 +6269,7 @@ class YTMMusicToolkit(ctk.CTk):
 
                 video_command = [
                     get_ytdlp_command(),
+                    *get_ytdlp_runtime_args(),
                     "--newline",
                     "--windows-filenames",
                     "--concurrent-fragments",
@@ -6576,6 +6610,7 @@ class YTMMusicToolkit(ctk.CTk):
 
             command = [
                 get_ytdlp_command(),
+                *get_ytdlp_runtime_args(),
                 "--newline",
                 "--windows-filenames",
                 "--no-playlist",
@@ -7107,6 +7142,8 @@ class YTMMusicToolkit(ctk.CTk):
                     if source_result and isinstance(playlist_entry, dict) and playlist_entry.get("ytmusic_liked_entry"):
                         source_result["source"] = "YouTube Music Liked Music (authenticated library)"
                         source_result["ytm_matched"] = True
+                        source_result["ytmusic_liked_entry"] = True
+                        source_result["quality_extractor_arg"] = LIKED_MUSIC_EXTRACTOR_ARG
 
                     is_liked_music_entry = (
                         isinstance(playlist_entry, dict)
@@ -8804,7 +8841,9 @@ def _v3_build_command(self, source_url, result, selected_format):
     file_type = str(spec.get("file_type") or getattr(self, "_v3_selected_file_type", "auto")).lower()
     title = sanitize_filename(result.get("output_filename") or result.get("title") or "track")
     command = [
-        get_ytdlp_command(), "--newline", "--windows-filenames",
+        get_ytdlp_command(),
+        *get_ytdlp_runtime_args(),
+        "--newline", "--windows-filenames",
         "--concurrent-fragments", str({"conservative": 2, "balanced": 4, "aggressive": 8}.get(getattr(self, "performance_mode", "balanced"), 4)),
         "--retries", "10", "--fragment-retries", "10", "--retry-sleep", "exp=1:30",
         "--no-overwrites", "--format-sort", "res,fps,hdr:12,vcodec,channels,acodec,size,br,asr,proto,ext",
@@ -9242,6 +9281,7 @@ def _v3_build_command_final(self, source_url, result, selected_format):
 
     command = [
         get_ytdlp_command(),
+        *get_ytdlp_runtime_args(),
         "--newline",
         "--windows-filenames",
         "--part",
