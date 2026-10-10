@@ -6677,6 +6677,14 @@ class YTMMusicToolkit(ctk.CTk):
             not is_youtube_url(user_input)
             or is_youtube_music_url(user_input)
         )
+        # Track real playlist outcomes: metadata failures currently skip items,
+        # and the worker must never report success if not one file was saved.
+        playlist_stats = {
+            "total": 0,
+            "downloaded": 0,
+            "metadata_failures": 0,
+            "resolution_failures": 0,
+        }
 
         try:
             os.makedirs(self.paths["downloader"], exist_ok=True)
@@ -6697,6 +6705,7 @@ class YTMMusicToolkit(ctk.CTk):
                     raise RuntimeError("Could not read any playlist entries")
 
                 total = len(urls)
+                playlist_stats["total"] = total
 
                 for index, url in enumerate(urls, 1):
                     if self.stop_requested:
@@ -6716,7 +6725,8 @@ class YTMMusicToolkit(ctk.CTk):
                     )
 
                     if not meta:
-                        self.append_log(self.dl_log, f"[{index}/{total}] metadata lookup failed")
+                        playlist_stats["metadata_failures"] += 1
+                        self.append_log(self.dl_log, f"[{index}/{total}] metadata lookup failed — item skipped")
                         write_failure_log(
                             "download_playlist_metadata",
                             RuntimeError("Metadata lookup returned no result"),
@@ -6790,7 +6800,8 @@ class YTMMusicToolkit(ctk.CTk):
                         raise DownloadCancelled("Download stopped by user.")
 
                     if not result:
-                        self.append_log(self.dl_log, f"[{index}/{total}] no usable source metadata")
+                        playlist_stats["resolution_failures"] += 1
+                        self.append_log(self.dl_log, f"[{index}/{total}] no usable source metadata — item skipped")
                         write_failure_log(
                             "download_playlist_resolution",
                             RuntimeError("No usable result was resolved"),
@@ -6864,6 +6875,20 @@ class YTMMusicToolkit(ctk.CTk):
                         self.dl_log,
                         f"[{index}/{total}] finalized: {downloaded.name}",
                     )
+                    playlist_stats["downloaded"] += 1
+
+                # Do not display a false "Download complete" after silently
+                # skipping every playlist entry during metadata resolution.
+                if playlist_stats["downloaded"] == 0:
+                    failed_meta = playlist_stats["metadata_failures"]
+                    failed_resolution = playlist_stats["resolution_failures"]
+                    raise RuntimeError(
+                        "Playlist finished without saving any files. "
+                        f"0/{total} items downloaded; {failed_meta} metadata lookups failed; "
+                        f"{failed_resolution} items had no usable metadata. "
+                        "Check the newest 'youtube_metadata' and 'download_playlist_metadata' "
+                        f"logs in {FAILURE_LOG_DIR} for the underlying yt-dlp error."
+                    )
 
             else:
                 result, error = payload
@@ -6915,11 +6940,28 @@ class YTMMusicToolkit(ctk.CTk):
                 )
                 self.set_label(self.dl_status, "Status: Operation Successful")
 
-                message = (
-                    "Download complete and YT Music metadata/artwork applied."
-                    if used_ytm_matching
-                    else "Download complete. Source YouTube metadata/artwork was used directly."
-                )
+                if playlist_stats["total"]:
+                    saved = playlist_stats["downloaded"]
+                    total = playlist_stats["total"]
+                    failed_meta = playlist_stats["metadata_failures"]
+                    failed_resolution = playlist_stats["resolution_failures"]
+                    skipped = failed_meta + failed_resolution
+                    self.set_label(self.dl_status, f"Status: Playlist saved {saved}/{total} items")
+                    if skipped:
+                        message = (
+                            f"Playlist processing finished: {saved}/{total} items saved. "
+                            f"{failed_meta} metadata lookups failed; {failed_resolution} items "
+                            "could not be resolved. See the Downloader activity and the latest "
+                            f"logs in {FAILURE_LOG_DIR}."
+                        )
+                    else:
+                        message = f"Playlist download complete: all {saved} items were saved."
+                else:
+                    message = (
+                        "Download complete and YT Music metadata/artwork applied."
+                        if used_ytm_matching
+                        else "Download complete. Source YouTube metadata/artwork was used directly."
+                    )
                 messagebox.showinfo("Success", message)
 
             self.after(0, finish_success)
