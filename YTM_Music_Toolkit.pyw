@@ -465,6 +465,18 @@ def is_youtube_music_url(value):
     }
 
 
+def is_youtube_music_liked_url(value):
+    """Identify YouTube Music's account-bound Liked Music shelf (list=LM)."""
+    if not is_youtube_music_url(value):
+        return False
+    try:
+        parsed = urllib.parse.urlparse(str(value or "").strip())
+        query = urllib.parse.parse_qs(parsed.query)
+        return (query.get("list") or [""])[0] == "LM" and not (query.get("v") or [""])[0]
+    except Exception:
+        return False
+
+
 def is_youtube_url(value):
     host = get_url_host(value)
     return host in {
@@ -1602,6 +1614,22 @@ class YTMResolver:
             return json.loads(raw)
 
         try:
+            # Liked Music is an account-bound shelf, not a normal yt-dlp playlist.
+            # Do not send list=LM to yt-dlp or run a costly 300-track quality scan
+            # during preview. The downloader resolves the actual track list later.
+            if is_youtube_music_liked_url(url):
+                return {
+                    "title": "YouTube Music Liked Music",
+                    "cover_url": "",
+                    "thumbnail_candidates": [],
+                    "quality_options": build_playlist_quality_options([]),
+                    "quality_summary": "Liked Music · tracks are resolved when download starts",
+                    "quality_inventory": [],
+                    "is_playlist": True,
+                    "playlist_url": url,
+                    "first_video_url": "",
+                }
+
             # Playlist preview: fetch all item IDs, then inspect every distinct
             # video separately so the menu reflects real playlist formats.
             if is_playlist_url(url):
@@ -2082,10 +2110,7 @@ class YTMResolver:
         parsed_url = urllib.parse.urlparse(playlist_url)
         parsed_query = urllib.parse.parse_qs(parsed_url.query)
         playlist_id = (parsed_query.get("list") or [""])[0]
-        is_liked_music = (
-            parsed_url.hostname in {"music.youtube.com", "www.music.youtube.com"}
-            and playlist_id == "LM"
-        )
+        is_liked_music = is_youtube_music_liked_url(playlist_url)
 
         def _attempt(cookie_args):
             proc = subprocess.run(
