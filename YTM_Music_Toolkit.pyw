@@ -9,7 +9,9 @@ import shutil
 import traceback
 import urllib.parse
 import tempfile
+import hashlib
 import http.cookiejar
+import http.cookies
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -1052,8 +1054,25 @@ def _create_temporary_ytmusic_auth_from_cookie_file(cookie_path):
             "YouTube session, making sure cookies for .youtube.com are included."
         )
 
+    parsed_cookies = http.cookies.SimpleCookie()
+    try:
+        parsed_cookies.load(cookie_header.replace('"', ""))
+        sapisid = parsed_cookies["__Secure-3PAPISID"].value
+    except Exception as exc:
+        raise RuntimeError(
+            "Could not read the __Secure-3PAPISID value from cookies.txt. "
+            "Export a fresh cookies.txt from your signed-in YouTube session."
+        ) from exc
+
+    timestamp = str(int(time.time()))
+    digest = hashlib.sha1(
+        f"{timestamp} {sapisid} https://music.youtube.com".encode("utf-8")
+    ).hexdigest()
+    authorization = f"SAPISIDHASH {timestamp}_{digest}"
+
     auth_headers = {
         "Accept": "*/*",
+        "Authorization": authorization,
         "Content-Type": "application/json",
         "X-Goog-AuthUser": "0",
         "x-origin": "https://music.youtube.com",
