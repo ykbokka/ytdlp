@@ -1788,24 +1788,51 @@ class YTMResolver:
             if not meta:
                 return None, "Could not read YouTube metadata from the link"
 
-            # ONLY YouTube Music URLs enter the YTM songs/videos matching
-            # pipeline. Ordinary YouTube and youtu.be links download directly
-            # from the supplied source and never invoke YT Music search.
+            # A supplied YouTube Music URL already identifies the exact video.
+            # Search YT Music only to enrich metadata; never fail the download or
+            # silently switch to a different video ID if search returns nothing
+            # or selects a different version (cover, live, remaster, etc.).
             if is_youtube_music_url(user_input):
-                result = self.search(
-                    meta["artist"],
-                    meta["title"],
-                    meta["album"],
-                )
+                direct_result = self.direct_result_from_metadata(meta)
+                if not direct_result:
+                    return None, "Could not build a direct result from the YouTube Music URL"
 
-                if not result:
-                    return None, "No matching YouTube Music result found"
+                source_video_id = str(direct_result.get("video_id") or "").strip()
+                result = None
+                try:
+                    candidate = self.search(
+                        meta["artist"],
+                        meta["title"],
+                        meta["album"],
+                    )
+                    candidate_video_id = str((candidate or {}).get("video_id") or "").strip()
+                    if source_video_id and candidate_video_id == source_video_id:
+                        result = candidate
+                except Exception as exc:
+                    write_failure_log(
+                        "ytm_url_metadata_match",
+                        exc,
+                        details=f"URL: {user_input}",
+                    )
 
-                result["input_type"] = "url"
-                result["ytm_matched"] = True
-                result["requested_artist"] = meta["artist"]
-                result["requested_title"] = meta["title"]
-                return result, ""
+                if result:
+                    result["input_type"] = "url"
+                    result["ytm_matched"] = True
+                    result["requested_artist"] = meta["artist"]
+                    result["requested_title"] = meta["title"]
+                    # Keep the exact source URL supplied by the user.
+                    result["source_url"] = meta.get("source_url") or user_input
+                    return result, ""
+
+                # Fallback is safe because this metadata came from the exact
+                # user-supplied YouTube Music video. Do not substitute a search
+                # result with a different video ID.
+                direct_result["source"] = "YouTube Music URL (exact source preserved)"
+                direct_result["input_type"] = "url"
+                direct_result["ytm_matched"] = False
+                direct_result["requested_artist"] = meta["artist"]
+                direct_result["requested_title"] = meta["title"]
+                return direct_result, ""
 
             direct_result = self.direct_result_from_metadata(meta)
             if not direct_result:
