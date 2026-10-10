@@ -1,0 +1,7 @@
+customtkinter
+requests
+Pillow
+mutagen
+ytmusicapi
+yt-dlp
+comtypes
