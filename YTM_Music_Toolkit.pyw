@@ -2030,7 +2030,24 @@ class YTMResolver:
                 except Exception:
                     pass
 
-        payload = auth_client.get_liked_songs(limit=5000)
+        try:
+            payload = auth_client.get_liked_songs(limit=5000)
+        except KeyError as exc:
+            error_text = str(exc)
+            if (
+                "twoColumnBrowseResultsRenderer" in error_text
+                or "Looking for what you've liked" in error_text
+                or "Looking for what you’ve liked" in error_text
+            ):
+                raise RuntimeError(
+                    "YouTube Music returned its signed-out Liked Music screen. "
+                    "The selected cookies.txt was readable, but it did not authenticate "
+                    "the Liked Music API request. Export a fresh cookies.txt while signed "
+                    "in at https://music.youtube.com, then select that file in the toolkit. "
+                    "No separate ytmusicapi_browser.json file is needed."
+                ) from exc
+            raise
+
         tracks = payload.get("tracks") if isinstance(payload, dict) else None
         if not isinstance(tracks, list):
             tracks = []
