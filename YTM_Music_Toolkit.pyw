@@ -1941,19 +1941,48 @@ class YTMResolver:
                 **get_hidden_subprocess_kwargs(),
             )
             raw = proc.stdout.strip()
+            stderr_text = (proc.stderr or "").strip()
             # --ignore-errors exits non-zero when a single entry is
             # unavailable but still prints the full playlist JSON.
             if not raw:
                 raise RuntimeError(
-                    f"yt-dlp exited with code {proc.returncode}: {proc.stderr.strip()}"
+                    f"yt-dlp returned no JSON (exit code {proc.returncode}). "
+                    f"Details: {stderr_text[-1800:] or 'no stderr output'}"
                 )
-            return json.loads(raw)
+
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(
+                    f"yt-dlp returned invalid playlist JSON (exit code {proc.returncode}). "
+                    f"Output starts with {raw[:180]!r}. "
+                    f"Details: {stderr_text[-1200:] or 'no stderr output'}"
+                ) from exc
+
+            if not isinstance(payload, dict):
+                parsed = urllib.parse.urlparse(playlist_url)
+                list_id = (urllib.parse.parse_qs(parsed.query).get("list") or [""])[0]
+                if list_id == "LM":
+                    raise RuntimeError(
+                        "yt-dlp returned JSON null for YouTube Music's Liked Music playlist (list=LM). "
+                        "This playlist is tied to your signed-in account, but yt-dlp did not receive its "
+                        "track list. The configured cookies.txt may be expired, incomplete, or not accepted "
+                        "for youtube.com. Re-authenticate and update the cookies file, then retry. "
+                        f"yt-dlp details: {stderr_text[-1400:] or 'no stderr output'}"
+                    )
+                raise RuntimeError(
+                    f"yt-dlp returned {type(payload).__name__} instead of a playlist object "
+                    f"(exit code {proc.returncode}). "
+                    f"Details: {stderr_text[-1400:] or 'no stderr output'}"
+                )
+            return payload
 
         try:
             data = ytdlp_retry_on_cookie_failure(playlist_url, _attempt)
             entries = data.get("entries") or []
             results = []
 
+            playlist_id = (urllib.parse.parse_qs(urllib.parse.urlparse(playlist_url).query).get("list") or [""])[0]
             for entry in entries:
                 if not isinstance(entry, dict):
                     continue
@@ -1982,16 +2011,25 @@ class YTMResolver:
                 playlist_item["source_url"] = source_url
                 results.append(playlist_item)
 
+            if not results and playlist_id == "LM":
+                raise RuntimeError(
+                    "yt-dlp returned a playlist object but no entries for YouTube Music's Liked Music playlist (list=LM). "
+                    "This usually means the account-bound playlist was not exposed to yt-dlp; check that the configured "
+                    "cookies.txt contains a current signed-in YouTube session."
+                )
             return results
         except BrowserSessionError:
             raise
         except Exception as exc:
-            write_failure_log(
+            log_path = write_failure_log(
                 "playlist_resolve",
                 exc,
                 details=f"Playlist: {playlist_url}",
             )
-            return []
+            message = f"Could not read playlist entries: {exc}"
+            if log_path:
+                message += f"\nDiagnostic log: {log_path}"
+            raise RuntimeError(message) from exc
 
 
 
