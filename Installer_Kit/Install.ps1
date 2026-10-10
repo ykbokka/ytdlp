@@ -42,20 +42,29 @@ function Refresh-Path {
 
 function Find-PythonLauncher {
     Refresh-Path
+
+    # Prefer the regular python command when it points to a real supported runtime.
+    if (Test-Command "python") {
+        $versionText = $null
+        $pythonOutput = & cmd.exe /d /c "python -c `"import sys; print('%d.%d' % sys.version_info[:2])`"" 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            $versionText = ($pythonOutput | Select-Object -Last 1).Trim()
+            if ($versionText -match "^3\.(10|11|12|13|14)$") {
+                return @{ Command = "python"; Prefix = @() }
+            }
+        }
+    }
+
+    # Check installed runtimes newest-first, including the user's existing Python 3.14.
     if (Test-Command "py") {
-        foreach ($version in @("3.12", "3.13", "3.11", "3.10")) {
-            & py "-$version" -c "import sys; print(sys.version_info >= (3,10))" 2>$null | Out-Null
+        foreach ($version in @("3.14", "3.13", "3.12", "3.11", "3.10")) {
+            & cmd.exe /d /c "py -$version -c `"import sys; print(sys.version_info >= (3,10))`"" 2>$null | Out-Null
             if ($LASTEXITCODE -eq 0) {
                 return @{ Command = "py"; Prefix = @("-$version") }
             }
         }
     }
-    if (Test-Command "python") {
-        $versionText = (& python -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>$null | Select-Object -Last 1)
-        if ($LASTEXITCODE -eq 0 -and $versionText -match "^(3)\.(10|11|12|13|14)$") {
-            return @{ Command = "python"; Prefix = @() }
-        }
-    }
+
     return $null
 }
 
