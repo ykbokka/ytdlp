@@ -4122,6 +4122,13 @@ class YTMMusicToolkit(ctk.CTk):
 
     @staticmethod
     def _tab_grid_pady_pair(widget):
+        # Preserve the real layout margins on the first animation pass.
+        # Otherwise each tab visit would use the previous animation's smaller
+        # padding as its new baseline, gradually squeezing the layout.
+        saved = getattr(widget, "_apple_tab_original_pady", None)
+        if saved is not None:
+            return saved
+
         info = widget.grid_info()
         if not info:
             return None
@@ -4130,18 +4137,27 @@ class YTMMusicToolkit(ctk.CTk):
         if isinstance(raw, str):
             parts = raw.split()
             if len(parts) >= 2:
-                return int(float(parts[0])), int(float(parts[1]))
-            if len(parts) == 1:
+                pair = (int(float(parts[0])), int(float(parts[1])))
+            elif len(parts) == 1:
                 value = int(float(parts[0]))
-                return value, value
-            return 0, 0
-        if isinstance(raw, (tuple, list)):
+                pair = (value, value)
+            else:
+                pair = (0, 0)
+        elif isinstance(raw, (tuple, list)):
             if len(raw) >= 2:
-                return int(raw[0]), int(raw[1])
-            value = int(raw[0]) if raw else 0
-            return value, value
-        value = int(raw or 0)
-        return value, value
+                pair = (int(raw[0]), int(raw[1]))
+            else:
+                value = int(raw[0]) if raw else 0
+                pair = (value, value)
+        else:
+            value = int(raw or 0)
+            pair = (value, value)
+
+        try:
+            widget._apple_tab_original_pady = pair
+        except Exception:
+            pass
+        return pair
 
 
     def animate_tab_in(self, tab_name):
