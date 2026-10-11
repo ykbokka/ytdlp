@@ -658,8 +658,11 @@ font.letterSpacing: 1 }
                             id: fileTypeBox
                             Layout.fillWidth: true
                             model: ["Video (MKV)", "Video (MP4)", "Audio only"]
-                            currentIndex: 0
-                            onActivated: { root.fileType = currentText }
+                            currentIndex: Math.max(0, model.indexOf(root.fileType))
+                            onActivated: {
+root.fileType = currentText
+root.persistDownloadOptions()
+}
                             contentItem: Text { leftPadding: 12
 rightPadding: 28
 text: fileTypeBox.displayText
@@ -720,7 +723,7 @@ font.letterSpacing: 1 }
                             id: audioFormatBox
                             Layout.fillWidth: true
                             model: ["FLAC", "MP3", "M4A", "Opus"]
-                            currentIndex: 0
+                            currentIndex: Math.max(0, model.indexOf(root.audioFormat))
                             enabled: fileTypeBox.currentText === "Audio only"
                             opacity: enabled ? 1 : 0.55
                             onActivated: {
@@ -751,8 +754,11 @@ font.letterSpacing: 1 }
                             id: subtitleBox
                             Layout.fillWidth: true
                             model: ["No subtitles", "Auto subtitles", "Manual subtitles"]
-                            currentIndex: 0
-                            onActivated: root.subtitleMode = currentText
+                            currentIndex: Math.max(0, model.indexOf(root.subtitleMode))
+                            onActivated: {
+root.subtitleMode = currentText
+root.persistDownloadOptions()
+}
                             contentItem: Text { leftPadding: 12
 rightPadding: 28
 text: subtitleBox.displayText
