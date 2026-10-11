@@ -2176,7 +2176,7 @@ class YTMResolver:
                     cookie_header = str(headers.get("cookie") or "")
                     cookie_names = sorted(set(
                         name
-                        for name in re.findall(r"(?:^|;\\s*)([^=;\\s]+)=", cookie_header)
+                        for name in re.findall(r"(?:^|;\s*)([^=;\s]+)=", cookie_header)
                     ))
                     auth_type = getattr(
                         auth_client.auth_type,
