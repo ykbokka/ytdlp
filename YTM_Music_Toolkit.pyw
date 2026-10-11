@@ -3241,12 +3241,14 @@ class YTMMusicToolkit(ctk.CTk):
         )
 
         tab_downloader = self.tabs.add("Downloader")
+        tab_queue = self.tabs.add("Queue")
         tab_metadata = self.tabs.add("Metadata")
         tab_cover = self.tabs.add("Cover Art")
         tab_crop = self.tabs.add("Crop Art")
         tab_pipeline = self.tabs.add("Library Overhaul")
         self._apple_tab_pages = [
             tab_downloader,
+            tab_queue,
             tab_metadata,
             tab_cover,
             tab_crop,
@@ -3254,6 +3256,7 @@ class YTMMusicToolkit(ctk.CTk):
         ]
 
         self.build_downloader_tab(tab_downloader)
+        self.build_queue_tab(tab_queue)
         self.build_metadata_tab(tab_metadata)
         self.build_cover_tab(tab_cover)
         self.build_crop_tab(tab_crop)
@@ -4344,6 +4347,17 @@ class YTMMusicToolkit(ctk.CTk):
                     )
                     continue
 
+                if isinstance(widget, ctk.CTkScrollableFrame):
+                    widget.configure(
+                        fg_color=palette["window_bg"],
+                        corner_radius=16,
+                        border_width=1,
+                        border_color=palette["separator"],
+                        scrollbar_button_color=palette["separator_hover"],
+                        scrollbar_button_hover_color=palette["muted"],
+                    )
+                    continue
+
                 if isinstance(widget, ctk.CTkFrame):
                     if not hasattr(widget, "_apple_original_fg_color"):
                         try:
@@ -4409,7 +4423,7 @@ class YTMMusicToolkit(ctk.CTk):
                     is_primary = any(
                         word in label for word in (
                             "start", "download", "rewrite", "upgrade", "overhaul",
-                            "crop", "apply", "save changes",
+                            "crop", "apply", "save changes", "process queue",
                         )
                     )
 
@@ -7751,6 +7765,7 @@ class YTMMusicToolkit(ctk.CTk):
 
 
     def run_download_worker(self, user_input):
+        self._last_download_outcome = "running"
         used_ytm_matching = (
             not is_youtube_url(user_input)
             or is_youtube_music_url(user_input)
@@ -8063,9 +8078,11 @@ class YTMMusicToolkit(ctk.CTk):
                     )
                 messagebox.showinfo("Success", message)
 
+            self._last_download_outcome = "success"
             self.after(0, finish_success)
 
         except DownloadCancelled as exc:
+            self._last_download_outcome = "cancelled"
             self.append_log(self.dl_log, f"[CANCELLED] {exc}")
             self.set_operation_progress(
                 "dl",
@@ -8076,6 +8093,7 @@ class YTMMusicToolkit(ctk.CTk):
             # Cancellation is user-requested, so it is not treated as a failure log.
 
         except Exception as exc:
+            self._last_download_outcome = "failed"
             log_path = write_failure_log(
                 "download_worker",
                 exc,
