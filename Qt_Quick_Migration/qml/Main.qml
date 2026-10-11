@@ -96,6 +96,10 @@ easing.type: Easing.OutCubic } }
         hasCookies = !!s.hasCookies
         performanceMode = s.performanceMode || "aggressive"
         conflictMode = s.conflictMode || "rename"
+        fileType = s.fileType || "Video (MKV)"
+        quality = s.quality || "Best available"
+        audioFormat = s.audioFormat || "FLAC"
+        subtitleMode = s.subtitleMode || "No subtitles"
         darkMode = (s.appearanceMode || "dark") !== "light"
     }
     function startDownload() {
@@ -105,6 +109,9 @@ easing.type: Easing.OutCubic } }
     }
     function runQueue() {
         backend.startQueue(fileType, quality, audioFormat, subtitleMode)
+    }
+    function persistDownloadOptions() {
+        backend.setDownloadOptions(fileType, quality, audioFormat, subtitleMode)
     }
 
     background: Rectangle {
@@ -492,6 +499,7 @@ font.bold: true }
             root.qualityOptions = choices
             if (choices.indexOf(root.quality) < 0)
                 root.quality = choices[0]
+            root.persistDownloadOptions()
             root.statusMessage = "Source preview ready: " + (data.title || "")
         }
         function onQueueChanged(items) { root.queueItems = items }
@@ -678,7 +686,10 @@ font.letterSpacing: 1 }
                             Layout.fillWidth: true
                             model: root.qualityOptions
                             currentIndex: Math.max(0, root.qualityOptions.indexOf(root.quality))
-                            onActivated: root.quality = currentText
+                            onActivated: {
+root.quality = currentText
+root.persistDownloadOptions()
+}
                             contentItem: Text { leftPadding: 12
 rightPadding: 28
 text: qualityBox.displayText
@@ -712,7 +723,10 @@ font.letterSpacing: 1 }
                             currentIndex: 0
                             enabled: fileTypeBox.currentText === "Audio only"
                             opacity: enabled ? 1 : 0.55
-                            onActivated: root.audioFormat = currentText
+                            onActivated: {
+root.audioFormat = currentText
+root.persistDownloadOptions()
+}
                             contentItem: Text { leftPadding: 12
 rightPadding: 28
 text: audioFormatBox.displayText
