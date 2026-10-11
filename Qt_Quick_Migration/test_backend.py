@@ -297,6 +297,16 @@ class QtBackendCoreTests(unittest.TestCase):
         self.assertEqual(backend.ToolkitBackend._language_label("ar"), "Arabic")
         self.assertEqual(backend.ToolkitBackend._language_iso639("en-US"), "eng")
 
+    def test_queue_progress_percent_is_playlist_wide(self):
+        calculate = backend.ToolkitBackend._queue_progress_percent
+        self.assertAlmostEqual(calculate(0, 4, 50), 12.5)
+        self.assertAlmostEqual(calculate(1, 4, 0), 25.0)
+        self.assertAlmostEqual(calculate(1, 4, 100), 50.0)
+        self.assertAlmostEqual(calculate(3, 4, 50), 87.5)
+        self.assertAlmostEqual(calculate(3, 4, 100), 100.0)
+        self.assertAlmostEqual(calculate(1, 4, 150), 50.0)
+        self.assertAlmostEqual(calculate(1, 4, -5), 25.0)
+
     def test_arabic_media_filename_isolated_without_reversing_title(self):
         title = "لا تصارخ ولا راح تموت🤫 _ Fears to Fathom #2"
         stem = backend.ToolkitBackend._media_stem(title)
