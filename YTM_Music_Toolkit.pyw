@@ -206,8 +206,25 @@ def get_concurrent_fragment_count(performance_mode="aggressive"):
     }.get(str(performance_mode or "aggressive").strip().lower(), 24)
 
 
-def get_ytdlp_runtime_args(performance_mode="aggressive"):
-    """Build yt-dlp's runtime options for the selected download-speed preset."""
+def get_ytdlp_runtime_args(performance_mode=None):
+    """Return lightweight extraction args unless this is an actual media download."""
+    args = ["--remote-components", "ejs:github"]
+
+    deno = find_executable("deno")
+    if not deno:
+        default_deno = Path.home() / ".deno" / "bin" / "deno.exe"
+        if default_deno.is_file():
+            deno = str(default_deno)
+
+    if deno:
+        args.extend(["--js-runtimes", f"deno:{deno}"])
+
+    # Metadata, previews, and playlist enumeration only need the extractor
+    # runtime. Do not initialize aria2, large read buffers, or HTTP chunking
+    # until the user has actually started a media transfer.
+    if performance_mode is None:
+        return args
+
     mode = str(performance_mode or "aggressive").strip().lower()
     profiles = {
         "conservative": {"buffer": "1M", "connections": 4, "split": "4M", "http_chunk": "5M"},
@@ -215,16 +232,10 @@ def get_ytdlp_runtime_args(performance_mode="aggressive"):
         "aggressive": {"buffer": "4M", "connections": 16, "split": "1M", "http_chunk": "16M"},
     }
     profile = profiles.get(mode, profiles["aggressive"])
-
-    args = [
-        "--remote-components", "ejs:github",
-        "--buffer-size", profile["buffer"],
-        "--resize-buffer",
-    ]
+    args.extend(["--buffer-size", profile["buffer"], "--resize-buffer"])
 
     # aria2 can split direct HTTP/HTTPS media URLs across multiple ranges.
-    # Tune its connection count per preset, avoid slow preallocation for large
-    # files on Windows, and keep DASH/HLS on yt-dlp's native fragment downloader.
+    # Keep DASH/HLS on yt-dlp's native fragment downloader.
     aria2 = find_executable("aria2c")
     if aria2:
         connections = profile["connections"]
@@ -237,17 +248,7 @@ def get_ytdlp_runtime_args(performance_mode="aggressive"):
             "--max-download-limit=0 --max-overall-download-limit=0",
         ])
     else:
-        # Chunked native HTTP can help some servers that throttle long responses.
         args.extend(["--http-chunk-size", profile["http_chunk"]])
-
-    deno = find_executable("deno")
-    if not deno:
-        default_deno = Path.home() / ".deno" / "bin" / "deno.exe"
-        if default_deno.is_file():
-            deno = str(default_deno)
-
-    if deno:
-        args.extend(["--js-runtimes", f"deno:{deno}"])
 
     return args
 
@@ -1758,7 +1759,7 @@ class YTMResolver:
                 def _playlist_attempt(cookie_args):
                     return run_json([
                         get_ytdlp_command(),
-                        *get_ytdlp_runtime_args(getattr(self, "performance_mode", "aggressive")),
+                        *get_ytdlp_runtime_args(),
                         "--dump-single-json",
                         "--flat-playlist",
                         "--skip-download",
@@ -1814,45 +1815,22 @@ class YTMResolver:
                         if candidate not in thumbnail_candidates:
                             thumbnail_candidates.append(candidate)
 
-                def inspect_playlist_entry(entry):
-                    try:
-                        formats, strategy = inspect_youtube_formats(
-                            entry["url"],
-                            timeout=45,
-                        )
-                        return formats, strategy, ""
-                    except Exception as exc:
-                        return [], None, str(exc)
-
-                inspection_results = []
-                if video_entries:
-                    with ThreadPoolExecutor(max_workers=min(4, len(video_entries))) as pool:
-                        inspection_results = list(pool.map(inspect_playlist_entry, video_entries))
-
-                inspected_entries = []
-                video_formats = []
-                for entry, (formats, strategy, error) in zip(video_entries, inspection_results):
-                    heights = detected_video_heights(formats)
-                    video_formats.append(formats)
-                    inspected_entries.append({
-                        **entry,
-                        "heights": heights,
-                        "extractor_arg": strategy,
-                        "error": error,
-                    })
-
-                inspected_count = sum(1 for entry in inspected_entries if not entry["error"])
+                # Keep preview metadata lightweight. Inspecting formats for every
+                # playlist item here made large playlists sit in "Preparing" for ages.
+                # The actual download worker inspects each item only when it is about
+                # to be downloaded, so the selected quality ceiling is still enforced.
                 quality_summary = (
-                    f"Playlist qualities checked: {inspected_count}/{len(video_entries)} videos"
+                    f"Playlist ready: {len(video_entries)} videos · "
+                    "qualities checked as each download starts"
                 )
 
                 return {
                     "title": title,
                     "cover_url": thumbnail_candidates[0] if thumbnail_candidates else "",
                     "thumbnail_candidates": thumbnail_candidates,
-                    "quality_options": build_playlist_quality_options(video_formats),
+                    "quality_options": build_playlist_quality_options([]),
                     "quality_summary": quality_summary,
-                    "quality_inventory": inspected_entries,
+                    "quality_inventory": [],
                     "is_playlist": True,
                     "playlist_url": url,
                     "first_video_url": video_entries[0]["url"] if video_entries else "",
@@ -2281,7 +2259,7 @@ class YTMResolver:
             proc = subprocess.run(
                 [
                     get_ytdlp_command(),
-                    *get_ytdlp_runtime_args(getattr(self, "performance_mode", "aggressive")),
+                    *get_ytdlp_runtime_args(),
                     "--dump-single-json",
                     "--flat-playlist",
                     "--skip-download",
@@ -9374,8 +9352,10 @@ def _v3_video_quality_options_final(formats, file_type, mode="single"):
             "Best Option Separate",
             {"kind": "video", "best_per_item": True, "file_type": file_type},
         )]
-        # Add a resolution ceiling only when at least one playlist video exposes it.
-        for height in heights:
+        # Playlist ceilings are generic during preview; each video's real
+        # formats are inspected immediately before its own download begins.
+        playlist_heights = heights or sorted(VIDEO_QUALITY_LABELS, reverse=True)
+        for height in playlist_heights:
             label = VIDEO_QUALITY_LABELS.get(height, f"{height}P")
             options.append((label, {
                 "kind": "video",
