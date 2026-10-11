@@ -3487,6 +3487,14 @@ class YTMMusicToolkit(ctk.CTk):
         if panel is None or tab is None or row is None:
             return
 
+        palette = (
+            getattr(self, "_apple_theme_transition_palette", None)
+            or APPLE_THEME_PALETTES.get(
+                getattr(self, "appearance_mode", "dark"),
+                APPLE_THEME_PALETTES["dark"],
+            )
+        )
+
         try:
             tab.grid_rowconfigure(row, weight=1)
             panel.grid(
@@ -3501,7 +3509,7 @@ class YTMMusicToolkit(ctk.CTk):
 
             panel.configure(
                 height=1,
-                border_color="#050b12",
+                border_color=palette["separator"],
             )
             panel.grid_propagate(False)
 
@@ -3509,7 +3517,11 @@ class YTMMusicToolkit(ctk.CTk):
                 try:
                     panel.configure(
                         height=max(1, round(1 + (target_height - 1) * amount)),
-                        border_color=self._blend_colors("#050b12", "#111827", amount),
+                        border_color=self._blend_colors(
+                            palette["separator"],
+                            palette["separator_hover"],
+                            amount,
+                        ),
                     )
                 except Exception:
                     pass
@@ -3518,7 +3530,7 @@ class YTMMusicToolkit(ctk.CTk):
                 try:
                     panel.grid_propagate(True)
                     panel.configure(
-                        border_color="#111827",
+                        border_color=palette["separator"],
                     )
                 except Exception:
                     pass
@@ -4276,33 +4288,63 @@ class YTMMusicToolkit(ctk.CTk):
         if button is None:
             return
         mode = getattr(self, "appearance_mode", "dark")
+        palette = (
+            getattr(self, "_apple_theme_transition_palette", None)
+            or APPLE_THEME_PALETTES.get(mode, APPLE_THEME_PALETTES["dark"])
+        )
         try:
             # The icon shows the mode the user can switch TO.
             button.configure(
                 text="☀" if mode == "dark" else "☾",
-                fg_color=APPLE_THEME_PALETTES.get(mode, APPLE_THEME_PALETTES["dark"])["surface_elevated"],
-                hover_color=APPLE_THEME_PALETTES.get(mode, APPLE_THEME_PALETTES["dark"])["separator_hover"],
+                fg_color=palette["surface_elevated"],
+                hover_color=palette["separator_hover"],
+                text_color=palette["text"],
             )
-            try:
-                button.configure(
-                    text_color=APPLE_THEME_PALETTES.get(mode, APPLE_THEME_PALETTES["dark"])["text"]
-                )
-            except Exception:
-                pass
         except Exception:
             pass
 
 
     def toggle_appearance_mode(self):
         current = str(getattr(self, "appearance_mode", "dark")).lower()
-        self.appearance_mode = "light" if current != "light" else "dark"
+        target = "light" if current != "light" else "dark"
+        self.appearance_mode = target
 
         try:
             self.save_config()
         except Exception as exc:
             write_failure_log("appearance_mode_save", exc)
 
-        self.apply_apple_dark_theme()
+        self.animate_apple_theme_transition(current, target)
+
+
+    def animate_apple_theme_transition(self, start_mode, target_mode):
+        """Crossfade the full app palette instead of changing themes in one frame."""
+        start_palette = dict(
+            getattr(self, "_apple_theme_transition_palette", None)
+            or APPLE_THEME_PALETTES.get(start_mode, APPLE_THEME_PALETTES["dark"])
+        )
+        target_palette = APPLE_THEME_PALETTES.get(
+            target_mode, APPLE_THEME_PALETTES["dark"]
+        )
+
+        def update(amount):
+            interpolated = {}
+            for key, end_color in target_palette.items():
+                start_color = start_palette.get(key, end_color)
+                try:
+                    interpolated[key] = self._blend_colors(
+                        start_color, end_color, amount
+                    )
+                except Exception:
+                    interpolated[key] = end_color
+            self._apple_theme_transition_palette = interpolated
+            self.apply_apple_dark_theme()
+
+        def done():
+            self._apple_theme_transition_palette = None
+            self.apply_apple_dark_theme()
+
+        self._animate("apple_theme_transition", 420, update, done)
 
 
     def apply_apple_dark_theme(self):
@@ -4311,12 +4353,20 @@ class YTMMusicToolkit(ctk.CTk):
         if mode not in {"dark", "light"}:
             mode = "dark"
             self.appearance_mode = mode
-        palette = APPLE_THEME_PALETTES[mode]
+        palette = (
+            getattr(self, "_apple_theme_transition_palette", None)
+            or APPLE_THEME_PALETTES[mode]
+        )
 
         try:
-            ctk.set_appearance_mode("Light" if mode == "light" else "Dark")
+            requested_ctk_mode = "Light" if mode == "light" else "Dark"
+            if str(ctk.get_appearance_mode()).lower() != requested_ctk_mode.lower():
+                ctk.set_appearance_mode(requested_ctk_mode)
         except Exception:
-            pass
+            try:
+                ctk.set_appearance_mode("Light" if mode == "light" else "Dark")
+            except Exception:
+                pass
 
         self.configure(fg_color=palette["root_bg"])
         pages = {id(page) for page in getattr(self, "_apple_tab_pages", [])}
@@ -4350,7 +4400,7 @@ class YTMMusicToolkit(ctk.CTk):
                 if isinstance(widget, ctk.CTkScrollableFrame):
                     widget.configure(
                         fg_color=palette["window_bg"],
-                        corner_radius=16,
+                        corner_radius=20,
                         border_width=1,
                         border_color=palette["separator"],
                         scrollbar_button_color=palette["separator_hover"],
@@ -4404,7 +4454,7 @@ class YTMMusicToolkit(ctk.CTk):
                             radius = 16
                         widget.configure(
                             fg_color=palette["surface"],
-                            corner_radius=16 if radius > 8 else radius,
+                            corner_radius=22 if radius > 8 else radius,
                         )
 
                     try:
@@ -4653,7 +4703,10 @@ class YTMMusicToolkit(ctk.CTk):
             fg_color="#000000",
             corner_radius=24,
             border_width=1,
-            border_color="#111827",
+            border_color=APPLE_THEME_PALETTES.get(
+                getattr(self, "appearance_mode", "dark"),
+                APPLE_THEME_PALETTES["dark"],
+            )["separator"],
         )
         target.grid(
             row=0,
@@ -4704,7 +4757,10 @@ class YTMMusicToolkit(ctk.CTk):
             fg_color="#000000",
             corner_radius=24,
             border_width=1,
-            border_color="#111827",
+            border_color=APPLE_THEME_PALETTES.get(
+                getattr(self, "appearance_mode", "dark"),
+                APPLE_THEME_PALETTES["dark"],
+            )["separator"],
         )
         options.grid(
             row=1,
@@ -4804,7 +4860,10 @@ class YTMMusicToolkit(ctk.CTk):
             fg_color="#000000",
             corner_radius=24,
             border_width=1,
-            border_color="#111827",
+            border_color=APPLE_THEME_PALETTES.get(
+                getattr(self, "appearance_mode", "dark"),
+                APPLE_THEME_PALETTES["dark"],
+            )["separator"],
         )
         preview.grid(
             row=2,
@@ -5667,7 +5726,12 @@ class YTMMusicToolkit(ctk.CTk):
                     width=target_width,
                     height=target_height,
                 )
-                card.configure(border_color="#111827")
+                card.configure(
+                    border_color=APPLE_THEME_PALETTES.get(
+                        getattr(self, "appearance_mode", "dark"),
+                        APPLE_THEME_PALETTES["dark"],
+                    )["separator"]
+                )
             except Exception:
                 pass
 
@@ -5678,7 +5742,10 @@ class YTMMusicToolkit(ctk.CTk):
                 card.cget("border_color"),
                 "#1e4f73",
                 220,
-                "#111827",
+                APPLE_THEME_PALETTES.get(
+                    getattr(self, "appearance_mode", "dark"),
+                    APPLE_THEME_PALETTES["dark"],
+                )["separator"],
             )
         except Exception:
             pass
@@ -8359,7 +8426,10 @@ class YTMMusicToolkit(ctk.CTk):
             fg_color="#000000",
             corner_radius=24,
             border_width=1,
-            border_color="#111827",
+            border_color=APPLE_THEME_PALETTES.get(
+                getattr(self, "appearance_mode", "dark"),
+                APPLE_THEME_PALETTES["dark"],
+            )["separator"],
         )
         box.grid(
             row=0,
@@ -8571,7 +8641,10 @@ class YTMMusicToolkit(ctk.CTk):
             fg_color="#000000",
             corner_radius=24,
             border_width=1,
-            border_color="#111827",
+            border_color=APPLE_THEME_PALETTES.get(
+                getattr(self, "appearance_mode", "dark"),
+                APPLE_THEME_PALETTES["dark"],
+            )["separator"],
         )
         box.grid(
             row=0,
@@ -8757,7 +8830,10 @@ class YTMMusicToolkit(ctk.CTk):
             fg_color="#000000",
             corner_radius=24,
             border_width=1,
-            border_color="#111827",
+            border_color=APPLE_THEME_PALETTES.get(
+                getattr(self, "appearance_mode", "dark"),
+                APPLE_THEME_PALETTES["dark"],
+            )["separator"],
         )
         box.grid(
             row=0,
@@ -8917,7 +8993,10 @@ class YTMMusicToolkit(ctk.CTk):
             fg_color="#000000",
             corner_radius=24,
             border_width=1,
-            border_color="#111827",
+            border_color=APPLE_THEME_PALETTES.get(
+                getattr(self, "appearance_mode", "dark"),
+                APPLE_THEME_PALETTES["dark"],
+            )["separator"],
         )
         box.grid(
             row=0,
