@@ -56,7 +56,7 @@ except ImportError:
 # ============================================================
 
 
-APP_NAME = "YTM Music Toolkit v3"
+APP_NAME = "YTM Music Toolkit V8"
 APP_FONT = "SF Pro Text"
 
 # Apple-inspired dark appearance: graphite surfaces, quiet separators,
@@ -8192,7 +8192,7 @@ class YTMMusicToolkit(ctk.CTk):
 
     def run_download_worker(self, user_input):
         self._last_download_outcome = "running"
-        queue_run = bool(getattr(self, "_v3_queue_active", False))
+        queue_run = bool(getattr(self, "_V8_queue_active", False))
         used_ytm_matching = (
             not is_youtube_url(user_input)
             or is_youtube_music_url(user_input)
@@ -9583,7 +9583,7 @@ class YTMMusicToolkit(ctk.CTk):
 
 
 # ============================================================
-# V3 ULTIMATE FORMAT / RELIABILITY LAYER
+# V8 ULTIMATE FORMAT / RELIABILITY LAYER
 # ============================================================
 # This layer extends the V2 build without replacing Codex's UI/animation
 # architecture. It adds independent File Type + File Quality controls,
@@ -9591,7 +9591,7 @@ class YTMMusicToolkit(ctk.CTk):
 # collision-safe output naming, dry-run inspection, validation, history,
 # performance controls, and a lightweight queue.
 
-FILE_TYPE_OPTIONS_V3 = [
+FILE_TYPE_OPTIONS_V8 = [
     (" Auto (Recommended)", "auto"),
     (" MP4 Video", "mp4"),
     (" MKV Video", "mkv"),
@@ -9602,12 +9602,12 @@ FILE_TYPE_OPTIONS_V3 = [
     (" FLAC Audio", "flac"),
     (" WAV PCM Audio", "wav"),
 ]
-FILE_TYPE_BY_LABEL_V3 = {label: value for label, value in FILE_TYPE_OPTIONS_V3}
-FILE_LABEL_BY_TYPE_V3 = {value: label for label, value in FILE_TYPE_OPTIONS_V3}
-VIDEO_FILE_TYPES_V3 = {"auto", "mp4", "mkv"}
-AUDIO_FILE_TYPES_V3 = {"mp3", "m4a", "opus", "vorbis", "flac", "wav"}
-LOSSLESS_AUDIO_TYPES_V3 = {"flac", "wav"}
-AUDIO_BITRATES_V3 = {
+FILE_TYPE_BY_LABEL_V8 = {label: value for label, value in FILE_TYPE_OPTIONS_V8}
+FILE_LABEL_BY_TYPE_V8 = {value: label for label, value in FILE_TYPE_OPTIONS_V8}
+VIDEO_FILE_TYPES_V8 = {"auto", "mp4", "mkv"}
+AUDIO_FILE_TYPES_V8 = {"mp3", "m4a", "opus", "vorbis", "flac", "wav"}
+LOSSLESS_AUDIO_TYPES_V8 = {"flac", "wav"}
+AUDIO_BITRATES_V8 = {
     "mp3": [64, 96, 128, 160, 192, 224, 256, 320],
     "m4a": [64, 96, 128, 160, 192, 256, 320],
     "opus": [48, 64, 96, 128, 160, 192, 256, 320],
@@ -9615,24 +9615,24 @@ AUDIO_BITRATES_V3 = {
 }
 
 
-def _v3_file_type_id(label):
-    return FILE_TYPE_BY_LABEL_V3.get(str(label or ""), "auto")
+def _V8_file_type_id(label):
+    return FILE_TYPE_BY_LABEL_V8.get(str(label or ""), "auto")
 
 
-def _v3_audio_quality_options(file_type):
+def _V8_audio_quality_options(file_type):
     file_type = str(file_type or "").lower()
-    if file_type in LOSSLESS_AUDIO_TYPES_V3:
+    if file_type in LOSSLESS_AUDIO_TYPES_V8:
         return [(
             {"flac": "Lossless — FLAC", "alac": "Lossless — ALAC", "wav": "Lossless — PCM WAV"}[file_type],
             {"kind": "audio", "audio_format": file_type, "quality": None, "lossless": True, "file_type": file_type},
         )]
     return [
         (f" {rate} kbps", {"kind": "audio", "audio_format": file_type, "quality": f"{rate}K", "bitrate": rate, "lossless": False, "file_type": file_type})
-        for rate in sorted(AUDIO_BITRATES_V3.get(file_type, []), reverse=True)
+        for rate in sorted(AUDIO_BITRATES_V8.get(file_type, []), reverse=True)
     ]
 
 
-def _v3_video_quality_options(formats, file_type, mode="single"):
+def _V8_video_quality_options(formats, file_type, mode="single"):
     file_type = str(file_type or "auto").lower()
     if mode == "playlist":
         out = [("Best Option Separate", {"kind": "video", "best_per_item": True, "file_type": file_type})]
@@ -9649,14 +9649,14 @@ def _v3_video_quality_options(formats, file_type, mode="single"):
     return out
 
 
-def _v3_quality_options(formats, file_type, mode="single"):
+def _V8_quality_options(formats, file_type, mode="single"):
     file_type = str(file_type or "auto").lower()
-    if file_type in AUDIO_FILE_TYPES_V3:
-        return _v3_audio_quality_options(file_type)
-    return _v3_video_quality_options(formats, file_type, mode)
+    if file_type in AUDIO_FILE_TYPES_V8:
+        return _V8_audio_quality_options(file_type)
+    return _V8_video_quality_options(formats, file_type, mode)
 
 
-def _v3_unique_stem(output_dir, title, extensions):
+def _V8_unique_stem(output_dir, title, extensions):
     base = sanitize_filename(title)
     folder = Path(output_dir)
     existing = {p.name.lower() for p in folder.iterdir()} if folder.exists() else set()
@@ -9670,7 +9670,7 @@ def _v3_unique_stem(output_dir, title, extensions):
         i += 1
 
 
-def _v3_validate_output(file_path, kind):
+def _V8_validate_output(file_path, kind):
     path = Path(file_path)
     if not path.exists() or path.stat().st_size <= 0:
         raise RuntimeError(f"Output is missing or empty: {path}")
@@ -9700,7 +9700,7 @@ def _v3_validate_output(file_path, kind):
     return True
 
 
-def _v3_history(entry):
+def _V8_history(entry):
     try:
         ensure_failure_log_dir()
         path = Path(FAILURE_LOG_DIR) / "operation_history.json"
@@ -9721,10 +9721,10 @@ def _v3_history(entry):
 
 
 # ---- resolver preview: preserve the already-inspected format universe ----
-_ORIGINAL_RESOLVER_PREVIEW_V3 = YTMResolver.preview_from_url
+_ORIGINAL_RESOLVER_PREVIEW_V8 = YTMResolver.preview_from_url
 
 
-def _v3_public_metadata_preview(url):
+def _V8_public_metadata_preview(url):
     """Fallback title/artwork preview when yt-dlp cannot inspect YouTube formats."""
     if is_playlist_url(url):
         return None
@@ -9774,10 +9774,10 @@ def _v3_public_metadata_preview(url):
         return None
 
 
-def _v3_resolver_preview(url):
-    preview = _ORIGINAL_RESOLVER_PREVIEW_V3(url)
+def _V8_resolver_preview(url):
+    preview = _ORIGINAL_RESOLVER_PREVIEW_V8(url)
     if not preview:
-        preview = _v3_public_metadata_preview(url)
+        preview = _V8_public_metadata_preview(url)
         if not preview:
             return None
 
@@ -9791,7 +9791,7 @@ def _v3_resolver_preview(url):
                 preview["formats"] = formats
                 preview["youtube_extractor_arg"] = extractor_arg
             except Exception as exc:
-                write_failure_log("v3_preview_format_cache", exc, details=f"URL: {url}")
+                write_failure_log("V8_preview_format_cache", exc, details=f"URL: {url}")
                 preview["formats"] = []
                 if not preview.get("quality_options"):
                     preview["quality_options"] = AUDIO_DOWNLOAD_OPTIONS.copy()
@@ -9800,43 +9800,43 @@ def _v3_resolver_preview(url):
     return preview
 
 
-YTMResolver.preview_from_url = staticmethod(_v3_resolver_preview)
+YTMResolver.preview_from_url = staticmethod(_V8_resolver_preview)
 
 
 # ---- downloader UI extension ----
-_ORIGINAL_BUILD_DOWNLOADER_TAB_V3 = YTMMusicToolkit.build_downloader_tab
-_ORIGINAL_START_DOWNLOAD_V3 = YTMMusicToolkit.start_download
-_ORIGINAL_RUN_WORKER_V3 = YTMMusicToolkit.run_download_worker
-_ORIGINAL_BUILD_COMMAND_V3 = YTMMusicToolkit.build_yt_dlp_command
-_ORIGINAL_POSTPROCESS_V3 = YTMMusicToolkit.postprocess_downloaded_file
-_ORIGINAL_EXECUTE_V3 = YTMMusicToolkit.execute_download_for_result
-_ORIGINAL_IS_LOSSLESS_V3 = YTMMusicToolkit.is_lossless_video_mode
-_ORIGINAL_APPLY_PREVIEW_V3 = YTMMusicToolkit.apply_silent_link_preview
+_ORIGINAL_BUILD_DOWNLOADER_TAB_V8 = YTMMusicToolkit.build_downloader_tab
+_ORIGINAL_START_DOWNLOAD_V8 = YTMMusicToolkit.start_download
+_ORIGINAL_RUN_WORKER_V8 = YTMMusicToolkit.run_download_worker
+_ORIGINAL_BUILD_COMMAND_V8 = YTMMusicToolkit.build_yt_dlp_command
+_ORIGINAL_POSTPROCESS_V8 = YTMMusicToolkit.postprocess_downloaded_file
+_ORIGINAL_EXECUTE_V8 = YTMMusicToolkit.execute_download_for_result
+_ORIGINAL_IS_LOSSLESS_V8 = YTMMusicToolkit.is_lossless_video_mode
+_ORIGINAL_APPLY_PREVIEW_V8 = YTMMusicToolkit.apply_silent_link_preview
 
 
-def _v3_build_downloader_tab(self, tab):
-    _ORIGINAL_BUILD_DOWNLOADER_TAB_V3(self, tab)
+def _V8_build_downloader_tab(self, tab):
+    _ORIGINAL_BUILD_DOWNLOADER_TAB_V8(self, tab)
     try:
         options = self.dl_quality_label.master
         options.grid_columnconfigure(0, weight=1)
         options.grid_columnconfigure(1, weight=1)
 
-        self._v3_selected_file_type = "auto"
-        self._v3_selected_file_quality = ""
-        self._v3_preview_formats = []
-        self._v3_queue = []
+        self._V8_selected_file_type = "auto"
+        self._V8_selected_file_quality = ""
+        self._V8_preview_formats = []
+        self._V8_queue = []
 
         self.dl_file_type_label = ctk.CTkLabel(options, text=" File Type", font=(APP_FONT, 15, "bold"), text_color="#ffffff")
         self.dl_file_type = ctk.CTkComboBox(
             options,
-            values=[label for label, _ in FILE_TYPE_OPTIONS_V3],
+            values=[label for label, _ in FILE_TYPE_OPTIONS_V8],
             state="readonly",
             fg_color="#050505", text_color="#ffffff", button_color="#1e293b", button_hover_color="#334155",
             dropdown_fg_color="#000000", dropdown_text_color="#ffffff", corner_radius=8,
             font=(APP_FONT, 14), dropdown_font=(APP_FONT, 14), height=42,
-            command=self._v3_file_type_changed,
+            command=self._V8_file_type_changed,
         )
-        self.dl_file_type.set(FILE_LABEL_BY_TYPE_V3["auto"])
+        self.dl_file_type.set(FILE_LABEL_BY_TYPE_V8["auto"])
 
         # Reuse V2's quality combo but move it into the right-hand column.
         self.dl_quality_label.configure(text=" File Quality")
@@ -9854,13 +9854,13 @@ def _v3_build_downloader_tab(self, tab):
             font=(APP_FONT, 11), dropdown_font=(APP_FONT, 11), fg_color="#050505",
             button_color="#1e293b", button_hover_color="#334155", dropdown_fg_color="#000000",
             dropdown_text_color="#ffffff", text_color="#ffffff",
-            command=lambda value: self._v3_set_performance(value),
+            command=lambda value: self._V8_set_performance(value),
         )
         self.dl_performance.set({"balanced": "Balanced", "conservative": "Conservative", "aggressive": "Aggressive"}.get(self.performance_mode, "Balanced"))
         self.dl_performance.grid(row=0, column=1, sticky="ew")
 
-        ctk.CTkButton(utility, text="ⓘ Inspect Details", width=120, height=32, font=(APP_FONT, 10, "bold"), fg_color="transparent", hover_color="#1e293b", text_color="#cbd5e1", command=self._v3_show_media_details).grid(row=1, column=0, sticky="w", pady=(6, 0))
-        ctk.CTkButton(utility, text="＋ Queue", width=85, height=32, font=(APP_FONT, 10, "bold"), fg_color="transparent", hover_color="#1e293b", text_color="#cbd5e1", command=self._v3_queue_current).grid(row=1, column=1, sticky="w", pady=(6, 0))
+        ctk.CTkButton(utility, text="ⓘ Inspect Details", width=120, height=32, font=(APP_FONT, 10, "bold"), fg_color="transparent", hover_color="#1e293b", text_color="#cbd5e1", command=self._V8_show_media_details).grid(row=1, column=0, sticky="w", pady=(6, 0))
+        ctk.CTkButton(utility, text="＋ Queue", width=85, height=32, font=(APP_FONT, 10, "bold"), fg_color="transparent", hover_color="#1e293b", text_color="#cbd5e1", command=self._V8_queue_current).grid(row=1, column=1, sticky="w", pady=(6, 0))
         self.dl_queue_count = ctk.CTkLabel(utility, text="Queue: 0", font=(APP_FONT, 10, "bold"), text_color="#64748b")
         self.dl_queue_count.grid(row=1, column=1, sticky="e", pady=(6, 0))
 
@@ -9870,15 +9870,15 @@ def _v3_build_downloader_tab(self, tab):
         # Hide the original selector until preview/inspection is ready.
         self.hide_download_quality_selector()
     except Exception as exc:
-        write_failure_log("v3_downloader_ui", exc)
+        write_failure_log("V8_downloader_ui", exc)
 
 
-def _v3_hide_selector(self):
+def _V8_hide_selector(self):
     self._dl_quality_visible = False
     self._dl_preview_quality_options = []
     self._dl_preview_quality_source = ""
     self._dl_preview_quality_mode = "none"
-    self._v3_selected_file_quality = ""
+    self._V8_selected_file_quality = ""
     try:
         self.dl_file_type_label.grid_remove()
         self.dl_file_type.grid_remove()
@@ -9890,29 +9890,29 @@ def _v3_hide_selector(self):
         pass
 
 
-def _v3_file_type_changed(self, selected_label=None):
+def _V8_file_type_changed(self, selected_label=None):
     try:
         label = str(selected_label or self.dl_file_type.get())
-        file_type = _v3_file_type_id(label)
-        self._v3_selected_file_type = file_type
+        file_type = _V8_file_type_id(label)
+        self._V8_selected_file_type = file_type
         mode = self.downloader_quality_mode_for_source(self._dl_preview_quality_source or self.dl_input.get())
-        quality_options = _v3_quality_options(self._v3_preview_formats, file_type, mode if mode in {"single", "playlist"} else "single")
+        quality_options = _V8_quality_options(self._V8_preview_formats, file_type, mode if mode in {"single", "playlist"} else "single")
         self._dl_preview_quality_options = quality_options
         values = [label for label, _ in quality_options]
         if values:
-            if mode == "playlist" and file_type in VIDEO_FILE_TYPES_V3:
+            if mode == "playlist" and file_type in VIDEO_FILE_TYPES_V8:
                 default = "Best Option Separate"
             else:
                 default = values[0]
             self.dl_format.configure(values=values)
             self.dl_format.set(default)
-            self._v3_selected_file_quality = default
+            self._V8_selected_file_quality = default
         if not self._dl_preview_quality_source:
-            _v3_hide_selector(self)
+            _V8_hide_selector(self)
             return
         self.dl_file_type_label.grid(row=0, column=0, sticky="w", padx=22, pady=(14, 4))
         self.dl_file_type.grid(row=1, column=0, sticky="ew", padx=22, pady=(0, 8))
-        if file_type in LOSSLESS_AUDIO_TYPES_V3:
+        if file_type in LOSSLESS_AUDIO_TYPES_V8:
             self.dl_quality_label.grid_remove()
             self.dl_format.grid_remove()
         else:
@@ -9920,49 +9920,49 @@ def _v3_file_type_changed(self, selected_label=None):
             self.dl_format.grid(row=1, column=1, sticky="ew", padx=22, pady=(0, 8))
         self._dl_quality_visible = bool(values)
     except Exception as exc:
-        write_failure_log("v3_file_type_change", exc)
+        write_failure_log("V8_file_type_change", exc)
 
 
-def _v3_show_selector(self, quality_options=None, animated=True, source_value="", source_mode=None):
+def _V8_show_selector(self, quality_options=None, animated=True, source_value="", source_mode=None):
     source_value = str(source_value or self._dl_preview_quality_source or self.dl_input.get()).strip()
     mode = self.downloader_quality_mode_for_source(source_value)
     if mode not in {"single", "playlist"}:
-        _v3_hide_selector(self)
+        _V8_hide_selector(self)
         return
     self._dl_preview_quality_source = source_value
     self._dl_preview_quality_mode = mode
     try:
-        self.dl_file_type.set(FILE_LABEL_BY_TYPE_V3.get(self._v3_selected_file_type, FILE_LABEL_BY_TYPE_V3["auto"]))
-        _v3_file_type_changed(self, self.dl_file_type.get())
-        if mode == "playlist" and self._v3_selected_file_type in VIDEO_FILE_TYPES_V3:
-            opts = _v3_quality_options(self._v3_preview_formats, self._v3_selected_file_type, "playlist")
+        self.dl_file_type.set(FILE_LABEL_BY_TYPE_V8.get(self._V8_selected_file_type, FILE_LABEL_BY_TYPE_V8["auto"]))
+        _V8_file_type_changed(self, self.dl_file_type.get())
+        if mode == "playlist" and self._V8_selected_file_type in VIDEO_FILE_TYPES_V8:
+            opts = _V8_quality_options(self._V8_preview_formats, self._V8_selected_file_type, "playlist")
             self._dl_preview_quality_options = opts
             self.dl_format.configure(values=[label for label, _ in opts])
             self.dl_format.set("Best Option Separate")
-            self._v3_selected_file_quality = "Best Option Separate"
-        elif self._v3_selected_file_type in LOSSLESS_AUDIO_TYPES_V3:
+            self._V8_selected_file_quality = "Best Option Separate"
+        elif self._V8_selected_file_type in LOSSLESS_AUDIO_TYPES_V8:
             self.dl_quality_label.grid_remove()
             self.dl_format.grid_remove()
         self._dl_quality_visible = True
     except Exception as exc:
-        write_failure_log("v3_show_selector", exc, details=f"Source: {source_value}")
-        _v3_hide_selector(self)
+        write_failure_log("V8_show_selector", exc, details=f"Source: {source_value}")
+        _V8_hide_selector(self)
         return
     if animated:
-        self._animate("v3-quality-selector", 360, lambda amount: None)
+        self._animate("V8-quality-selector", 360, lambda amount: None)
 
 
-def _v3_selected_quality_spec(self, selected_format=None):
+def _V8_selected_quality_spec(self, selected_format=None):
     if isinstance(selected_format, dict):
         return dict(selected_format)
-    label = str(selected_format or self._v3_selected_file_quality or self.dl_format.get() or "").strip()
+    label = str(selected_format or self._V8_selected_file_quality or self.dl_format.get() or "").strip()
     for option_label, spec in self._dl_preview_quality_options or []:
         if option_label == label:
             return dict(spec)
     return {}
 
 
-def _v3_apply_preview(self, preview):
+def _V8_apply_preview(self, preview):
     preview_formats = preview.get("formats") or []
     if preview.get("is_playlist"):
         playlist_heights = set()
@@ -9979,9 +9979,9 @@ def _v3_apply_preview(self, preview):
             for height in sorted(playlist_heights, reverse=True)
         ]
 
-    self._v3_preview_formats = preview_formats
-    self._v3_preview_formats_ready = bool(self._v3_preview_formats)
-    _ORIGINAL_APPLY_PREVIEW_V3(self, preview)
+    self._V8_preview_formats = preview_formats
+    self._V8_preview_formats_ready = bool(self._V8_preview_formats)
+    _ORIGINAL_APPLY_PREVIEW_V8(self, preview)
 
     if preview.get("metadata_only_fallback"):
         try:
@@ -9992,36 +9992,36 @@ def _v3_apply_preview(self, preview):
             pass
 
 
-def _v3_start_download(self):
+def _V8_start_download(self):
     # Capture the second dropdown explicitly, then let V2's worker architecture do the heavy lifting.
     if self.download_running:
         return
     current = self.dl_input.get().strip()
     if not current:
-        return _ORIGINAL_START_DOWNLOAD_V3(self)
+        return _ORIGINAL_START_DOWNLOAD_V8(self)
     try:
-        file_type = _v3_file_type_id(self.dl_file_type.get()) if getattr(self, "dl_file_type", None) else "auto"
+        file_type = _V8_file_type_id(self.dl_file_type.get()) if getattr(self, "dl_file_type", None) else "auto"
         quality = self.dl_format.get().strip() if getattr(self, "dl_format", None) and self._dl_quality_visible else ""
-        if file_type in LOSSLESS_AUDIO_TYPES_V3:
-            quality = _v3_audio_quality_options(file_type)[0][0]
-        if self.downloader_quality_mode_for_source(current) == "playlist" and file_type in VIDEO_FILE_TYPES_V3:
+        if file_type in LOSSLESS_AUDIO_TYPES_V8:
+            quality = _V8_audio_quality_options(file_type)[0][0]
+        if self.downloader_quality_mode_for_source(current) == "playlist" and file_type in VIDEO_FILE_TYPES_V8:
             quality = quality or "Best Option Separate"
-        self._v3_selected_file_type = file_type
-        self._v3_selected_file_quality = quality
+        self._V8_selected_file_type = file_type
+        self._V8_selected_file_quality = quality
         self._selected_download_format = quality
         self._selected_file_type = file_type
         self._selected_file_quality = quality
-        self._v3_dry_run_active = bool(getattr(self, "dl_dry_run", StringVar(value="0")).get() == "1")
+        self._V8_dry_run_active = bool(getattr(self, "dl_dry_run", StringVar(value="0")).get() == "1")
     except Exception:
-        self._v3_selected_file_type = "auto"
+        self._V8_selected_file_type = "auto"
         self._selected_file_quality = ""
         self._selected_download_format = ""
-        self._v3_dry_run_active = False
-    _ORIGINAL_START_DOWNLOAD_V3(self)
+        self._V8_dry_run_active = False
+    _ORIGINAL_START_DOWNLOAD_V8(self)
 
 
-def _v3_run_worker(self, user_input):
-    if getattr(self, "_v3_dry_run_active", False):
+def _V8_run_worker(self, user_input):
+    if getattr(self, "_V8_dry_run_active", False):
         try:
             mode, payload = self.resolve_for_download(user_input)
             self.set_operation_progress("dl", 40, "Inspecting source formats...", taskbar=True)
@@ -10030,33 +10030,33 @@ def _v3_run_worker(self, user_input):
                 if not result:
                     raise RuntimeError(error or "No result")
                 formats, extractor_arg = inspect_youtube_formats(result.get("source_url") or f"https://www.youtube.com/watch?v={result.get('video_id')}", timeout=45)
-                self._v3_preview_formats = formats
+                self._V8_preview_formats = formats
                 self._dl_youtube_extractor_arg = extractor_arg
-                opts = _v3_quality_options(formats, self._v3_selected_file_type, "single")
+                opts = _V8_quality_options(formats, self._V8_selected_file_type, "single")
                 self._dl_preview_quality_options = opts
-                self.after(0, lambda: self._v3_show_selector(opts, animated=True, source_value=user_input, source_mode="single"))
+                self.after(0, lambda: self._V8_show_selector(opts, animated=True, source_value=user_input, source_mode="single"))
             else:
                 self.set_operation_progress("dl", 85, "Playlist inspection complete — no files downloaded.", taskbar=True)
             self.set_operation_progress("dl", 100, "Inspection Complete", taskbar=True)
-            _v3_history({"operation": "dry_run", "input": user_input, "result": "inspected_only", "file_type": self._v3_selected_file_type})
+            _V8_history({"operation": "dry_run", "input": user_input, "result": "inspected_only", "file_type": self._V8_selected_file_type})
         except Exception as exc:
-            log_path = write_failure_log("v3_dry_run", exc, details=f"Input: {user_input}")
+            log_path = write_failure_log("V8_dry_run", exc, details=f"Input: {user_input}")
             self.set_operation_progress("dl", 0, f"Inspection failed — {log_path or FAILURE_LOG_DIR}", taskbar=False)
         finally:
             self.download_running = False
             self.stop_requested = False
             self.after(0, self.reset_downloader_ui)
         return
-    return _ORIGINAL_RUN_WORKER_V3(self, user_input)
+    return _ORIGINAL_RUN_WORKER_V8(self, user_input)
 
 
-def _v3_build_command(self, source_url, result, selected_format):
-    spec = _v3_selected_quality_spec(self, selected_format)
+def _V8_build_command(self, source_url, result, selected_format):
+    spec = _V8_selected_quality_spec(self, selected_format)
     if not spec:
-        return _ORIGINAL_BUILD_COMMAND_V3(self, source_url, result, selected_format)
+        return _ORIGINAL_BUILD_COMMAND_V8(self, source_url, result, selected_format)
 
     output_dir = self.paths["downloader"]
-    file_type = str(spec.get("file_type") or getattr(self, "_v3_selected_file_type", "auto")).lower()
+    file_type = str(spec.get("file_type") or getattr(self, "_V8_selected_file_type", "auto")).lower()
     title = sanitize_filename(result.get("output_filename") or result.get("title") or "track")
     command = [
         get_ytdlp_command(),
@@ -10094,19 +10094,19 @@ def _v3_build_command(self, source_url, result, selected_format):
     return command
 
 
-def _v3_is_lossless_video(self, selected_format):
-    spec = _v3_selected_quality_spec(self, selected_format)
+def _V8_is_lossless_video(self, selected_format):
+    spec = _V8_selected_quality_spec(self, selected_format)
     if spec.get("kind") != "video":
         return False
     try:
         h = int(spec.get("height") or 0)
     except Exception:
         return False
-    ft = str(spec.get("file_type") or getattr(self, "_v3_selected_file_type", "auto"))
+    ft = str(spec.get("file_type") or getattr(self, "_V8_selected_file_type", "auto"))
     return h >= 1080 and ft in {"auto", "mkv"}
 
 
-def _v3_postprocess(self, file_path, result, progress_callback=None, thumbnail_path=None):
+def _V8_postprocess(self, file_path, result, progress_callback=None, thumbnail_path=None):
     def report(frac, msg):
         if progress_callback:
             progress_callback(max(0.0, min(1.0, frac)), msg)
@@ -10122,15 +10122,15 @@ def _v3_postprocess(self, file_path, result, progress_callback=None, thumbnail_p
             self.embed_mp4_video_thumbnail(file_path, thumbnail_path)
         elif suffix == ".mkv" and thumbnail_path:
             report(0.75, "Binding video thumbnail...")
-            self._v3_embed_mkv_thumbnail(file_path, thumbnail_path)
+            self._V8_embed_mkv_thumbnail(file_path, thumbnail_path)
         report(1.0, "Metadata + artwork complete")
         return Path(file_path)
     except Exception as exc:
-        log_path = write_failure_log("v3_postprocess", exc, details=f"File: {file_path}")
+        log_path = write_failure_log("V8_postprocess", exc, details=f"File: {file_path}")
         raise RuntimeError(f"Media post-processing failed. Failure log: {log_path or FAILURE_LOG_DIR}") from exc
 
 
-def _v3_embed_mkv_thumbnail(self, file_path, thumbnail_path):
+def _V8_embed_mkv_thumbnail(self, file_path, thumbnail_path):
     source = Path(file_path)
     temp = source.with_name(source.stem + ".cover.tmp.mkv")
     ffmpeg = get_ffmpeg_command()
@@ -10139,11 +10139,11 @@ def _v3_embed_mkv_thumbnail(self, file_path, thumbnail_path):
     if proc.returncode != 0 or not temp.exists():
         raise RuntimeError(f"FFmpeg MKV thumbnail embedding failed: {proc.stderr[-1200:]}")
     os.replace(temp, source)
-    if not _v3_verify_mkv_attachment(source):
+    if not _V8_verify_mkv_attachment(source):
         raise RuntimeError("Final MKV thumbnail attachment could not be verified")
 
 
-def _v3_verify_mkv_attachment(path):
+def _V8_verify_mkv_attachment(path):
     ffprobe = find_executable("ffprobe") or "ffprobe"
     proc = subprocess.run([ffprobe, "-v", "error", "-show_entries", "stream=index,codec_type:stream_tags=mimetype,filename", "-show_entries", "format_tags=title", "-of", "json", str(path)], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=30, **get_hidden_subprocess_kwargs())
     if proc.returncode != 0:
@@ -10153,34 +10153,34 @@ def _v3_verify_mkv_attachment(path):
     return any(str(s.get("codec_type") or "") == "attachment" and str((s.get("tags") or {}).get("mimetype") or "") == "image/jpeg" for s in streams)
 
 
-def _v3_execute(self, result, item_index=1, item_total=1, selected_format_override=None):
+def _V8_execute(self, result, item_index=1, item_total=1, selected_format_override=None):
     selected = selected_format_override if selected_format_override is not None else self._selected_download_format
-    spec = _v3_selected_quality_spec(self, selected)
-    file_type = str(spec.get("file_type") or getattr(self, "_v3_selected_file_type", "auto"))
+    spec = _V8_selected_quality_spec(self, selected)
+    file_type = str(spec.get("file_type") or getattr(self, "_V8_selected_file_type", "auto"))
     exts = {
         "auto": [".mkv", ".mp4", ".flac"], "mp4": [".mp4"], "mkv": [".mkv"], "webm": [".webm", ".mkv"], "mov": [".mov"],
         "mp3": [".mp3"], "m4a": [".m4a"], "opus": [".opus"], "vorbis": [".ogg"], "flac": [".flac"], "alac": [".m4a"], "wav": [".wav"],
     }.get(file_type, [".mp4", ".mkv", ".flac"])
     result = dict(result)
-    result["output_filename"] = _v3_unique_stem(self.paths["downloader"], result.get("output_filename") or result.get("title") or "track", exts)
-    out = _ORIGINAL_EXECUTE_V3(self, result, item_index=item_index, item_total=item_total, selected_format_override=selected_format_override)
+    result["output_filename"] = _V8_unique_stem(self.paths["downloader"], result.get("output_filename") or result.get("title") or "track", exts)
+    out = _ORIGINAL_EXECUTE_V8(self, result, item_index=item_index, item_total=item_total, selected_format_override=selected_format_override)
     kind = "audio" if spec.get("kind") == "audio" else "video"
-    _v3_validate_output(out, kind)
-    _v3_history({"operation": "download_item", "video_id": result.get("video_id"), "title": result.get("title"), "file": str(out), "file_type": file_type, "quality": selected, "result": "success"})
+    _V8_validate_output(out, kind)
+    _V8_history({"operation": "download_item", "video_id": result.get("video_id"), "title": result.get("title"), "file": str(out), "file_type": file_type, "quality": selected, "result": "success"})
     return out
 
 
-def _v3_set_performance(self, value):
+def _V8_set_performance(self, value):
     self.performance_mode = {"Balanced": "balanced", "Conservative": "conservative", "Aggressive": "aggressive"}.get(str(value), "balanced")
     self.save_config()
 
 
-def _v3_show_media_details(self):
+def _V8_show_media_details(self):
     source = str(getattr(self, "_dl_preview_source", "") or self.dl_input.get()).strip()
     if not source:
         messagebox.showinfo("Media Details", "Paste a YouTube link first.")
         return
-    fmts = getattr(self, "_v3_preview_formats", []) or []
+    fmts = getattr(self, "_V8_preview_formats", []) or []
     heights = detected_video_heights(fmts)
     tracks = build_audio_track_options(fmts)
     top = choose_best_format_at_height(fmts) if 'choose_best_format_at_height' in globals() else None
@@ -10190,43 +10190,43 @@ def _v3_show_media_details(self):
     messagebox.showinfo("Media Details", "\n".join(lines))
 
 
-def _v3_queue_current(self):
+def _V8_queue_current(self):
     value = self.dl_input.get().strip()
     if not value or not is_youtube_url(value):
         messagebox.showerror("Queue", "Enter a valid YouTube URL first.")
         return
-    if value not in getattr(self, "_v3_queue", []):
-        self._v3_queue.append(value)
+    if value not in getattr(self, "_V8_queue", []):
+        self._V8_queue.append(value)
     try:
-        self.dl_queue_count.configure(text=f"Queue: {len(self._v3_queue)}")
+        self.dl_queue_count.configure(text=f"Queue: {len(self._V8_queue)}")
     except Exception:
         pass
 
 
-# Keep the useful V2 methods but route the UI and downloader through the V3 layer.
-YTMMusicToolkit.build_downloader_tab = _v3_build_downloader_tab
-YTMMusicToolkit.hide_download_quality_selector = _v3_hide_selector
-YTMMusicToolkit.show_download_quality_selector = _v3_show_selector
-YTMMusicToolkit.selected_quality_spec = _v3_selected_quality_spec
-YTMMusicToolkit._v3_file_type_changed = _v3_file_type_changed
-YTMMusicToolkit._v3_set_performance = _v3_set_performance
-YTMMusicToolkit._v3_show_media_details = _v3_show_media_details
-YTMMusicToolkit._v3_queue_current = _v3_queue_current
-YTMMusicToolkit.apply_silent_link_preview = _v3_apply_preview
-YTMMusicToolkit.start_download = _v3_start_download
-YTMMusicToolkit.run_download_worker = _v3_run_worker
-YTMMusicToolkit.build_yt_dlp_command = _v3_build_command
-YTMMusicToolkit.is_lossless_video_mode = _v3_is_lossless_video
-YTMMusicToolkit.postprocess_downloaded_file = _v3_postprocess
-YTMMusicToolkit.execute_download_for_result = _v3_execute
+# Keep the useful V2 methods but route the UI and downloader through the V8 layer.
+YTMMusicToolkit.build_downloader_tab = _V8_build_downloader_tab
+YTMMusicToolkit.hide_download_quality_selector = _V8_hide_selector
+YTMMusicToolkit.show_download_quality_selector = _V8_show_selector
+YTMMusicToolkit.selected_quality_spec = _V8_selected_quality_spec
+YTMMusicToolkit._V8_file_type_changed = _V8_file_type_changed
+YTMMusicToolkit._V8_set_performance = _V8_set_performance
+YTMMusicToolkit._V8_show_media_details = _V8_show_media_details
+YTMMusicToolkit._V8_queue_current = _V8_queue_current
+YTMMusicToolkit.apply_silent_link_preview = _V8_apply_preview
+YTMMusicToolkit.start_download = _V8_start_download
+YTMMusicToolkit.run_download_worker = _V8_run_worker
+YTMMusicToolkit.build_yt_dlp_command = _V8_build_command
+YTMMusicToolkit.is_lossless_video_mode = _V8_is_lossless_video
+YTMMusicToolkit.postprocess_downloaded_file = _V8_postprocess
+YTMMusicToolkit.execute_download_for_result = _V8_execute
 
 # Patch config persistence conservatively. Existing settings remain compatible.
-_original_load_config_v3 = YTMMusicToolkit.load_config
-_original_save_config_v3 = YTMMusicToolkit.save_config
+_original_load_config_V8 = YTMMusicToolkit.load_config
+_original_save_config_V8 = YTMMusicToolkit.save_config
 
 
-def _v3_load_config(self):
-    _original_load_config_v3(self)
+def _V8_load_config(self):
+    _original_load_config_V8(self)
     try:
         if os.path.exists(CONFIG_FILE):
             data = json.loads(Path(CONFIG_FILE).read_text(encoding="utf-8"))
@@ -10234,11 +10234,11 @@ def _v3_load_config(self):
             self.conflict_mode = str(data.get("conflict_mode", getattr(self, "conflict_mode", "rename")))
             self.config_version = 3
     except Exception as exc:
-        write_failure_log("v3_config_load", exc)
+        write_failure_log("V8_config_load", exc)
 
 
-def _v3_save_config(self):
-    _original_save_config_v3(self)
+def _V8_save_config(self):
+    _original_save_config_V8(self)
     try:
         if os.path.exists(CONFIG_FILE):
             data = json.loads(Path(CONFIG_FILE).read_text(encoding="utf-8"))
@@ -10247,18 +10247,18 @@ def _v3_save_config(self):
         data.update({"config_version": 3, "performance_mode": getattr(self, "performance_mode", "balanced"), "conflict_mode": getattr(self, "conflict_mode", "rename")})
         Path(CONFIG_FILE).write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     except Exception as exc:
-        write_failure_log("v3_config_save", exc)
+        write_failure_log("V8_config_save", exc)
 
 
-YTMMusicToolkit.load_config = _v3_load_config
-YTMMusicToolkit.save_config = _v3_save_config
+YTMMusicToolkit.load_config = _V8_load_config
+YTMMusicToolkit.save_config = _V8_save_config
 
 
 
 # ============================================================
-# V3 FINAL FORMAT / QUALITY / RELIABILITY LAYER
+# V8 FINAL FORMAT / QUALITY / RELIABILITY LAYER
 # ============================================================
-# This layer keeps the existing V2/V3 UI and media pipeline, while making
+# This layer keeps the existing V2/V8 UI and media pipeline, while making
 # file type and file quality explicit, adding safety/recovery features, and
 # keeping playlist state isolated from single-video state.
 
@@ -10272,7 +10272,7 @@ FAILURE_LOG_DIR = os.path.join(
 )
 
 # Supported containers/codecs exposed by the downloader UI.
-FILE_TYPE_OPTIONS_V3 = [
+FILE_TYPE_OPTIONS_V8 = [
     (" Auto", "auto"),
     (" MP4 Video", "mp4"),
     (" MKV Video", "mkv"),
@@ -10283,12 +10283,12 @@ FILE_TYPE_OPTIONS_V3 = [
     (" FLAC Audio", "flac"),
     (" WAV PCM Audio", "wav"),
 ]
-FILE_TYPE_BY_LABEL_V3 = {label: value for label, value in FILE_TYPE_OPTIONS_V3}
-FILE_LABEL_BY_TYPE_V3 = {value: label for label, value in FILE_TYPE_OPTIONS_V3}
-VIDEO_FILE_TYPES_V3 = {"auto", "mp4", "mkv"}
-AUDIO_FILE_TYPES_V3 = {"mp3", "m4a", "opus", "vorbis", "flac", "wav"}
-LOSSLESS_AUDIO_TYPES_V3 = {"flac", "wav"}
-AUDIO_BITRATES_V3 = {
+FILE_TYPE_BY_LABEL_V8 = {label: value for label, value in FILE_TYPE_OPTIONS_V8}
+FILE_LABEL_BY_TYPE_V8 = {value: label for label, value in FILE_TYPE_OPTIONS_V8}
+VIDEO_FILE_TYPES_V8 = {"auto", "mp4", "mkv"}
+AUDIO_FILE_TYPES_V8 = {"mp3", "m4a", "opus", "vorbis", "flac", "wav"}
+LOSSLESS_AUDIO_TYPES_V8 = {"flac", "wav"}
+AUDIO_BITRATES_V8 = {
     "mp3": [64, 96, 128, 160, 192, 224, 256, 320],
     "m4a": [64, 96, 128, 160, 192, 224, 256, 320],
     "opus": [32, 48, 64, 96, 128, 160, 192, 256, 320],
@@ -10296,7 +10296,7 @@ AUDIO_BITRATES_V3 = {
 }
 
 # Output extension map used by the conflict-safe naming layer.
-V3_OUTPUT_EXTENSIONS = {
+V8_OUTPUT_EXTENSIONS = {
     "auto": [".mkv", ".mp4", ".flac"],
     "mp4": [".mp4"],
     "mkv": [".mkv"],
@@ -10309,13 +10309,13 @@ V3_OUTPUT_EXTENSIONS = {
 }
 
 
-def _v3_file_type_id_final(label):
-    return FILE_TYPE_BY_LABEL_V3.get(str(label or ""), "auto")
+def _V8_file_type_id_final(label):
+    return FILE_TYPE_BY_LABEL_V8.get(str(label or ""), "auto")
 
 
-def _v3_audio_quality_options_final(file_type):
+def _V8_audio_quality_options_final(file_type):
     file_type = str(file_type or "").lower()
-    if file_type in LOSSLESS_AUDIO_TYPES_V3:
+    if file_type in LOSSLESS_AUDIO_TYPES_V8:
         # UI hides this quality dropdown for truly lossless types.
         name = {"flac": "Lossless — FLAC", "alac": "Lossless — ALAC", "wav": "Lossless — PCM WAV"}[file_type]
         return [(name, {
@@ -10334,11 +10334,11 @@ def _v3_audio_quality_options_final(file_type):
             "lossless": False,
             "file_type": file_type,
         })
-        for rate in sorted(AUDIO_BITRATES_V3.get(file_type, []), reverse=True)
+        for rate in sorted(AUDIO_BITRATES_V8.get(file_type, []), reverse=True)
     ]
 
 
-def _v3_best_video_descriptor_final(formats, height):
+def _V8_best_video_descriptor_final(formats, height):
     candidates = []
     for fmt in formats or []:
         if not isinstance(fmt, dict) or fmt.get("has_drm"):
@@ -10368,7 +10368,7 @@ def _v3_best_video_descriptor_final(formats, height):
     return " • ".join(parts)
 
 
-def _v3_video_quality_options_final(formats, file_type, mode="single"):
+def _V8_video_quality_options_final(formats, file_type, mode="single"):
     """Build video choices only from resolutions detected for the current source."""
     file_type = str(file_type or "auto").lower()
     heights = detected_video_heights(formats)
@@ -10397,7 +10397,7 @@ def _v3_video_quality_options_final(formats, file_type, mode="single"):
         return []
 
     highest = heights[0]
-    descriptor = _v3_best_video_descriptor_final(formats, highest)
+    descriptor = _V8_best_video_descriptor_final(formats, highest)
     best_label = f"Best Quality — {descriptor or str(highest) + 'p'}"
     options = [(best_label, {
         "kind": "video",
@@ -10406,7 +10406,7 @@ def _v3_video_quality_options_final(formats, file_type, mode="single"):
         "file_type": file_type,
     })]
     for height in heights[1:]:
-        descriptor = _v3_best_video_descriptor_final(formats, height)
+        descriptor = _V8_best_video_descriptor_final(formats, height)
         label = descriptor if descriptor else VIDEO_QUALITY_LABELS.get(height, f"{height}P")
         options.append((label, {
             "kind": "video",
@@ -10417,22 +10417,22 @@ def _v3_video_quality_options_final(formats, file_type, mode="single"):
     return options
 
 
-def _v3_quality_options_final(formats, file_type, mode="single"):
-    if str(file_type or "").lower() in AUDIO_FILE_TYPES_V3:
-        return _v3_audio_quality_options_final(file_type)
-    return _v3_video_quality_options_final(formats, file_type, mode)
+def _V8_quality_options_final(formats, file_type, mode="single"):
+    if str(file_type or "").lower() in AUDIO_FILE_TYPES_V8:
+        return _V8_audio_quality_options_final(file_type)
+    return _V8_video_quality_options_final(formats, file_type, mode)
 
-# Keep the public V3 helper names pointed at the final implementations.
-_v3_audio_quality_options = _v3_audio_quality_options_final
-_v3_video_quality_options = _v3_video_quality_options_final
-_v3_quality_options = _v3_quality_options_final
-_v3_file_type_id = _v3_file_type_id_final
+# Keep the public V8 helper names pointed at the final implementations.
+_V8_audio_quality_options = _V8_audio_quality_options_final
+_V8_video_quality_options = _V8_video_quality_options_final
+_V8_quality_options = _V8_quality_options_final
+_V8_file_type_id = _V8_file_type_id_final
 
 
-def _v3_set_dynamic_file_quality_ui(self, mode):
+def _V8_set_dynamic_file_quality_ui(self, mode):
     """Rebuild only the quality dropdown appropriate to the current file type."""
-    file_type = str(getattr(self, "_v3_selected_file_type", "auto"))
-    options = _v3_quality_options_final(getattr(self, "_v3_preview_formats", []), file_type, mode)
+    file_type = str(getattr(self, "_V8_selected_file_type", "auto"))
+    options = _V8_quality_options_final(getattr(self, "_V8_preview_formats", []), file_type, mode)
     self._dl_preview_quality_options = options
     labels = [label for label, _spec in options]
     try:
@@ -10440,8 +10440,8 @@ def _v3_set_dynamic_file_quality_ui(self, mode):
     except Exception:
         return options
 
-    if file_type in LOSSLESS_AUDIO_TYPES_V3:
-        self._v3_selected_file_quality = ""
+    if file_type in LOSSLESS_AUDIO_TYPES_V8:
+        self._V8_selected_file_quality = ""
         self.dl_quality_label.grid_remove()
         self.dl_format.grid_remove()
     else:
@@ -10449,46 +10449,46 @@ def _v3_set_dynamic_file_quality_ui(self, mode):
         self.dl_format.grid(row=1, column=1, sticky="ew", padx=22, pady=(0, 8))
         default = labels[0] if labels else ""
         mode = str(mode or "")
-        if mode == "playlist" and file_type in VIDEO_FILE_TYPES_V3:
+        if mode == "playlist" and file_type in VIDEO_FILE_TYPES_V8:
             default = "Best Option Separate"
         if default and default in labels:
             self.dl_format.set(default)
-            self._v3_selected_file_quality = default
+            self._V8_selected_file_quality = default
         else:
             self.dl_format.set("")
-            self._v3_selected_file_quality = ""
+            self._V8_selected_file_quality = ""
     return options
 
 
-def _v3_file_type_changed_final(self, selected_label=None):
+def _V8_file_type_changed_final(self, selected_label=None):
     try:
         label = str(selected_label or self.dl_file_type.get())
-        file_type = _v3_file_type_id_final(label)
-        self._v3_selected_file_type = file_type
+        file_type = _V8_file_type_id_final(label)
+        self._V8_selected_file_type = file_type
         source = str(self._dl_preview_quality_source or self.dl_input.get()).strip()
         mode = self.downloader_quality_mode_for_source(source) if source else "none"
         if mode not in {"single", "playlist"}:
             self._dl_preview_quality_options = []
-            self._v3_selected_file_quality = ""
+            self._V8_selected_file_quality = ""
             self.dl_quality_label.grid_remove()
             self.dl_format.grid_remove()
             return
-        _v3_set_dynamic_file_quality_ui(self, mode)
+        _V8_set_dynamic_file_quality_ui(self, mode)
     except Exception as exc:
-        write_failure_log("v3_final_file_type_change", exc)
+        write_failure_log("V8_final_file_type_change", exc)
 
 
 # Replace the older handler with the final context-aware one.
-YTMMusicToolkit._v3_file_type_changed = _v3_file_type_changed_final
+YTMMusicToolkit._V8_file_type_changed = _V8_file_type_changed_final
 
 
-def _v3_build_command_final(self, source_url, result, selected_format):
-    spec = _v3_selected_quality_spec(self, selected_format)
+def _V8_build_command_final(self, source_url, result, selected_format):
+    spec = _V8_selected_quality_spec(self, selected_format)
     if not spec:
         raise RuntimeError("No valid file quality selection is available")
 
     output_dir = self.paths["downloader"]
-    file_type = str(spec.get("file_type") or getattr(self, "_v3_selected_file_type", "auto")).lower()
+    file_type = str(spec.get("file_type") or getattr(self, "_V8_selected_file_type", "auto")).lower()
     title = sanitize_filename(result.get("output_filename") or result.get("title") or "track")
     if file_type == "auto" and spec.get("kind") == "video":
         try:
@@ -10550,10 +10550,10 @@ def _v3_build_command_final(self, source_url, result, selected_format):
     command.extend(["-o", os.path.join(output_dir, f"{title}.%(ext)s"), "--", source_url])
     return command
 
-YTMMusicToolkit.build_yt_dlp_command = _v3_build_command_final
+YTMMusicToolkit.build_yt_dlp_command = _V8_build_command_final
 
 
-def _v3_write_generic_audio_metadata_final(file_path, result, cover_bytes=None):
+def _V8_write_generic_audio_metadata_final(file_path, result, cover_bytes=None):
     """Write common title/artist/album/year metadata for all supported audio outputs."""
     suffix = Path(file_path).suffix.lower()
     artist = ", ".join(result.get("artist_names") or [])
@@ -10667,14 +10667,14 @@ def _v3_write_generic_audio_metadata_final(file_path, result, cover_bytes=None):
             audio.save(file_path)
             return
     except Exception as exc:
-        log_path = write_failure_log("v3_audio_metadata", exc, details=f"File: {file_path}")
+        log_path = write_failure_log("V8_audio_metadata", exc, details=f"File: {file_path}")
         raise RuntimeError(f"Audio metadata write failed. Failure log: {log_path or FAILURE_LOG_DIR}") from exc
 
 
-write_generic_audio_metadata = _v3_write_generic_audio_metadata_final
+write_generic_audio_metadata = _V8_write_generic_audio_metadata_final
 
 
-def _v3_safe_metadata_backup(file_path):
+def _V8_safe_metadata_backup(file_path):
     """Snapshot current tags and first cover before destructive metadata rewrites."""
     path = Path(file_path)
     if path.suffix.lower() != ".flac" or not path.exists():
@@ -10700,12 +10700,12 @@ def _v3_safe_metadata_backup(file_path):
 _original_rewrite_strict_final = rewrite_flac_metadata_strict
 
 
-def _v3_rewrite_with_backup(file_path, result, replacement_cover_bytes=None):
-    _v3_safe_metadata_backup(file_path)
+def _V8_rewrite_with_backup(file_path, result, replacement_cover_bytes=None):
+    _V8_safe_metadata_backup(file_path)
     return _original_rewrite_strict_final(file_path, result, replacement_cover_bytes=replacement_cover_bytes)
 
 
-rewrite_flac_metadata_strict = _v3_rewrite_with_backup
+rewrite_flac_metadata_strict = _V8_rewrite_with_backup
 
 
 # Ensure the failure folder exists immediately on first run, without showing UI.
@@ -10716,12 +10716,12 @@ except Exception:
 
 
 # Richer media-details dialog.
-def _v3_show_media_details_final(self):
+def _V8_show_media_details_final(self):
     source = str(getattr(self, "_dl_preview_source", "") or self.dl_input.get()).strip()
     if not source:
         messagebox.showinfo("Media Details", "Paste a YouTube link first.")
         return
-    fmts = getattr(self, "_v3_preview_formats", []) or []
+    fmts = getattr(self, "_V8_preview_formats", []) or []
     heights = detected_video_heights(fmts)
     tracks = build_audio_track_options(fmts)
     best = None
@@ -10740,7 +10740,7 @@ def _v3_show_media_details_final(self):
         max_abr = max(float(f.get("abr") or 0) for f in fmts if _format_is_audio_only(f))
     except Exception:
         pass
-    thumb = getattr(self, "_v3_preview_thumbnail_size", None)
+    thumb = getattr(self, "_V8_preview_thumbnail_size", None)
     lines = [
         f"Source: {source}",
         f"Mode: {self.downloader_quality_mode_for_source(source)}",
@@ -10759,92 +10759,92 @@ def _v3_show_media_details_final(self):
     messagebox.showinfo("Media Details", "\n".join(lines))
 
 
-YTMMusicToolkit._v3_show_media_details = _v3_show_media_details_final
+YTMMusicToolkit._V8_show_media_details = _V8_show_media_details_final
 
 
 # -------------------- real queue --------------------
-def _v3_queue_current_final(self):
+def _V8_queue_current_final(self):
     value = self.dl_input.get().strip()
     if not value or not is_youtube_url(value):
         messagebox.showerror("Queue", "Enter a valid YouTube or YouTube Music URL first.")
         return
-    file_type = _v3_file_type_id_final(self.dl_file_type.get()) if getattr(self, "dl_file_type", None) else "auto"
+    file_type = _V8_file_type_id_final(self.dl_file_type.get()) if getattr(self, "dl_file_type", None) else "auto"
     quality = self.dl_format.get().strip() if getattr(self, "dl_format", None) and self._dl_quality_visible else ""
-    if file_type in LOSSLESS_AUDIO_TYPES_V3:
-        quality = _v3_audio_quality_options_final(file_type)[0][0]
+    if file_type in LOSSLESS_AUDIO_TYPES_V8:
+        quality = _V8_audio_quality_options_final(file_type)[0][0]
     item = {
         "url": value,
         "file_type": file_type,
         "quality": quality,
         "subtitles": bool(self.dl_subs.get()) if hasattr(self, "dl_subs") else False,
     }
-    self._v3_queue = getattr(self, "_v3_queue", [])
-    if any(str(x.get("url")) == value and x.get("file_type") == file_type and x.get("quality") == quality for x in self._v3_queue):
+    self._V8_queue = getattr(self, "_V8_queue", [])
+    if any(str(x.get("url")) == value and x.get("file_type") == file_type and x.get("quality") == quality for x in self._V8_queue):
         return
-    self._v3_queue.append(item)
+    self._V8_queue.append(item)
     try:
-        self.dl_queue_count.configure(text=f"Queue: {len(self._v3_queue)}")
+        self.dl_queue_count.configure(text=f"Queue: {len(self._V8_queue)}")
     except Exception:
         pass
 
 
-def _v3_process_queue(self):
-    if getattr(self, "download_running", False) or getattr(self, "_v3_queue_active", False):
+def _V8_process_queue(self):
+    if getattr(self, "download_running", False) or getattr(self, "_V8_queue_active", False):
         return
-    items = list(getattr(self, "_v3_queue", []) or [])
+    items = list(getattr(self, "_V8_queue", []) or [])
     if not items:
         messagebox.showinfo("Queue", "The queue is empty.")
         return
-    self._v3_queue = []
-    self._v3_queue_active = True
+    self._V8_queue = []
+    self._V8_queue_active = True
     try:
         self.dl_queue_count.configure(text="Queue: 0")
     except Exception:
         pass
-    threading.Thread(target=self._v3_queue_worker, args=(items,), daemon=True).start()
+    threading.Thread(target=self._V8_queue_worker, args=(items,), daemon=True).start()
 
 
-def _v3_queue_worker(self, items):
+def _V8_queue_worker(self, items):
     completed = 0
     try:
         total = len(items)
         for index, item in enumerate(items, 1):
             if self.stop_requested:
                 break
-            self._v3_selected_file_type = item.get("file_type") or "auto"
-            self._v3_selected_file_quality = item.get("quality") or ""
-            self._selected_file_type = self._v3_selected_file_type
-            self._selected_file_quality = self._v3_selected_file_quality
-            self._selected_download_format = self._v3_selected_file_quality
+            self._V8_selected_file_type = item.get("file_type") or "auto"
+            self._V8_selected_file_quality = item.get("quality") or ""
+            self._selected_file_type = self._V8_selected_file_type
+            self._selected_file_quality = self._V8_selected_file_quality
+            self._selected_download_format = self._V8_selected_file_quality
             self._selected_download_subtitles = bool(item.get("subtitles"))
             self.download_running = True
             self.stop_requested = False
-            self._v3_queue_item_index = index
-            self._v3_queue_item_total = total
+            self._V8_queue_item_index = index
+            self._V8_queue_item_total = total
             self.set_operation_progress("dl", 0, f"Queue item {index}/{total} — preparing...", taskbar=True)
             try:
-                self._v3_dry_run_active = False
+                self._V8_dry_run_active = False
                 self.run_download_worker(item["url"])
                 completed += 1
             except Exception as exc:
-                write_failure_log("v3_queue_item", exc, details=f"Queue item: {index}/{total}\nURL: {item.get('url')}")
+                write_failure_log("V8_queue_item", exc, details=f"Queue item: {index}/{total}\nURL: {item.get('url')}")
             finally:
                 self.download_running = False
     except Exception as exc:
-        log_path = write_failure_log("v3_queue_worker", exc)
+        log_path = write_failure_log("V8_queue_worker", exc)
         self.after(0, lambda: messagebox.showerror("Queue Error", f"{exc}\n\nFailure log:\n{log_path or FAILURE_LOG_DIR}"))
     finally:
-        self._v3_queue_active = False
+        self._V8_queue_active = False
         self.after(0, lambda: self.set_operation_progress("dl", 100, f"Queue Complete — {completed}/{len(items)} completed", taskbar=False))
 
 
-YTMMusicToolkit._v3_queue_current = _v3_queue_current_final
-YTMMusicToolkit._v3_process_queue = _v3_process_queue
-YTMMusicToolkit._v3_queue_worker = _v3_queue_worker
+YTMMusicToolkit._V8_queue_current = _V8_queue_current_final
+YTMMusicToolkit._V8_process_queue = _V8_process_queue
+YTMMusicToolkit._V8_queue_worker = _V8_queue_worker
 
 
 # -------------------- yt-dlp update check (no automatic download) --------------------
-def _v3_check_ytdlp_update(self):
+def _V8_check_ytdlp_update(self):
     try:
         local = subprocess.run(
             [get_ytdlp_command(), "--version"],
@@ -10865,15 +10865,15 @@ def _v3_check_ytdlp_update(self):
         latest = str(response.json().get("tag_name") or "unknown").lstrip("v")
         messagebox.showinfo("yt-dlp Update Check", f"Installed: {installed}\nLatest release: {latest}\n\nNo update was downloaded.")
     except Exception as exc:
-        log_path = write_failure_log("v3_ytdlp_update_check", exc)
+        log_path = write_failure_log("V8_ytdlp_update_check", exc)
         messagebox.showerror("yt-dlp Update Check", f"Could not check the latest release.\n\nFailure log:\n{log_path or FAILURE_LOG_DIR}")
 
 
-YTMMusicToolkit._v3_check_ytdlp_update = _v3_check_ytdlp_update
+YTMMusicToolkit._V8_check_ytdlp_update = _V8_check_ytdlp_update
 
 
 # -------------------- final downloader UI extension --------------------
-_original_v3_build_downloader_final = YTMMusicToolkit.build_downloader_tab
+_original_V8_build_downloader_final = YTMMusicToolkit.build_downloader_tab
 
 
 def _v4_install_preview_menu(self):
@@ -10933,11 +10933,11 @@ def _v4_preview_menu(self):
         relief="solid",
         font=(APP_FONT, 10),
     )
-    queue_count = len(getattr(self, "_v3_queue", []) or [])
-    menu.add_command(label="ⓘ  Inspect Details", command=self._v3_show_media_details)
-    menu.add_command(label=f"＋  Add to Queue   ({queue_count})", command=self._v3_queue_current)
+    queue_count = len(getattr(self, "_V8_queue", []) or [])
+    menu.add_command(label="ⓘ  Inspect Details", command=self._V8_show_media_details)
+    menu.add_command(label=f"＋  Add to Queue   ({queue_count})", command=self._V8_queue_current)
     menu.add_separator()
-    menu.add_command(label="↻  Check yt-dlp", command=self._v3_check_ytdlp_update)
+    menu.add_command(label="↻  Check yt-dlp", command=self._V8_check_ytdlp_update)
     return menu
 
 
@@ -10962,7 +10962,7 @@ YTMMusicToolkit._v4_install_preview_menu = _v4_install_preview_menu
 
 
 def _v4_build_downloader_tab(self, tab):
-    _original_v3_build_downloader_final(self, tab)
+    _original_V8_build_downloader_final(self, tab)
     self.after(0, self._v4_install_preview_menu)
 
 
@@ -10974,7 +10974,7 @@ _original_final_load = YTMMusicToolkit.load_config
 _original_final_save = YTMMusicToolkit.save_config
 
 
-def _v3_load_config_final(self):
+def _V8_load_config_final(self):
     _original_final_load(self)
     self.config_version = 5
     self.appearance_mode = "dark"
@@ -10996,10 +10996,10 @@ def _v3_load_config_final(self):
             saved_appearance = str(data.get("appearance_mode", "dark")).strip().lower()
             self.appearance_mode = saved_appearance if saved_appearance in {"dark", "light"} else "dark"
     except Exception as exc:
-        write_failure_log("v3_final_config_load", exc)
+        write_failure_log("V8_final_config_load", exc)
 
 
-def _v3_save_config_final(self):
+def _V8_save_config_final(self):
     _original_final_save(self)
     try:
         if os.path.exists(CONFIG_FILE):
@@ -11014,11 +11014,11 @@ def _v3_save_config_final(self):
         })
         Path(CONFIG_FILE).write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
     except Exception as exc:
-        write_failure_log("v3_final_config_save", exc)
+        write_failure_log("V8_final_config_save", exc)
 
 
-YTMMusicToolkit.load_config = _v3_load_config_final
-YTMMusicToolkit.save_config = _v3_save_config_final
+YTMMusicToolkit.load_config = _V8_load_config_final
+YTMMusicToolkit.save_config = _V8_save_config_final
 
 
 # The downloader now always exposes the final context-sensitive UI semantics.
@@ -11053,17 +11053,17 @@ def _v5_generic_video_options(file_type):
 
 def _v5_show_selector_placeholder(self):
     try:
-        file_type = str(getattr(self, "_v3_selected_file_type", "auto") or "auto")
+        file_type = str(getattr(self, "_V8_selected_file_type", "auto") or "auto")
         self.dl_file_type_label.grid(row=0, column=0, sticky="w", padx=22, pady=(14, 4))
         self.dl_file_type.grid(row=1, column=0, sticky="ew", padx=22, pady=(0, 8))
-        self.dl_file_type.set(FILE_LABEL_BY_TYPE_V3.get(file_type, FILE_LABEL_BY_TYPE_V3["auto"]))
+        self.dl_file_type.set(FILE_LABEL_BY_TYPE_V8.get(file_type, FILE_LABEL_BY_TYPE_V8["auto"]))
 
-        if file_type in LOSSLESS_AUDIO_TYPES_V3:
+        if file_type in LOSSLESS_AUDIO_TYPES_V8:
             self.dl_quality_label.grid_remove()
             self.dl_format.grid_remove()
             return
 
-        options = _v3_quality_options_final([], file_type, "single")
+        options = _V8_quality_options_final([], file_type, "single")
         labels = [label for label, _spec in options]
         self._dl_preview_quality_options = options
 
@@ -11080,7 +11080,7 @@ def _v5_show_selector_placeholder(self):
 
 def _v5_hide_selector(self):
     """Reset preview state exactly as before, but keep the dropdowns on screen."""
-    _v3_hide_selector(self)
+    _V8_hide_selector(self)
     if getattr(self, "dl_file_type", None) is not None:
         _v5_show_selector_placeholder(self)
 
@@ -11089,16 +11089,16 @@ def _v5_file_type_changed(self, selected_label=None):
     try:
         source = str(getattr(self, "_dl_preview_quality_source", "") or "").strip()
         if source and self.downloader_quality_mode_for_source(source) in {"single", "playlist"}:
-            return _v3_file_type_changed_final(self, selected_label)
+            return _V8_file_type_changed_final(self, selected_label)
         label = str(selected_label or self.dl_file_type.get())
-        self._v3_selected_file_type = _v3_file_type_id_final(label)
+        self._V8_selected_file_type = _V8_file_type_id_final(label)
         _v5_show_selector_placeholder(self)
     except Exception as exc:
         write_failure_log("v5_file_type_change", exc)
 
 
 YTMMusicToolkit.hide_download_quality_selector = _v5_hide_selector
-YTMMusicToolkit._v3_file_type_changed = _v5_file_type_changed
+YTMMusicToolkit._V8_file_type_changed = _v5_file_type_changed
 
 
 # ---- download never dies just because qualities failed to load ----
@@ -11109,10 +11109,10 @@ def _v5_build_command(self, source_url, result, selected_format):
     pending = getattr(self, "_v5_pending_spec", None)
     if pending:
         selected_format = dict(pending)
-    if not _v3_selected_quality_spec(self, selected_format):
-        file_type = str(getattr(self, "_v3_selected_file_type", "auto") or "auto").lower()
-        if file_type in AUDIO_FILE_TYPES_V3:
-            options = _v3_audio_quality_options_final(file_type)
+    if not _V8_selected_quality_spec(self, selected_format):
+        file_type = str(getattr(self, "_V8_selected_file_type", "auto") or "auto").lower()
+        if file_type in AUDIO_FILE_TYPES_V8:
+            options = _V8_audio_quality_options_final(file_type)
             spec = dict(options[0][1]) if options else {}
         else:
             # Unknown resolutions: ask for the best available (4320p ceiling).
@@ -11133,8 +11133,8 @@ def _v5_start_download(self):
     try:
         if not self._dl_quality_visible and self.dl_format.winfo_ismapped():
             label = self.dl_format.get().strip()
-            file_type = str(getattr(self, "_v3_selected_file_type", "auto") or "auto")
-            for opt_label, spec in _v3_quality_options_final([], file_type, "single"):
+            file_type = str(getattr(self, "_V8_selected_file_type", "auto") or "auto")
+            for opt_label, spec in _V8_quality_options_final([], file_type, "single"):
                 if opt_label == label:
                     self._v5_pending_spec = dict(spec)
                     break
@@ -11147,7 +11147,7 @@ YTMMusicToolkit.start_download = _v5_start_download
 
 
 # ============================================================
-# DOWNLOAD TEMP WORKSPACE (V6)
+# DOWNLOAD TEMP WORKSPACE (V8)
 # ============================================================
 # All media downloads are staged under <download directory>\\tempytm.
 # Completed deliverables are moved to the real download folder immediately
@@ -11155,14 +11155,14 @@ YTMMusicToolkit.start_download = _v5_start_download
 # The workspace is removed when a single item, full playlist, queue item, or
 # cancelled/failed download worker finishes.
 
-_V6_FINAL_MEDIA_EXTENSIONS = {
+_V8_FINAL_MEDIA_EXTENSIONS = {
     ".mkv", ".mka", ".mp4", ".webm", ".mov", ".m4v",
     ".flac", ".mp3", ".m4a", ".opus", ".ogg", ".oga", ".aac", ".wav",
     ".vtt", ".srt", ".ass", ".ssa", ".lrc",
 }
 
-_V6_ORIGINAL_RUN_DOWNLOAD_WORKER = YTMMusicToolkit.run_download_worker
-_V6_ORIGINAL_EXECUTE_DOWNLOAD = YTMMusicToolkit.execute_download_for_result
+_V8_ORIGINAL_RUN_DOWNLOAD_WORKER = YTMMusicToolkit.run_download_worker
+_V8_ORIGINAL_EXECUTE_DOWNLOAD = YTMMusicToolkit.execute_download_for_result
 
 
 def _v6_remove_temp_workspace(temp_root, context="download_temp_workspace_cleanup"):
@@ -11243,11 +11243,11 @@ def _v6_update_history_path(old_path, new_path):
 
 def _v6_run_download_worker(self, user_input):
     # "Inspect only" does not create a media workspace or change its output path.
-    if getattr(self, "_v3_dry_run_active", False):
-        return _V6_ORIGINAL_RUN_DOWNLOAD_WORKER(self, user_input)
+    if getattr(self, "_V8_dry_run_active", False):
+        return _V8_ORIGINAL_RUN_DOWNLOAD_WORKER(self, user_input)
 
     if getattr(self, "_v6_download_temp_root", None):
-        return _V6_ORIGINAL_RUN_DOWNLOAD_WORKER(self, user_input)
+        return _V8_ORIGINAL_RUN_DOWNLOAD_WORKER(self, user_input)
 
     original_output_path = self.paths["downloader"]
     destination = Path(original_output_path).expanduser().resolve()
@@ -11276,7 +11276,7 @@ def _v6_run_download_worker(self, user_input):
     self._v6_download_destination = destination
     self._v6_download_temp_root = temp_root
     try:
-        return _V6_ORIGINAL_RUN_DOWNLOAD_WORKER(self, user_input)
+        return _V8_ORIGINAL_RUN_DOWNLOAD_WORKER(self, user_input)
     finally:
         # The worker catches cancellation and download failures internally, so
         # this finally block also handles Stop, errors, and playlist early exits.
@@ -11315,10 +11315,10 @@ def _v6_execute_through_temp(self, result, item_index=1, item_total=1, selected_
         if selected_format_override is not None
         else self._selected_download_format
     )
-    spec = _v3_selected_quality_spec(self, selected)
+    spec = _V8_selected_quality_spec(self, selected)
     file_type = str(
         (spec or {}).get("file_type")
-        or getattr(self, "_v3_selected_file_type", "auto")
+        or getattr(self, "_V8_selected_file_type", "auto")
         or "auto"
     ).lower()
     extensions = {
@@ -11336,7 +11336,7 @@ def _v6_execute_through_temp(self, result, item_index=1, item_total=1, selected_
         or result_for_download.get("title")
         or "track"
     )
-    result_for_download["output_filename"] = _v3_unique_stem(
+    result_for_download["output_filename"] = _V8_unique_stem(
         destination,
         base,
         extensions,
@@ -11344,7 +11344,7 @@ def _v6_execute_through_temp(self, result, item_index=1, item_total=1, selected_
 
     try:
         self.paths["downloader"] = str(temp_root)
-        out = _V6_ORIGINAL_EXECUTE_DOWNLOAD(
+        out = _V8_ORIGINAL_EXECUTE_DOWNLOAD(
             self,
             result_for_download,
             item_index=item_index,
@@ -11360,7 +11360,7 @@ def _v6_execute_through_temp(self, result, item_index=1, item_total=1, selected_
         for source in list(temp_root.iterdir()):
             if not source.is_file():
                 continue
-            if source.suffix.lower() not in _V6_FINAL_MEDIA_EXTENSIONS:
+            if source.suffix.lower() not in _V8_FINAL_MEDIA_EXTENSIONS:
                 continue
             if source.name.lower().endswith((".part", ".ytdl", ".tmp", ".temp")):
                 continue
@@ -11409,7 +11409,7 @@ YTMMusicToolkit.execute_download_for_result = _v6_execute_through_temp
 
 
 # ============================================================
-# DEDICATED QUEUE TAB (V7)
+# DEDICATED QUEUE TAB (V8)
 # ============================================================
 # Keeps Add to Queue on Downloader, adds a dedicated Queue tab, and mirrors
 # pause/resume/stop controls across both tabs while the queue is processing.
@@ -11435,7 +11435,7 @@ def _queue_set_status(self, text):
 def _queue_render_queue(self):
     """Rebuild the visible queue list from the current queue model."""
     palette = _queue_palette(self)
-    items = list(getattr(self, "_v3_queue", []) or [])
+    items = list(getattr(self, "_V8_queue", []) or [])
 
     for row in list(getattr(self, "_queue_row_widgets", []) or []):
         try:
@@ -11462,7 +11462,7 @@ def _queue_render_queue(self):
     except Exception:
         pass
 
-    active = bool(getattr(self, "_v3_queue_active", False))
+    active = bool(getattr(self, "_V8_queue_active", False))
     try:
         self.queue_clear_button.configure(
             state="disabled" if active or not items else "normal"
@@ -11504,7 +11504,7 @@ def _queue_render_queue(self):
 
         status = str(item.get("status") or "Queued")
         file_type = str(item.get("file_type") or "auto").lower()
-        type_label = FILE_LABEL_BY_TYPE_V3.get(file_type, file_type.upper())
+        type_label = FILE_LABEL_BY_TYPE_V8.get(file_type, file_type.upper())
         quality = str(item.get("quality") or "Best available")
         subtitles = "Subtitles: EN / AR" if item.get("subtitles") else "Subtitles: off"
         source_url = str(item.get("url") or "")
@@ -11590,10 +11590,10 @@ def _queue_refresh_ui(self):
 
 
 def _queue_remove_item(self, queue_id):
-    if getattr(self, "_v3_queue_active", False):
+    if getattr(self, "_V8_queue_active", False):
         return
-    items = list(getattr(self, "_v3_queue", []) or [])
-    self._v3_queue = [
+    items = list(getattr(self, "_V8_queue", []) or [])
+    self._V8_queue = [
         item for item in items
         if str(item.get("queue_id") or id(item)) != str(queue_id)
     ]
@@ -11601,9 +11601,9 @@ def _queue_remove_item(self, queue_id):
 
 
 def _queue_clear(self):
-    if getattr(self, "_v3_queue_active", False):
+    if getattr(self, "_V8_queue_active", False):
         return
-    self._v3_queue = []
+    self._V8_queue = []
     self._queue_set_status("Queue cleared.")
     self._queue_refresh_ui()
 
@@ -11743,7 +11743,7 @@ def _queue_build_queue_tab(self, tab):
     self.queue_process_button = ctk.CTkButton(
         controls,
         text="Process Queue",
-        command=self._v3_process_queue,
+        command=self._V8_process_queue,
         height=44,
         font=(APP_FONT, 14, "bold"),
         fg_color=palette["blue"],
@@ -11799,9 +11799,9 @@ def _queue_build_queue_tab(self, tab):
     self.queue_stop_button.grid(row=0, column=1, sticky="ew", padx=(5, 0))
     self.queue_stop_button.grid_remove()
 
-    self._v3_queue = getattr(self, "_v3_queue", [])
-    self._v3_queue_active = False
-    self._v3_queue_stop_requested = False
+    self._V8_queue = getattr(self, "_V8_queue", [])
+    self._V8_queue_active = False
+    self._V8_queue_stop_requested = False
     self._queue_hide_activity_controls()
     self._queue_render_queue()
 
@@ -11826,13 +11826,13 @@ def _queue_hide_activity_controls(self):
         self.queue_stop_button.grid_remove()
         self.queue_process_button.grid(row=0, column=0, columnspan=2, sticky="ew")
         self.queue_process_button.configure(state="normal", text="Process Queue")
-        self.queue_clear_button.configure(state="normal" if self._v3_queue else "disabled")
+        self.queue_clear_button.configure(state="normal" if self._V8_queue else "disabled")
     except Exception:
         pass
 
 
 def _queue_sync_pause_controls(self):
-    if not getattr(self, "_v3_queue_active", False):
+    if not getattr(self, "_V8_queue_active", False):
         return
     try:
         if self.is_paused:
@@ -11848,23 +11848,23 @@ def _queue_sync_pause_controls(self):
 
 
 def _queue_remove_item_from_model(self, item):
-    current = list(getattr(self, "_v3_queue", []) or [])
+    current = list(getattr(self, "_V8_queue", []) or [])
     queue_id = str(item.get("queue_id") or id(item))
-    self._v3_queue = [
+    self._V8_queue = [
         queued for queued in current
         if queued is not item and str(queued.get("queue_id") or id(queued)) != queue_id
     ]
 
 
 def _queue_process_queue(self):
-    if getattr(self, "_v3_queue_active", False) or getattr(self, "download_running", False):
+    if getattr(self, "_V8_queue_active", False) or getattr(self, "download_running", False):
         messagebox.showinfo(
             "Queue",
             "Another download is already running. Stop it or let it finish before processing the queue.",
         )
         return
 
-    items = [item for item in list(getattr(self, "_v3_queue", []) or []) if isinstance(item, dict)]
+    items = [item for item in list(getattr(self, "_V8_queue", []) or []) if isinstance(item, dict)]
     if not items:
         messagebox.showinfo("Queue", "The queue is empty. Add a link from the Downloader tab first.")
         self._queue_refresh_ui()
@@ -11874,13 +11874,13 @@ def _queue_process_queue(self):
         item.setdefault("queue_id", str(time.time_ns()))
         item["status"] = "Queued"
 
-    self._v3_queue_active = True
-    self._v3_queue_stop_requested = False
-    self._v3_queue_batch_total = len(items)
-    self._v3_queue_item_index = 1
-    self._v3_queue_item_total = len(items)
-    self._v3_queue_completed = 0
-    self._v3_queue_failed = 0
+    self._V8_queue_active = True
+    self._V8_queue_stop_requested = False
+    self._V8_queue_batch_total = len(items)
+    self._V8_queue_item_index = 1
+    self._V8_queue_item_total = len(items)
+    self._V8_queue_completed = 0
+    self._V8_queue_failed = 0
     self.stop_requested = False
     self.is_paused = False
     self.active_process = None
@@ -11901,7 +11901,7 @@ def _queue_process_queue(self):
     self._queue_refresh_ui()
 
     threading.Thread(
-        target=self._v3_queue_worker,
+        target=self._V8_queue_worker,
         args=(items,),
         daemon=True,
     ).start()
@@ -11915,20 +11915,20 @@ def _queue_worker(self, items):
 
     try:
         for index, item in enumerate(items, 1):
-            if getattr(self, "_v3_queue_stop_requested", False):
+            if getattr(self, "_V8_queue_stop_requested", False):
                 stopped = True
                 break
 
             item["status"] = "Processing"
-            self._v3_queue_item_index = index
-            self._v3_queue_item_total = total
-            self._v3_queue_batch_total = total
+            self._V8_queue_item_index = index
+            self._V8_queue_item_total = total
+            self._V8_queue_batch_total = total
             self._last_download_outcome = "running"
-            self._v3_selected_file_type = item.get("file_type") or "auto"
-            self._v3_selected_file_quality = item.get("quality") or ""
-            self._selected_file_type = self._v3_selected_file_type
-            self._selected_file_quality = self._v3_selected_file_quality
-            self._selected_download_format = self._v3_selected_file_quality
+            self._V8_selected_file_type = item.get("file_type") or "auto"
+            self._V8_selected_file_quality = item.get("quality") or ""
+            self._selected_file_type = self._V8_selected_file_type
+            self._selected_file_quality = self._V8_selected_file_quality
+            self._selected_download_format = self._V8_selected_file_quality
             self._selected_download_subtitles = bool(item.get("subtitles"))
             self.download_running = True
             self.stop_requested = False
@@ -11958,7 +11958,7 @@ def _queue_worker(self, items):
                 )
 
             outcome = str(getattr(self, "_last_download_outcome", "success"))
-            if getattr(self, "_v3_queue_stop_requested", False) or outcome == "cancelled":
+            if getattr(self, "_V8_queue_stop_requested", False) or outcome == "cancelled":
                 item["status"] = "Stopped"
                 stopped = True
                 self._queue_set_status(f"Stopped on item {index} of {total}. Remaining items are still queued.")
@@ -11988,10 +11988,10 @@ def _queue_worker(self, items):
         self.active_process = None
         self.is_paused = False
         self.stop_requested = False
-        self._v3_queue_active = False
-        self._v3_queue_stop_requested = False
-        self._v3_queue_completed = completed
-        self._v3_queue_failed = failed
+        self._V8_queue_active = False
+        self._V8_queue_stop_requested = False
+        self._V8_queue_completed = completed
+        self._V8_queue_failed = failed
         self._queue_active_item = None
         self.after(
             0,
@@ -12006,7 +12006,7 @@ def _queue_finish_controls(self, completed, failed, total, stopped):
         pass
 
     self._queue_hide_activity_controls()
-    remaining = len(getattr(self, "_v3_queue", []) or [])
+    remaining = len(getattr(self, "_V8_queue", []) or [])
     if stopped:
         message = f"Queue stopped · {completed}/{total} completed · {remaining} item(s) remain"
     elif failed:
@@ -12040,7 +12040,7 @@ def _queue_finish_controls(self, completed, failed, total, stopped):
 
 def _queue_set_operation_progress(self, prefix, percent, message, taskbar=False):
     queue_progress = None
-    if prefix == "dl" and getattr(self, "_v3_queue_active", False):
+    if prefix == "dl" and getattr(self, "_V8_queue_active", False):
         try:
             local_value = max(0.0, min(100.0, float(percent)))
         except (TypeError, ValueError):
@@ -12056,8 +12056,8 @@ def _queue_set_operation_progress(self, prefix, percent, message, taskbar=False)
             except Exception:
                 pass
 
-        total = max(1, int(getattr(self, "_v3_queue_batch_total", 1) or 1))
-        index = max(1, min(total, int(getattr(self, "_v3_queue_item_index", 1) or 1)))
+        total = max(1, int(getattr(self, "_V8_queue_batch_total", 1) or 1))
+        index = max(1, min(total, int(getattr(self, "_V8_queue_item_index", 1) or 1)))
         queue_progress = ((index - 1) + (local_value / 100.0)) / total * 100.0
         queue_progress = max(0.0, min(100.0, queue_progress))
 
@@ -12082,12 +12082,12 @@ def _queue_set_operation_progress(self, prefix, percent, message, taskbar=False)
 
 def _queue_show_downloader_activity_ui(self):
     _QUEUE_ORIGINAL_SHOW_ACTIVITY_UI(self)
-    if getattr(self, "_v3_queue_active", False):
+    if getattr(self, "_V8_queue_active", False):
         self._queue_show_activity_controls()
 
 
 def _queue_hide_downloader_running_controls(self):
-    if getattr(self, "_v3_queue_active", False):
+    if getattr(self, "_V8_queue_active", False):
         return
     _QUEUE_ORIGINAL_HIDE_RUNNING_CONTROLS(self)
     try:
@@ -12097,7 +12097,7 @@ def _queue_hide_downloader_running_controls(self):
 
 
 def _queue_reset_downloader_ui(self):
-    if getattr(self, "_v3_queue_active", False):
+    if getattr(self, "_V8_queue_active", False):
         self.is_paused = False
         self.active_process = None
         try:
@@ -12114,7 +12114,7 @@ def _queue_reset_downloader_ui(self):
 
 def _queue_toggle_pause(self):
     _QUEUE_ORIGINAL_TOGGLE_PAUSE(self)
-    if getattr(self, "_v3_queue_active", False):
+    if getattr(self, "_V8_queue_active", False):
         try:
             self.after(0, self._queue_sync_pause_controls)
         except Exception:
@@ -12122,8 +12122,8 @@ def _queue_toggle_pause(self):
 
 
 def _queue_stop_active_process(self):
-    if getattr(self, "_v3_queue_active", False):
-        self._v3_queue_stop_requested = True
+    if getattr(self, "_V8_queue_active", False):
+        self._V8_queue_stop_requested = True
         self._queue_set_status("Stopping queue after the active item is cancelled…")
     _QUEUE_ORIGINAL_STOP_ACTIVE_PROCESS(self)
 
@@ -12134,24 +12134,24 @@ def _queue_current_final(self):
         messagebox.showerror("Queue", "Enter a valid YouTube or YouTube Music URL first.")
         return
 
-    file_type = _v3_file_type_id_final(self.dl_file_type.get()) if getattr(self, "dl_file_type", None) else "auto"
+    file_type = _V8_file_type_id_final(self.dl_file_type.get()) if getattr(self, "dl_file_type", None) else "auto"
     quality = self.dl_format.get().strip() if getattr(self, "dl_format", None) and self._dl_quality_visible else ""
-    if file_type in LOSSLESS_AUDIO_TYPES_V3:
-        quality = _v3_audio_quality_options_final(file_type)[0][0]
+    if file_type in LOSSLESS_AUDIO_TYPES_V8:
+        quality = _V8_audio_quality_options_final(file_type)[0][0]
 
-    self._v3_queue = getattr(self, "_v3_queue", [])
+    self._V8_queue = getattr(self, "_V8_queue", [])
     duplicate = any(
         str(item.get("url") or "") == value
         and item.get("file_type") == file_type
         and item.get("quality") == quality
-        for item in self._v3_queue
+        for item in self._V8_queue
         if isinstance(item, dict)
     )
     if duplicate:
         self._queue_set_status("That link and format are already in the queue.")
         return
 
-    self._v3_queue.append({
+    self._V8_queue.append({
         "queue_id": str(time.time_ns()),
         "url": value,
         "file_type": file_type,
@@ -12203,7 +12203,7 @@ def _queue_install_preview_button(self):
                 hover_color=APPLE_SEPARATOR_HOVER,
                 text_color=APPLE_TEXT,
                 corner_radius=10,
-                command=self._v3_check_ytdlp_update,
+                command=self._V8_check_ytdlp_update,
             )
             check_button.grid(row=2, column=0, sticky="w", pady=(5, 0))
         self.dl_check_ytdlp_button = check_button
@@ -12229,7 +12229,7 @@ def _queue_install_preview_button(self):
         palette = _queue_palette(self)
         self.dl_queue_access_button = ctk.CTkButton(
             preview,
-            text=f"☷  Queue  ·  {len(getattr(self, '_v3_queue', []) or [])}",
+            text=f"☷  Queue  ·  {len(getattr(self, '_V8_queue', []) or [])}",
             width=112,
             height=32,
             font=(APP_FONT, 11, "bold"),
@@ -12268,8 +12268,8 @@ def _queue_preview_menu(self):
         relief="solid",
         font=(APP_FONT, 10),
     )
-    menu.add_command(label="ⓘ  Inspect Details", command=self._v3_show_media_details)
-    menu.add_command(label="↻  Check yt-dlp", command=self._v3_check_ytdlp_update)
+    menu.add_command(label="ⓘ  Inspect Details", command=self._V8_show_media_details)
+    menu.add_command(label="↻  Check yt-dlp", command=self._V8_check_ytdlp_update)
     return menu
 
 
@@ -12296,9 +12296,9 @@ YTMMusicToolkit._queue_hide_activity_controls = _queue_hide_activity_controls
 YTMMusicToolkit._queue_sync_pause_controls = _queue_sync_pause_controls
 YTMMusicToolkit._queue_finish_controls = _queue_finish_controls
 YTMMusicToolkit._queue_remove_item_from_model = _queue_remove_item_from_model
-YTMMusicToolkit._v3_queue_current = _queue_current_final
-YTMMusicToolkit._v3_process_queue = _queue_process_queue
-YTMMusicToolkit._v3_queue_worker = _queue_worker
+YTMMusicToolkit._V8_queue_current = _queue_current_final
+YTMMusicToolkit._V8_process_queue = _queue_process_queue
+YTMMusicToolkit._V8_queue_worker = _queue_worker
 YTMMusicToolkit._v4_install_preview_menu = _queue_install_preview_button
 YTMMusicToolkit._v4_preview_menu = _queue_preview_menu
 YTMMusicToolkit._v4_show_preview_menu = _queue_show_preview_action
@@ -12317,7 +12317,7 @@ YTMMusicToolkit.set_operation_progress = _queue_set_operation_progress
 
 
 def _queue_v8_capture_quality_policy(self):
-    file_type = _v3_file_type_id_final(
+    file_type = _V8_file_type_id_final(
         self.dl_file_type.get() if getattr(self, "dl_file_type", None) else "auto"
     )
     current_label = ""
@@ -12326,8 +12326,8 @@ def _queue_v8_capture_quality_policy(self):
     except Exception:
         pass
 
-    if file_type in AUDIO_FILE_TYPES_V3:
-        options = _v3_audio_quality_options_final(file_type)
+    if file_type in AUDIO_FILE_TYPES_V8:
+        options = _V8_audio_quality_options_final(file_type)
         for label, spec in options:
             if str(label).strip() == current_label:
                 chosen = dict(spec)
@@ -12369,14 +12369,14 @@ def _queue_v8_add_playlist_to_queue(self):
         self._queue_v8_update_main_action_button()
         return
 
-    if getattr(self, "_v3_queue_active", False) or getattr(self, "download_running", False):
+    if getattr(self, "_V8_queue_active", False) or getattr(self, "download_running", False):
         messagebox.showinfo("Playlist Queue", "Wait for the current download or queue to finish before adding another playlist.")
         return
     if getattr(self, "_queue_playlist_loading", False):
         return
 
     quality_label, quality_spec = self._queue_v8_capture_quality_policy()
-    file_type = str(quality_spec.get("file_type") or getattr(self, "_v3_selected_file_type", "auto") or "auto").lower()
+    file_type = str(quality_spec.get("file_type") or getattr(self, "_V8_selected_file_type", "auto") or "auto").lower()
     snapshot = {
         "file_type": file_type,
         "quality": quality_label,
@@ -12484,10 +12484,10 @@ def _queue_v8_finish_playlist_add(self, source_url, snapshot, rows, error=None):
         messagebox.showerror("Playlist Queue", error)
         return
 
-    self._v3_queue = getattr(self, "_v3_queue", [])
+    self._V8_queue = getattr(self, "_V8_queue", [])
     existing = {
         (str(item.get("url") or ""), str(item.get("file_type") or "auto"), str(item.get("quality") or ""))
-        for item in self._v3_queue
+        for item in self._V8_queue
         if isinstance(item, dict)
     }
 
@@ -12510,7 +12510,7 @@ def _queue_v8_finish_playlist_add(self, source_url, snapshot, rows, error=None):
         if quality_spec:
             quality_spec["file_type"] = file_type
 
-        self._v3_queue.append({
+        self._V8_queue.append({
             "queue_id": str(time.time_ns()),
             "url": item_url,
             "video_id": row.get("video_id") or extract_youtube_video_id(item_url),
@@ -12556,17 +12556,17 @@ def _queue_v8_queue_current(self):
         return
 
     quality_label, quality_spec = self._queue_v8_capture_quality_policy()
-    file_type = str(quality_spec.get("file_type") or getattr(self, "_v3_selected_file_type", "auto") or "auto").lower()
+    file_type = str(quality_spec.get("file_type") or getattr(self, "_V8_selected_file_type", "auto") or "auto").lower()
     quality_spec = dict(quality_spec)
     quality_spec["file_type"] = file_type
 
-    self._v3_queue = getattr(self, "_v3_queue", [])
+    self._V8_queue = getattr(self, "_V8_queue", [])
     duplicate = any(
         isinstance(item, dict)
         and str(item.get("url") or "") == current_url
         and str(item.get("file_type") or "auto") == file_type
         and str(item.get("quality") or "") == quality_label
-        for item in self._v3_queue
+        for item in self._V8_queue
     )
     if duplicate:
         self._queue_set_status("That link and format are already in the queue.")
@@ -12581,7 +12581,7 @@ def _queue_v8_queue_current(self):
     except Exception:
         pass
 
-    self._v3_queue.append({
+    self._V8_queue.append({
         "queue_id": str(time.time_ns()),
         "url": current_url,
         "video_id": extract_youtube_video_id(current_url) or "",
@@ -12607,9 +12607,9 @@ def _queue_v8_prepare_item_download(self, item):
     requested["file_type"] = file_type
     extractor_arg = LIKED_MUSIC_EXTRACTOR_ARG if item.get("ytmusic_liked_entry") else None
 
-    if requested.get("kind") == "audio" or file_type in AUDIO_FILE_TYPES_V3:
+    if requested.get("kind") == "audio" or file_type in AUDIO_FILE_TYPES_V8:
         if requested.get("kind") != "audio":
-            options = _v3_audio_quality_options_final(file_type)
+            options = _V8_audio_quality_options_final(file_type)
             wanted = str(item.get("quality") or "")
             requested = next(
                 (dict(spec) for label, spec in options if str(label).strip() == wanted.strip()),
@@ -12630,7 +12630,7 @@ def _queue_v8_prepare_item_download(self, item):
             preferred_strategy=extractor_arg,
         )
         extractor_arg = actual_extractor_arg
-        options = _v3_quality_options_final(formats, file_type, "single")
+        options = _V8_quality_options_final(formats, file_type, "single")
         resolved_spec = select_best_video_quality_spec(
             options,
             maximum_height=None if best_per_item else maximum_height,
@@ -12644,8 +12644,8 @@ def _queue_v8_prepare_item_download(self, item):
     quality_label = str(item.get("quality") or "Best available")
     self._queue_active_item = item
     self._v5_pending_spec = None
-    self._v3_selected_file_type = file_type
-    self._v3_selected_file_quality = quality_label
+    self._V8_selected_file_type = file_type
+    self._V8_selected_file_quality = quality_label
     self._selected_file_type = file_type
     self._selected_file_quality = quality_label
     self._selected_download_format = dict(resolved_spec)
@@ -12664,18 +12664,18 @@ def _queue_v8_set_playlist_quality_options(self):
     if not source_url or not is_playlist_url(source_url):
         return
 
-    file_type = _v3_file_type_id_final(
+    file_type = _V8_file_type_id_final(
         self.dl_file_type.get() if getattr(self, "dl_file_type", None) else "auto"
     )
-    self._v3_selected_file_type = file_type
+    self._V8_selected_file_type = file_type
     self._dl_preview_quality_source = source_url
     self._dl_preview_mode = "playlist"
     self._dl_preview_quality_mode = "playlist"
     self._dl_preview_is_playlist = True
 
-    if file_type in AUDIO_FILE_TYPES_V3:
+    if file_type in AUDIO_FILE_TYPES_V8:
         try:
-            self._v3_file_type_changed(self.dl_file_type.get())
+            self._V8_file_type_changed(self.dl_file_type.get())
         except Exception:
             pass
         return
@@ -12686,8 +12686,8 @@ def _queue_v8_set_playlist_quality_options(self):
     except Exception:
         pass
 
-    options = _v3_video_quality_options_final(
-        getattr(self, "_v3_preview_formats", []) or [],
+    options = _V8_video_quality_options_final(
+        getattr(self, "_V8_preview_formats", []) or [],
         file_type,
         "playlist",
     )
@@ -12707,14 +12707,14 @@ def _queue_v8_set_playlist_quality_options(self):
         self.dl_format.configure(values=labels)
         if chosen:
             self.dl_format.set(chosen)
-            self._v3_selected_file_quality = str(chosen).strip()
+            self._V8_selected_file_quality = str(chosen).strip()
     except Exception:
         pass
 
 
 def _queue_v8_update_main_action_button(self):
     try:
-        if getattr(self, "_v3_queue_active", False) or getattr(self, "download_running", False):
+        if getattr(self, "_V8_queue_active", False) or getattr(self, "download_running", False):
             return
         if getattr(self, "_queue_playlist_loading", False):
             self.dl_start.configure(state="disabled", text=" Reading Playlist…")
@@ -12778,7 +12778,7 @@ def _queue_v8_show_quality_selector(self, quality_options=None, animated=True, s
         if previous and previous in labels:
             actual = next(label for label in self.dl_format.cget("values") if str(label).strip() == previous)
             self.dl_format.set(actual)
-            self._v3_selected_file_quality = previous
+            self._V8_selected_file_quality = previous
     except Exception:
         pass
     return result
@@ -12817,7 +12817,7 @@ YTMMusicToolkit._queue_v8_prepare_item_download = _queue_v8_prepare_item_downloa
 YTMMusicToolkit._queue_v8_set_playlist_quality_options = _queue_v8_set_playlist_quality_options
 YTMMusicToolkit._queue_v8_update_main_action_button = _queue_v8_update_main_action_button
 YTMMusicToolkit._queue_current_final = _queue_v8_queue_current
-YTMMusicToolkit._v3_queue_current = _queue_v8_queue_current
+YTMMusicToolkit._V8_queue_current = _queue_v8_queue_current
 YTMMusicToolkit.on_downloader_target_changed = _queue_v8_target_changed
 YTMMusicToolkit._v4_install_preview_menu = _queue_v8_install_preview_button
 YTMMusicToolkit.show_download_quality_selector = _queue_v8_show_quality_selector
