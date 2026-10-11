@@ -1033,51 +1033,63 @@ class ToolkitBackend(QObject):
                 "download:__YT_PROGRESS__%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s",
                 url,
             ]
-            process = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                encoding="utf-8", errors="replace", bufsize=1, **hidden_kwargs()
-            )
-            with self.process_lock:
-                self.active_process = process
-                self.paused = False
-
-            tail = []
-            try:
-                assert process.stdout is not None
-                for line in process.stdout:
-                    line = line.rstrip()
-                    if not line:
-                        continue
-                    tail.append(line)
-                    tail = tail[-45:]
-                    if line.startswith("__YT_PROGRESS__"):
-                        fields = line[len("__YT_PROGRESS__"):].split("|")
-                        try:
-                            percent = float(fields[0].replace("%", "").strip())
-                        except (ValueError, IndexError):
-                            percent = 0.0
-                        detail = " • ".join(x.strip() for x in fields[1:] if x.strip())
-                        self.progressChanged.emit(percent, f"{percent:.1f}% {detail}".strip())
-                    elif "Destination:" in line or "Merging formats" in line or "ERROR:" in line or "WARNING:" in line:
-                        self.logMessage.emit(line)
-                    if self.cancel_event.is_set():
-                        self._terminate_process_tree(process)
-                        break
-                code = process.wait()
-                if self.cancel_event.is_set():
-                    raise InterruptedError("Download cancelled.")
-                if code:
-                    raise RuntimeError("\n".join(tail[-14:]) or f"yt-dlp exited with {code}")
-            finally:
+            active_command = list(cmd)
+            for attempt in range(2):
+                process = subprocess.Popen(
+                    active_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                    encoding="utf-8", errors="replace", bufsize=1, **hidden_kwargs()
+                )
                 with self.process_lock:
-                    if self.active_process is process:
-                        self.active_process = None
+                    self.active_process = process
                     self.paused = False
+
+                tail = []
                 try:
-                    if process.poll() is None:
-                        self._terminate_process_tree(process)
-                except Exception:
-                    pass
+                    assert process.stdout is not None
+                    for line in process.stdout:
+                        line = line.rstrip()
+                        if not line:
+                            continue
+                        tail.append(line)
+                        tail = tail[-45:]
+                        if line.startswith("__YT_PROGRESS__"):
+                            fields = line[len("__YT_PROGRESS__"):].split("|")
+                            try:
+                                percent = float(fields[0].replace("%", "").strip())
+                            except (ValueError, IndexError):
+                                percent = 0.0
+                            detail = " • ".join(x.strip() for x in fields[1:] if x.strip())
+                            self.progressChanged.emit(percent, f"{percent:.1f}% {detail}".strip())
+                        elif "Destination:" in line or "Merging formats" in line or "ERROR:" in line or "WARNING:" in line:
+                            self.logMessage.emit(line)
+                        if self.cancel_event.is_set():
+                            self._terminate_process_tree(process)
+                            break
+                    code = process.wait()
+                    if self.cancel_event.is_set():
+                        raise InterruptedError("Download cancelled.")
+                finally:
+                    with self.process_lock:
+                        if self.active_process is process:
+                            self.active_process = None
+                        self.paused = False
+                    try:
+                        if process.poll() is None:
+                            self._terminate_process_tree(process)
+                    except Exception:
+                        pass
+
+                if code == 0:
+                    break
+
+                native_command = build_native_ytdlp_fallback_command(active_command)
+                aria2_error = any("aria2c" in line.lower() for line in tail)
+                if attempt == 0 and aria2_error and native_command:
+                    self._log("aria2c failed during download; retrying once with yt-dlp's native downloader.")
+                    active_command = native_command
+                    continue
+
+                raise RuntimeError("\\n".join(tail[-14:]) or f"yt-dlp exited with {code}")
 
             expected_media = {
                 ".flac", ".mp3", ".m4a", ".mp4", ".mkv", ".webm", ".opus",
