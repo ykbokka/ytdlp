@@ -246,7 +246,7 @@ class YTMResolver:
             return None
         exact_videos = [
             item for item in videos if isinstance(item, dict)
-            and (not artist or exact_artist_name_match(artist, self.artist_names(item))
+            and (not artist or exact_artist_name_match(artist, self.artist_names(item)))
         ]
         pool = exact_videos or [item for item in videos if isinstance(item, dict)]
         if not pool:
