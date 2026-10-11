@@ -2109,8 +2109,7 @@ verticalAlignment: Text.AlignVCenter } }
                     selectByMouse: true
                     wrapMode: TextEdit.Wrap
                     color: root.textColor
-                    font.family: "Consolas"
-                    font.pixelSize: 10
+                                        font.pixelSize: 10
                     background: Rectangle { radius: 13
 color: root.inputColor
 border.width: 1
