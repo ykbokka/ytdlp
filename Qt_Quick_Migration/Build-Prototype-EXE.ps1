@@ -6,7 +6,11 @@ $AssetCandidates = @(
     (Join-Path $RepoRoot "EXE_Build_Kit\build_workspace\assets"),
     (Join-Path $RepoRoot "EXE_Build_Kit\assets")
 )
-$Assets = $AssetCandidates | Where-Object { Test-Path (Join-Path $_ "yt-dlp.exe") -and (Test-Path (Join-Path $_ "ffmpeg.exe")) } | Select-Object -First 1
+$Assets = $AssetCandidates | Where-Object {
+    $HasYtDlp = Test-Path -LiteralPath (Join-Path $_ "yt-dlp.exe")
+    $HasFfmpeg = Test-Path -LiteralPath (Join-Path $_ "ffmpeg.exe")
+    $HasYtDlp -and $HasFfmpeg
+} | Select-Object -First 1
 $QmlRoot = Join-Path $WorkRoot "qml"
 $DistDir = Join-Path $WorkRoot "dist"
 $BuildDir = Join-Path $WorkRoot "pyinstaller_work"
@@ -16,7 +20,7 @@ if (-not (Test-Path $Python)) {
     py -m venv (Join-Path $WorkRoot ".venv")
     if ($LASTEXITCODE -ne 0) { throw "Could not create the Python virtual environment." }
 }
-if (-not (Test-Path $Assets)) {
+if (-not $Assets -or -not (Test-Path -LiteralPath $Assets)) {
     throw "Could not find yt-dlp.exe and ffmpeg.exe in EXE_Build_Kit assets. Run EXE_Build_Kit\Download-Requirements.bat first, then retry."
 }
 if (-not (Test-Path $QmlRoot)) { throw "QML interface folder was not found: $QmlRoot" }
