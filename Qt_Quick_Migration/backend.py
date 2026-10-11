@@ -439,10 +439,10 @@ class ToolkitBackend(QObject):
         except Exception:
             return "list=LM" in value.upper()
 
-    def _resolve_user_input(self, value):
+    def _resolve_user_input_with_metadata(self, value):
         value = str(value or "").strip()
         if self._is_http_url(value):
-            return value
+            return value, None
         artist, title = split_artist_title(value)
         match = YTMResolver().search(artist, title, "")
         if not match:
@@ -451,7 +451,10 @@ class ToolkitBackend(QObject):
         if not video_id:
             raise RuntimeError("The YouTube Music result did not include a usable video ID.")
         self._log(f"Search resolved to {match.get('artist') or 'Unknown artist'} — {match.get('title') or video_id} ({match.get('source') or 'YT Music'})")
-        return f"https://www.youtube.com/watch?v={video_id}"
+        return f"https://www.youtube.com/watch?v={video_id}", match
+
+    def _resolve_user_input(self, value):
+        return self._resolve_user_input_with_metadata(value)[0]
 
     @Slot(str)
     def preview(self, url):
@@ -557,6 +560,66 @@ class ToolkitBackend(QObject):
             except OSError:
                 pass
 
+    def _metadata_for_source(self, info, url, requested_result=None):
+        """Use YT Music enrichment only when it is tied to the exact source video ID."""
+        source_id = str(info.get("id") or "").strip()
+        if not source_id:
+            parsed = urllib.parse.urlparse(str(url or ""))
+            source_id = str((urllib.parse.parse_qs(parsed.query).get("v") or [""])[0]).strip()
+
+        artist = str(info.get("artist") or info.get("creator") or info.get("uploader") or info.get("channel") or "").strip()
+        title = str(info.get("track") or info.get("title") or source_id or "Untitled").strip()
+        album = str(info.get("album") or "").strip()
+        uploaded = str(info.get("release_year") or info.get("upload_date") or "").strip()
+        year = uploaded[:4] if len(uploaded) >= 4 else ""
+        candidates = []
+        thumbs = [item for item in (info.get("thumbnails") or []) if isinstance(item, dict)]
+        thumbs.sort(key=lambda item: int(item.get("width") or 0) * int(item.get("height") or 0), reverse=True)
+        if info.get("thumbnail"):
+            candidate = canonicalize_thumbnail_url(info.get("thumbnail"))
+            if candidate:
+                candidates.append(candidate)
+        for item in thumbs:
+            candidate = canonicalize_thumbnail_url(item.get("url") or "")
+            if candidate and candidate not in candidates:
+                candidates.append(candidate)
+
+        direct = {
+            "video_id": source_id, "title": title, "artist": artist, "album": album,
+            "year": year, "cover_url": candidates[0] if candidates else "",
+            "thumbnail_candidates": candidates, "source": "YouTube source metadata",
+        }
+
+        match = None
+        if isinstance(requested_result, dict):
+            requested_id = str(requested_result.get("video_id") or "").strip()
+            if source_id and requested_id == source_id:
+                match = dict(requested_result)
+        if match is None and "music.youtube.com" in str(url or "").lower() and title:
+            try:
+                candidate = YTMResolver().search(artist, title, album)
+                candidate_id = str((candidate or {}).get("video_id") or "").strip()
+                if source_id and candidate_id == source_id:
+                    match = candidate
+                elif candidate_id:
+                    self._log("Rejected a YouTube Music metadata match because its video ID differed from the source.")
+            except Exception as exc:
+                self._log(f"YouTube Music metadata enrichment unavailable; using exact source metadata: {exc}")
+
+        if match:
+            merged = dict(direct)
+            merged.update(match)
+            merged["video_id"] = source_id or str(match.get("video_id") or "")
+            merged["title"] = str(match.get("title") or direct["title"])
+            merged["artist"] = str(match.get("artist") or direct["artist"])
+            merged["album"] = str(match.get("album") or direct["album"])
+            merged["year"] = str(match.get("year") or direct["year"])
+            merged["thumbnail_candidates"] = list(match.get("thumbnail_candidates") or candidates)
+            merged["cover_url"] = str(match.get("cover_url") or (merged["thumbnail_candidates"][0] if merged["thumbnail_candidates"] else direct["cover_url"]))
+            merged["source"] = match.get("source") or direct["source"]
+            return merged
+        return direct
+
     @staticmethod
     def _safe_name(value):
         value = re.sub(r'[<>:"/\\|?*\x00-\x1f]+', "_", str(value or "Untitled"))
@@ -583,7 +646,7 @@ class ToolkitBackend(QObject):
                    "pl":"pol","nl":"nld","sv":"swe","uk":"ukr","fa":"fas","ur":"urd","bn":"ben","ta":"tam","te":"tel"}
         return mapping.get(base, "und")
 
-    def _download_mkv_with_flac_tracks(self, url, quality, subtitles, preserve_temp=False):
+    def _download_mkv_with_flac_tracks(self, url, quality, subtitles, preserve_temp=False, metadata_result=None):
         output = Path(self.download_dir).expanduser()
         output.mkdir(parents=True, exist_ok=True)
         temp = output / "tempytm"
@@ -597,7 +660,8 @@ class ToolkitBackend(QObject):
             info = self._extract(url, flat=False, track_process=True)
             if self.cancel_event.is_set():
                 raise InterruptedError("Download cancelled.")
-            title = str(info.get("title") or info.get("id") or "Untitled")
+            metadata = self._metadata_for_source(info, url, metadata_result)
+            title = str(metadata.get("title") or info.get("track") or info.get("title") or info.get("id") or "Untitled")
             video_id = str(info.get("id") or uuid.uuid4().hex[:8])
             final_stem = self._safe_name(f"{title} [{video_id}]")
             final_path = output / f"{final_stem}.mkv"
@@ -698,10 +762,12 @@ class ToolkitBackend(QObject):
                 if not matches:
                     raise RuntimeError(f"The {label} audio track did not produce a FLAC file.")
                 audio_paths.append(matches[0])
+                track_meta = dict(metadata)
+                self._apply_ytmusic_flac_metadata(matches[0], track_meta, embed_cover=True)
                 track_labels.append((label, self._language_iso639(language)))
 
             cover_path = temp / "cover.jpg"
-            thumbnail_url = str(info.get("thumbnail") or "")
+            thumbnail_url = str(metadata.get("cover_url") or info.get("thumbnail") or "")
             if thumbnail_url:
                 try:
                     response = requests.get(thumbnail_url, timeout=25, headers={"User-Agent": "Mozilla/5.0"})
@@ -772,11 +838,14 @@ class ToolkitBackend(QObject):
             with self.process_lock:
                 self.active_process = None
                 self.paused = False
-            shutil.rmtree(temp, ignore_errors=True)
+            if preserve_temp:
+                self._clear_temp_contents(temp)
+            else:
+                shutil.rmtree(temp, ignore_errors=True)
 
-    def _download_one(self, url, file_type, quality, audio_format, subtitles, preserve_temp=False):
+    def _download_one(self, url, file_type, quality, audio_format, subtitles, preserve_temp=False, metadata_result=None):
         if file_type == "Video (MKV)":
-            return self._download_mkv_with_flac_tracks(url, quality, subtitles, preserve_temp=preserve_temp)
+            return self._download_mkv_with_flac_tracks(url, quality, subtitles, preserve_temp=preserve_temp, metadata_result=metadata_result)
 
         output = Path(self.download_dir).expanduser()
         output.mkdir(parents=True, exist_ok=True)
@@ -963,11 +1032,11 @@ class ToolkitBackend(QObject):
         self.download_active = True
         def work():
             try:
-                actual_url = self._resolve_user_input(requested)
+                actual_url, metadata_result = self._resolve_user_input_with_metadata(requested)
                 if actual_url != requested:
                     self.statusChanged.emit("YouTube Music match resolved; starting exact video download…")
                 self.download_percent = 0
-                self._download_one(actual_url, file_type, quality, audio_format, subtitles)
+                self._download_one(actual_url, file_type, quality, audio_format, subtitles, metadata_result=metadata_result)
                 return {"_kind": "download", "ok": True, "message": "Download finished successfully."}
             finally:
                 self.download_active = False
