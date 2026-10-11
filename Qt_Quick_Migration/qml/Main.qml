@@ -92,6 +92,7 @@ easing.type: Easing.OutCubic } }
         downloadDirectory = s.downloadDir || ""
         metadataFolderPath = s.metadataDir || ""
         coverFolderPath = s.coverDir || ""
+        libraryFolder = s.pipelineDir || ""
         cookiePath = s.cookiePath || ""
         hasCookies = !!s.hasCookies
         performanceMode = s.performanceMode || "aggressive"
@@ -461,6 +462,7 @@ font.bold: true }
         title: "Choose media library folder"
         onAccepted: {
             root.libraryFolder = selectedFolder.toLocalFile()
+            backend.setOperationDirectory("pipeline", root.libraryFolder)
             backend.scanLibrary(root.libraryFolder)
         }
     }
