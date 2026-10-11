@@ -4,4 +4,12 @@ Pillow
 mutagen
 ytmusicapi
 comtypes
+psutil
+darkdetect
+packaging
+typing_extensions
+certifi
+charset-normalizer
+idna
+urllib3
 pyinstaller
