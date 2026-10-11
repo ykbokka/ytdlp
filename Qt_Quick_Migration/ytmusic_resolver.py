@@ -6,6 +6,9 @@ import http.cookies
 import json
 import os
 import re
+import shutil
+import subprocess
+import sys
 import tempfile
 import time
 import urllib.request
@@ -283,7 +286,109 @@ class YTMResolver:
         finally:
             if temporary:
                 temporary.unlink(missing_ok=True)
+
+        # Match the legacy application: if ytmusicapi rejects its generated
+        # browser-auth headers, make one last attempt to enumerate list=LM with
+        # yt-dlp using the same user-selected cookies file.
+        if cookie_path:
+            try:
+                fallback = self._read_liked_songs_via_ytdlp(cookie_path)
+                if fallback:
+                    return fallback
+                last_errors.append("yt-dlp cookies fallback: no usable playlist entries")
+            except Exception as exc:
+                last_errors.append(f"yt-dlp cookies fallback: {type(exc).__name__}: {exc}")
+
         raise RuntimeError("Could not read YouTube Music Liked Music. " + " | ".join(last_errors))
+
+    @staticmethod
+    def _read_liked_songs_via_ytdlp(cookie_path: str) -> list[dict[str, Any]]:
+        roots = []
+        if getattr(sys, "_MEIPASS", None):
+            roots.append(Path(sys._MEIPASS))
+        if getattr(sys, "frozen", False):
+            roots.append(Path(sys.executable).resolve().parent)
+        roots.append(Path(__file__).resolve().parent)
+        executable = ""
+        for root in roots:
+            for name in ("yt-dlp.exe", "yt-dlp"):
+                candidate = root / name
+                if candidate.is_file():
+                    executable = str(candidate)
+                    break
+            if executable:
+                break
+        executable = executable or shutil.which("yt-dlp") or shutil.which("yt-dlp.exe")
+        if executable:
+            command = [executable]
+        else:
+            try:
+                import yt_dlp  # noqa: F401
+                command = [sys.executable, "-m", "yt_dlp"]
+            except ImportError as exc:
+                raise RuntimeError("yt-dlp was not found for the Liked Music fallback.") from exc
+
+        kwargs = {}
+        if os.name == "nt":
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = subprocess.SW_HIDE
+            kwargs = {"startupinfo": startupinfo, "creationflags": subprocess.CREATE_NO_WINDOW}
+        command.extend([
+            "--ignore-config", "--no-warnings", "--ignore-errors",
+            "--flat-playlist", "--dump-single-json", "--skip-download",
+            "--cookies", str(cookie_path),
+            "https://music.youtube.com/playlist?list=LM",
+        ])
+        proc = subprocess.run(
+            command, capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=180, **kwargs
+        )
+        raw = (proc.stdout or "").strip()
+        if not raw:
+            raise RuntimeError((proc.stderr or "yt-dlp returned no playlist JSON")[-1400:])
+        try:
+            payload = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("yt-dlp returned invalid Liked Music playlist JSON.") from exc
+        entries = payload.get("entries") if isinstance(payload, dict) else None
+        results = []
+        seen = set()
+        for item in entries or []:
+            if not isinstance(item, dict):
+                continue
+            video_id = str(item.get("id") or item.get("video_id") or item.get("videoId") or "").strip()
+            title = str(item.get("title") or item.get("track") or "").strip()
+            if not video_id or not title or video_id in seen:
+                continue
+            seen.add(video_id)
+            artist_value = item.get("artist") or item.get("creator") or item.get("uploader") or item.get("channel") or ""
+            if isinstance(artist_value, (list, tuple)):
+                artist_value = ", ".join(str(name).strip() for name in artist_value if str(name).strip())
+            album_value = item.get("album") or ""
+            if isinstance(album_value, dict):
+                album_value = str(album_value.get("name") or "")
+            candidates = YTMResolver.thumbnail_candidates(item)
+            direct_url = str(item.get("webpage_url") or item.get("url") or "")
+            if not direct_url.startswith(("http://", "https://")):
+                direct_url = f"https://www.youtube.com/watch?v={video_id}"
+            metadata = {
+                "video_id": video_id, "title": title, "artist": str(artist_value or ""),
+                "album": str(album_value or ""), "year": str(item.get("release_year") or item.get("upload_date") or "")[:4],
+                "cover_url": candidates[0] if candidates else "", "thumbnail_candidates": candidates,
+                "source": "YouTube Music Liked Music (yt-dlp fallback)", "is_fallback": False,
+            }
+            results.append({
+                "id": video_id, "video_id": video_id, "title": title, "track": title,
+                "artist": str(artist_value or ""), "album": str(album_value or ""),
+                "thumbnail": candidates[0] if candidates else "", "thumbnail_candidates": candidates,
+                "ytm_metadata": metadata, "source_url": direct_url,
+                "ytmusic_liked_entry": True, "status": "Pending", "duration": "—",
+            })
+        if not results:
+            details = (proc.stderr or "No usable entries were returned.")[-1400:]
+            raise RuntimeError(details)
+        return results
 
     @staticmethod
     def _read_liked_songs(auth_file: str) -> list[dict[str, Any]]:
