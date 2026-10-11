@@ -47,7 +47,9 @@ function Invoke-Checked {
     }
 
     if ($nativeExitCode -ne 0) { throw $Failure }
-}function Download-File {
+}
+
+function Download-File {
     param([string]$Url, [string]$Destination)
 
     $partial = $Destination + ".partial"
