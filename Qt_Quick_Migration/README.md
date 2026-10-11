@@ -1,41 +1,43 @@
-# Qt Quick UI Migration Prototype
+# YouTube Toolkit — Qt Quick migration branch
 
-This directory is an isolated prototype for migrating YouTube Toolkit's interface from CustomTkinter to **PySide6 + Qt Quick/QML**. It intentionally does not replace or modify the existing application entry point or downloader engine.
+This is the **future-interface test build** for migrating from CustomTkinter to **PySide6 + Qt Quick/QML**. The current production application on `main` is left untouched.
 
-## Why this exists
+## Easiest way to test on Windows
 
-Qt Quick provides built-in declarative transitions and animations. The UI can animate opacity, position, scale, color, state changes, and coordinated sequences in QML while Python continues to own application logic and media processing.
+1. Open the repository's [draft pull request](https://github.com/ykbokka/ytdlp/pull/7).
+2. Use **Code → Download ZIP** on the `qt-quick-migration` branch, then extract it. Alternatively, clone the repo and check out that branch.
+3. Open the extracted `Qt_Quick_Migration` folder.
+4. Double-click `Run-Prototype.bat`. The first run creates a separate `.venv`, installs the listed dependencies, and launches the Qt Quick UI. It does not touch your current app or its environment.
 
-## Run the prototype
+If the launcher fails, keep the console open and copy the error text. Please do not replace or delete the current app files while testing this branch.
 
-Create a fresh virtual environment with your installed Python and install the one prototype dependency:
+## What works in this migration build
 
-```powershell
-py -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r Qt_Quick_Migration\requirements.txt
-.\.venv\Scripts\python.exe Qt_Quick_Migration\main.py
-```
+- Qt Quick/QML owns the interface, animated navigation, theme colors, page entrances, hover feedback, and progress display.
+- Python operations run through a worker pool rather than being intentionally run on the GUI thread.
+- Direct yt-dlp downloads with video quality ceilings, MKV/MP4 output options, audio-only conversion options, optional subtitle downloads, cookie-file support, download directory setting, performance preset, and existing-file policy.
+- Playlist/source expansion into a sequential queue, with per-item status, remove/clear controls, and queue stop support.
+- Read/write common media metadata, embed supported artwork into FLAC/MP3/M4A audio and attach JPEG artwork to MKV videos, crop a source image to a square JPEG, scan a library, and optionally rewrite titles from filenames/remove album-artist tags.
 
-If `pip` cannot find a PySide6 wheel for that interpreter, use a Python version supported by the current PySide6 release. Keep this prototype's environment separate from the current app while we validate compatibility.
+## Important known scope limits
 
-## Current scope
+This is a **real working migration foundation, not yet a feature-for-feature replacement** for the current application. The existing CustomTkinter app includes specialized YT Music metadata matching, multi-language audio-track handling, bespoke lossless video/FLAC workflows, additional queue/download states, and more elaborate post-processing. Those workflows still need to be ported and regression-tested against the existing source before this branch can replace it.
 
-- Animated Qt Quick/QML navigation shell with six sections matching the current app's main areas.
-- Dark/light palette changes using Qt Quick property animations.
-- Animated page entrance, navigation selection, hover/press feedback, and a responsive layout.
-- Python/QML bridge with a **demo-only** action so we can test event wiring before connecting real downloader functions.
+The new downloader currently uses a simpler yt-dlp command path. In particular, choosing FLAC means yt-dlp converts the best available audio stream to FLAC; it does not magically restore quality lost in a lossy source. Do not treat converted FLAC as proof of lossless source audio.
 
-## Not wired yet
+Use test files and a temporary output folder first. Bulk library operations change tags on the files you select. The prototype has not yet been run and validated on every Windows setup, and the EXE builder has not yet been migrated to Qt.
 
-The downloader, queue, metadata, cover art, crop tools, configuration, cookie status, and media pipeline are **not connected** to this prototype yet. Existing production code remains unchanged on `main`. The next phase is to map the current app's Python operations behind a small backend/service API, then connect the QML controls without blocking the GUI thread.
+## Files
 
-## Migration plan
+- `main.py`: Qt Quick launcher and Python-to-QML bridge.
+- `qml/Main.qml`: interface, UI animation, navigation, and forms.
+- `backend.py`: asynchronous download, queue, tag, artwork, crop, and library operations.
+- `requirements.txt`: isolated prototype dependencies.
+- `Run-Prototype.bat`: first-run setup and launcher.
 
-1. Validate startup, QML loading, visual behavior, and resizing on Windows.
-2. Profile animation smoothness and confirm the actual renderer/frame pacing rather than assuming a framework switch guarantees performance.
-3. Extract backend operations from the old GUI into UI-independent services.
-4. Port one feature at a time and compare behavior against the existing app.
-5. Update the PyInstaller build kit only after the prototype and backend integration are stable.
+## Next migration stages
 
-**Do not use this preview as the production downloader.** It is an isolated UI prototype, not a complete port.
+1. Run the QML load/syntax checks and test on Windows.
+2. Compare each operation against the current app and fix behavioral differences.
+3. Port the specialized YT Music resolver, multi-audio/FLAC workflow, queue controls and history, and existing settings semantics.
+4. Only after feature parity, adapt the PyInstaller build kit so the shipped EXE bundles QML resources, Qt plugins, helper executables, and Python dependencies.
