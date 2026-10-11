@@ -532,7 +532,13 @@ class ToolkitBackend(QObject):
 
             match = re.search(r"(\d{3,4})\s*p", str(quality), re.I)
             ceiling = int(match.group(1)) if match else 0
-            selector = f"bestvideo[height<={ceiling}]/bestvideo" if ceiling else "bestvideo"
+            available_heights = [
+                int(fmt.get("height")) for fmt in available_video
+                if fmt.get("height") and str(fmt.get("height")).isdigit()
+            ]
+            if ceiling and not any(height <= ceiling for height in available_heights):
+                raise RuntimeError(f"No video format at or below the selected {ceiling}p quality ceiling is available.")
+            selector = f"bestvideo[height<={ceiling}]" if ceiling else "bestvideo"
 
             audio_formats = []
             for fmt in formats:
@@ -626,6 +632,15 @@ class ToolkitBackend(QObject):
             for input_index in range(1, len(audio_paths) + 1):
                 merge_cmd.extend(["-map", f"{input_index}:a:0"])
             merge_cmd.extend(["-c:v", "copy", "-c:a", "copy", "-metadata", f"title={title}"])
+            source_artist = str(info.get("artist") or info.get("creator") or info.get("uploader") or info.get("channel") or "").strip()
+            source_album = str(info.get("album") or "").strip()
+            source_year = str(info.get("release_year") or info.get("upload_date") or "").strip()[:4]
+            if source_artist:
+                merge_cmd.extend(["-metadata", f"artist={source_artist}"])
+            if source_album:
+                merge_cmd.extend(["-metadata", f"album={source_album}"])
+            if source_year:
+                merge_cmd.extend(["-metadata", f"date={source_year}"])
             for track_index, (label, language_code) in enumerate(track_labels):
                 merge_cmd.extend([f"-metadata:s:a:{track_index}", f"title={label}"])
                 merge_cmd.extend([f"-metadata:s:a:{track_index}", f"language={language_code}"])
