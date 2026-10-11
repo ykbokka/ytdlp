@@ -634,7 +634,7 @@ verticalAlignment: Text.AlignVCenter }
                                 id: addQueueButton
                                 text: "Add to Queue"
                                 onClicked: { root.downloadUrl = urlField.text
-backend.addQueueUrl(urlField.text) }
+backend.addQueueUrl(urlField.text, root.fileType, root.quality, root.audioFormat, root.subtitleMode) }
                                 background: Rectangle { radius: 12
 color: addQueueButton.hovered ? root.hoverColor : root.panelColor
 border.width: 1
