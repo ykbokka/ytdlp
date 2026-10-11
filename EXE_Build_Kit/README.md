@@ -42,11 +42,11 @@ The official yt-dlp standalone executable includes its EJS challenge-solver scri
 
 ### Download-speed strategy
 
-When aria2c is present, direct HTTP/HTTPS media downloads use aria2c with up to 16 connections, a 1 MiB split size, and the bundled executable. This can improve throughput on servers that support ranged downloads, but it is not guaranteed to beat the server or network's limits. If aria2c is absent when running the source directly, the app falls back to yt-dlp's experimental 10 MiB HTTP chunk option.
+The downloader's **Performance** selector now tunes the whole transfer strategy rather than only the fragment count. Conservative uses 4 aria2 connections / 4 native fragments, Balanced uses 8 / 12, and Aggressive uses 16 / 24. Aggressive is the default for new installs, and older installs that still have the former default Balanced setting are migrated to Aggressive once; a manually chosen Conservative or Balanced setting is preserved.
 
-DASH and HLS/M3U8 manifest downloads are deliberately kept on yt-dlp's native downloader; aria2c is assigned to direct HTTP/FTP only. This is a compatibility and safety boundary, not an arbitrary performance setting. If yt-dlp reports an aria2c-specific failure, the app retries that stage once with the native downloader and the experimental 10 MiB HTTP-chunk option.
+When aria2c is present, direct HTTP/HTTPS media downloads use the bundled executable with the selected connection count, split into byte ranges (1 MiB pieces in Aggressive mode), and skip slow file preallocation on Windows. The yt-dlp adaptive read buffer also scales from 1 MiB to 4 MiB. If aria2c is absent when running the source directly, the app falls back to yt-dlp's chunked HTTP option (5 MiB / 10 MiB / 16 MiB by preset).
 
-The downloader's **Performance** selector controls fragment concurrency: Conservative uses 2, Balanced uses 8, and Aggressive uses 16. This affects DASH/HLS fragment downloads; it does not force 16 connections on every source.
+DASH and HLS/M3U8 manifest downloads are deliberately kept on yt-dlp's native downloader for compatibility. If yt-dlp reports an aria2c-specific failure, the app retries that stage once with the native downloader. These settings can improve throughput when the server and connection support parallel/range downloads, but no client-side setting can exceed the source server's limits, and excessive parallelism can sometimes trigger throttling; use Conservative or Balanced if Aggressive performs worse on a particular connection.
 
 The spec intentionally fails if required helper executables, ytmusicapi locale data, or the certificate bundle are missing.
 
