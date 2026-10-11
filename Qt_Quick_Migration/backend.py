@@ -20,7 +20,7 @@ import requests
 from PIL import Image, ImageOps
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal, Slot
 from mutagen import File as MutagenFile
-from mutagen.flac import FLAC, Picture
+from mutagen.flac import FLAC, Picture, StreamInfo
 from mutagen.id3 import ID3, APIC
 from mutagen.mp4 import MP4, MP4Cover
 from ytmusic_resolver import YTMResolver, split_artist_title, canonicalize_thumbnail_url
@@ -1751,6 +1751,101 @@ class ToolkitBackend(QObject):
         except Exception as exc:
             self._log(f"Artwork could not be embedded into {path.name}: {exc}")
 
+    def _rewrite_flac_metadata_strict(self, path, result, replacement_cover_bytes=None):
+        """Rewrite FLAC tags while preserving STREAMINFO and all cover blocks unless replaced."""
+        flac = FLAC(str(path))
+        streaminfo = [
+            block for block in flac.metadata_blocks
+            if getattr(block, "code", None) == StreamInfo.code
+        ]
+        if not streaminfo:
+            raise RuntimeError("FLAC STREAMINFO block could not be found.")
+
+        pictures = []
+        for old_picture in list(flac.pictures or []):
+            picture = Picture()
+            picture.type = old_picture.type
+            picture.mime = old_picture.mime
+            picture.desc = old_picture.desc
+            picture.width = old_picture.width
+            picture.height = old_picture.height
+            picture.depth = old_picture.depth
+            picture.colors = old_picture.colors
+            picture.data = bytes(old_picture.data or b"")
+            pictures.append(picture)
+
+        flac.metadata_blocks = [streaminfo[0]]
+        flac.tags = None
+        flac.cuesheet = None
+        flac.seektable = None
+        flac.add_tags()
+
+        artists = [
+            str(name).strip()
+            for name in (result.get("artist_names") or [])
+            if str(name).strip()
+        ]
+        if not artists and result.get("artist"):
+            artists = [str(result.get("artist")).strip()]
+        album = str(result.get("album") or "").strip()
+        year = str(result.get("year") or "").strip()
+
+        if artists:
+            flac["ARTIST"] = artists
+        if album:
+            flac["ALBUM"] = album
+        if year:
+            flac["DATE"] = year
+
+        if replacement_cover_bytes:
+            from io import BytesIO
+            with Image.open(BytesIO(replacement_cover_bytes)) as image:
+                image = ImageOps.exif_transpose(image).convert("RGB")
+                buffer = BytesIO()
+                image.save(buffer, "JPEG", quality=100, subsampling=0)
+                replacement = Picture()
+                replacement.type = 3
+                replacement.mime = "image/jpeg"
+                replacement.desc = "Cover"
+                replacement.data = buffer.getvalue()
+            pictures = [replacement]
+
+        flac.clear_pictures()
+        for picture in pictures:
+            flac.add_picture(picture)
+        flac.save()
+
+    def _crop_flac_cover(self, path):
+        flac = FLAC(str(path))
+        if not flac.pictures:
+            return False, "No cover art"
+
+        existing = flac.pictures[0]
+        from io import BytesIO
+        with Image.open(BytesIO(existing.data)) as image:
+            image = ImageOps.exif_transpose(image)
+            width, height = image.size
+            if width == height:
+                return True, f"Already 1:1 ({width}x{height})"
+            side = min(width, height)
+            left = (width - side) // 2
+            top = (height - side) // 2
+            cropped = image.crop((left, top, left + side, top + side)).convert("RGB")
+            buffer = BytesIO()
+            cropped.save(buffer, format="JPEG", quality=100, subsampling=0)
+
+        picture = Picture()
+        picture.type = 3
+        picture.mime = "image/jpeg"
+        picture.desc = "Cover"
+        picture.data = buffer.getvalue()
+        picture.width = side
+        picture.height = side
+        flac.clear_pictures()
+        flac.add_picture(picture)
+        flac.save()
+        return True, f"Cropped {width}x{height} -> {side}x{side}"
+
     @Slot(str)
     def rewriteFolderMetadata(self, folder):
         folder = str(folder or "").strip()
@@ -1780,7 +1875,12 @@ class ToolkitBackend(QObject):
                         unmatched += 1
                         self._log(f"No YouTube Music match for {path.name}; left unchanged.")
                         continue
-                    self._apply_ytmusic_flac_metadata(path, result, embed_cover=True)
+                    before_covers = [bytes(p.data or b"") for p in list(flac.pictures or [])]
+                    self._rewrite_flac_metadata_strict(path, result, replacement_cover_bytes=None)
+                    after = FLAC(str(path))
+                    after_covers = [bytes(p.data or b"") for p in list(after.pictures or [])]
+                    if before_covers != after_covers:
+                        raise RuntimeError("Metadata rewrite changed embedded cover art.")
                     changed += 1
                     self._log(f"Updated tags and artwork: {path.name} → {result.get('title') or title}")
                 except Exception as exc:
@@ -2050,6 +2150,68 @@ class ToolkitBackend(QObject):
             return {"_kind": "library", "folder": str(root), "rows": rows}
         self.statusChanged.emit("Scanning library…")
         self._run_async("library-scan", work)
+
+    @Slot(str)
+    def runFullOverhaul(self, folder):
+        folder = str(folder or "").strip()
+
+        def work():
+            root = Path(folder)
+            if not root.is_dir():
+                raise NotADirectoryError("Choose a valid library folder.")
+            files = sorted(path for path in root.rglob("*.flac") if path.is_file())
+            if not files:
+                raise RuntimeError("No FLAC files were found for the full overhaul.")
+
+            resolver = YTMResolver()
+            changed = failed = unmatched = 0
+            total = len(files)
+            for index, path in enumerate(files, 1):
+                self.progressChanged.emit((index - 1) * 100.0 / total, f"Overhaul {index}/{total}: {path.name}")
+                self._log(f"[{index}/{total}] {path.name}")
+                try:
+                    flac = FLAC(str(path))
+                    artist = self._tag_text(flac, "artist")
+                    album = self._tag_text(flac, "album")
+                    title = self._tag_text(flac, "title") or derive_title_from_filename(path)
+                    if not artist:
+                        filename_artist, filename_title = split_artist_title(path.stem)
+                        if filename_artist:
+                            artist = filename_artist
+                            title = filename_title or title
+
+                    result = resolver.search(artist, title, album)
+                    if not result:
+                        unmatched += 1
+                        self._log(f"  No YouTube Music match; left unchanged: {path.name}")
+                        continue
+
+                    self._log(f"  source: {result.get('source', '')}")
+                    self._log(f"  artist: {result.get('artist', '')}")
+                    self._log(f"  title: {result.get('title', '')}")
+
+                    cover_bytes = self._cover_bytes_from_result(result)
+                    self._rewrite_flac_metadata_strict(path, result, replacement_cover_bytes=cover_bytes or None)
+                    try:
+                        self._crop_flac_cover(path)
+                    except Exception as crop_exc:
+                        self._log(f"  Cover crop warning for {path.name}: {crop_exc}")
+                    changed += 1
+                except Exception as exc:
+                    failed += 1
+                    log_path = write_failure_log("library_overhaul_item", exc, details=f"File: {path}")
+                    self._log(f"  ERROR: {exc}" + (f" | Failure log: {log_path}" if log_path else ""))
+
+                self.progressChanged.emit(index * 100.0 / total, f"Overhaul {index}/{total} complete")
+                time.sleep(0.15)
+
+            message = f"Full overhaul finished: {changed} updated, {unmatched} unmatched, {failed} failed."
+            self.progressChanged.emit(100.0, message)
+            self._log(message)
+            return {"_kind": "done", "ok": failed == 0, "message": message}
+
+        self.statusChanged.emit("Preparing full YouTube Music FLAC overhaul…")
+        self._run_async("library-full-overhaul", work)
 
     @Slot("QVariantList", bool)
     def applyLibraryOverhaul(self, rows, rewrite_titles):
