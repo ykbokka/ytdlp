@@ -514,7 +514,13 @@ class ToolkitBackend(QObject):
             elif self.performance_mode == "balanced":
                 cmd.extend(["--concurrent-fragments", "12"])
             else:
-                cmd.extend(["--concurrent-fragments", "24"])
+                # Aggressive mode asks yt-dlp to keep more DASH/HLS fragments
+                # in flight and enables HTTP chunking as a throttling workaround.
+                cmd.extend([
+                    "--concurrent-fragments", "32",
+                    "--http-chunk-size", "10M",
+                    "--buffer-size", "16K",
+                ])
             aria2 = find_tool("aria2c")
             if aria2 and self.performance_mode != "conservative":
                 n = 8 if self.performance_mode == "balanced" else 16
