@@ -33,9 +33,9 @@ AUDIO_EXTENSIONS = {".flac", ".mp3", ".m4a", ".opus", ".ogg", ".wav", ".aac", ".
 
 def derive_title_from_filename(path: str | Path) -> str:
     name = Path(path).stem
-    name = re.sub(r"^\\d+[\\s._-]+", "", name)
+    name = re.sub(r"^\d+[\s._-]+", "", name)
     name = name.replace("_", " ")
-    return re.sub(r"\\s+", " ", name).strip()
+    return re.sub(r"\s+", " ", name).strip()
 
 
 def resource_dirs() -> list[Path]:
@@ -2041,7 +2041,7 @@ class ToolkitBackend(QObject):
                     tags = media.tags or {} if media else {}
                     rows.append({"path": str(path), "name": path.name,
                                  "title": str((tags.get("title") or [""])[0]),
-                                 "proposedTitle": re.sub(r"\s+", " ", path.stem.replace("_", " ")).strip(),
+                                 "proposedTitle": derive_title_from_filename(path),
                                  "removeAlbumArtist": bool(tags.get("albumartist") or tags.get("album artist")),
                                  "status": "Ready"})
                 except Exception as exc:
