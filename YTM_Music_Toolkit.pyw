@@ -10432,7 +10432,6 @@ def _v4_preview_menu(self):
     queue_count = len(getattr(self, "_v3_queue", []) or [])
     menu.add_command(label="ⓘ  Inspect Details", command=self._v3_show_media_details)
     menu.add_command(label=f"＋  Add to Queue   ({queue_count})", command=self._v3_queue_current)
-    menu.add_command(label="  Process Queue", command=self._v3_process_queue)
     menu.add_separator()
     menu.add_command(label="↻  Check yt-dlp", command=self._v3_check_ytdlp_update)
     return menu
@@ -11709,12 +11708,15 @@ def _queue_install_preview_button(self):
         preview = self.dl_preview_card
         preview.grid_columnconfigure(2, weight=0)
 
-        old_button = getattr(self, "dl_preview_menu_button", None)
-        if old_button is not None:
-            try:
-                old_button.destroy()
-            except Exception:
-                pass
+        for old_button in (
+            getattr(self, "dl_preview_menu_button", None),
+            getattr(self, "dl_queue_access_button", None),
+        ):
+            if old_button is not None:
+                try:
+                    old_button.destroy()
+                except Exception:
+                    pass
 
         palette = _queue_palette(self)
         self.dl_queue_access_button = ctk.CTkButton(
