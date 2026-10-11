@@ -143,6 +143,14 @@ class ToolkitBackend(QObject):
         self.path_settings["downloader"] = self.download_dir
         self.cookie_path = self._find_cookie_path()
         self.performance_mode = self._valid_choice(self.config.get("performance_mode"), {"conservative", "balanced", "aggressive"}, "aggressive")
+        saved_file_type = str(self.config.get("file_type") or "Video (MKV)")
+        self.file_type = saved_file_type if saved_file_type in {"Video (MKV)", "Video (MP4)", "Audio only"} else "Video (MKV)"
+        saved_quality = str(self.config.get("quality") or "Best available").strip()
+        self.quality = saved_quality[:40] if saved_quality else "Best available"
+        saved_audio = str(self.config.get("audio_format") or "FLAC")
+        self.audio_format = saved_audio if saved_audio in {"FLAC", "MP3", "M4A", "Opus"} else "FLAC"
+        saved_subtitles = str(self.config.get("subtitle_mode") or "No subtitles")
+        self.subtitle_mode = saved_subtitles if saved_subtitles in {"No subtitles", "Auto subtitles", "Manual subtitles"} else "No subtitles"
         self.conflict_mode = self._valid_choice(self.config.get("conflict_mode"), {"rename", "skip", "replace"}, "rename")
         self.appearance_mode = self._valid_choice(self.config.get("appearance_mode"), {"dark", "light"}, "dark")
         self.queue_items: list[dict[str, Any]] = [dict(x) for x in self.config.get("queue_items", []) if isinstance(x, dict)]
@@ -176,6 +184,8 @@ class ToolkitBackend(QObject):
         self.config.update({"config_version": 6, "download_dir": self.download_dir,
                             "paths": dict(self.path_settings),
                             "cookie_file_path": self.cookie_path, "performance_mode": self.performance_mode,
+                            "file_type": self.file_type, "quality": self.quality,
+                            "audio_format": self.audio_format, "subtitle_mode": self.subtitle_mode,
                             "conflict_mode": self.conflict_mode, "appearance_mode": self.appearance_mode,
                             "queue_items": getattr(self, "queue_items", [])})
         try:
@@ -293,7 +303,9 @@ class ToolkitBackend(QObject):
                 "hasCookies": bool(self.cookie_path), "performanceMode": self.performance_mode,
                 "conflictMode": self.conflict_mode, "appearanceMode": self.appearance_mode,
                 "metadataDir": self.path_settings["metadata"], "coverDir": self.path_settings["cover"],
-                "cropDir": self.path_settings["crop"], "pipelineDir": self.path_settings["pipeline"]}
+                "cropDir": self.path_settings["crop"], "pipelineDir": self.path_settings["pipeline"],
+                "fileType": self.file_type, "quality": self.quality,
+                "audioFormat": self.audio_format, "subtitleMode": self.subtitle_mode}
 
     @Slot(str)
     def setDownloadDirectory(self, path):
@@ -335,6 +347,23 @@ class ToolkitBackend(QObject):
     @Slot(str)
     def setPerformanceMode(self, mode):
         self.performance_mode = self._valid_choice(mode, {"conservative", "balanced", "aggressive"}, "aggressive")
+        self._save_config()
+        self.settingsChanged.emit(self.getSettings())
+
+    @Slot(str, str, str, str)
+    def setDownloadOptions(self, file_type, quality, audio_format, subtitle_mode):
+        file_type = str(file_type or "").strip()
+        quality = str(quality or "Best available").strip()[:40]
+        audio_format = str(audio_format or "FLAC").strip()
+        subtitle_mode = str(subtitle_mode or "No subtitles").strip()
+        if file_type in {"Video (MKV)", "Video (MP4)", "Audio only"}:
+            self.file_type = file_type
+        if quality:
+            self.quality = quality
+        if audio_format in {"FLAC", "MP3", "M4A", "Opus"}:
+            self.audio_format = audio_format
+        if subtitle_mode in {"No subtitles", "Auto subtitles", "Manual subtitles"}:
+            self.subtitle_mode = subtitle_mode
         self._save_config()
         self.settingsChanged.emit(self.getSettings())
 
