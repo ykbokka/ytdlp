@@ -22,6 +22,10 @@ The output is `EXE_Build_Kit\dist\YTM Music Toolkit.exe`. If a requirement is mi
 
 Keep the `build_workspace` folder intact between preparation and assembly.
 
+## Optional GitHub Actions build
+
+The repository also includes a manually triggered Windows x64 build workflow at `.github/workflows/build-exe.yml`. In GitHub, open Actions, select **Build YTM Music Toolkit EXE**, then choose **Run workflow**. If the run succeeds, it uploads the EXE and build manifest as an artifact for 14 days. This workflow is manual-only; ordinary commits do not automatically start a CI build.
+
 ## What the EXE is configured to bundle
 
 - The Python interpreter/runtime and the application.
