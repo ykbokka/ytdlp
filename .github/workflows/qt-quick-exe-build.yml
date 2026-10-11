@@ -3,6 +3,7 @@ name: Build self-contained Qt Quick EXE
 on:
   push:
     branches:
+      - main
       - self-contained-qt-exe-bundle
     paths:
       - "Qt_Quick_Migration/**"
