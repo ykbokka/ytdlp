@@ -41,6 +41,12 @@ jobs:
       - name: Compile Python files
         run: python -m compileall -q Qt_Quick_Migration
 
+      - name: Run backend regression tests
+        working-directory: Qt_Quick_Migration
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m unittest test_backend.py -v
+
       - name: Load QML in offscreen Qt Quick
         working-directory: Qt_Quick_Migration
         env:
