@@ -689,6 +689,8 @@ font.letterSpacing: 1 }
                         ComboBox {
                             id: qualityBox
                             Layout.fillWidth: true
+                            enabled: fileTypeBox.currentText !== "Audio only"
+                            opacity: enabled ? 1 : 0.55
                             model: root.qualityOptions
                             currentIndex: Math.max(0, root.qualityOptions.indexOf(root.quality))
                             onActivated: {
