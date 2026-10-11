@@ -621,8 +621,11 @@ class ToolkitBackend(QObject):
         height = int(match.group(1)) if match else 0
         ceiling = f"[height<={height}]" if height else ""
         if file_type == "Video (MP4)":
-            return ["-f", f"bestvideo{ceiling}[ext=mp4]+bestaudio[ext=m4a]/best{ceiling}[ext=mp4]/best{ceiling}/best",
-                    "--merge-output-format", "mp4"]
+            if ceiling:
+                selector = f"bestvideo{ceiling}[ext=mp4]+bestaudio[ext=m4a]/best{ceiling}[ext=mp4]/best{ceiling}"
+            else:
+                selector = "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+            return ["-f", selector, "--merge-output-format", "mp4"]
         return ["-f", f"bestvideo{ceiling}+bestaudio/best{ceiling}/best", "--merge-output-format", "mkv"]
 
     def _run_stage(self, command, stage, progress_start=0.0, progress_span=100.0):
