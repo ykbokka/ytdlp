@@ -1332,7 +1332,7 @@ class ToolkitBackend(QObject):
                     except OSError as exc:
                         self._log(f"Subtitle sidecar could not be exported ({sidecar.name}): {exc}")
 
-            self.progressChanged.emit(100, "Download complete")
+            self._emit_download_progress(100, "Download complete")
             return True
         finally:
             with self.process_lock:
