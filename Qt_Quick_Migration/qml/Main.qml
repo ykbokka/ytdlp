@@ -29,6 +29,8 @@ ApplicationWindow {
     property string libraryFolder: ""
     property bool rewriteTitles: false
     property string downloadDirectory: ""
+    property string metadataFolderPath: ""
+    property string coverFolderPath: ""
     property string cookiePath: ""
     property bool hasCookies: false
     property string performanceMode: "aggressive"
@@ -380,6 +382,16 @@ ApplicationWindow {
             root.libraryFolder = selectedFolder.toLocalFile()
             backend.scanLibrary(root.libraryFolder)
         }
+    }
+    FolderDialog {
+        id: metadataFolderDialog
+        title: "Choose FLAC metadata folder"
+        onAccepted: root.metadataFolderPath = selectedFolder.toLocalFile()
+    }
+    FolderDialog {
+        id: coverFolderDialog
+        title: "Choose FLAC cover-art folder"
+        onAccepted: root.coverFolderPath = selectedFolder.toLocalFile()
     }
 
     Connections {
@@ -806,6 +818,34 @@ ApplicationWindow {
                         contentItem: Text { text: parent.text; color: "white"; font.bold: true; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                     }
                 }
+                Rectangle {
+                    Layout.fillWidth: true
+                    radius: 15
+                    color: root.elevatedColor
+                    border.width: 1
+                    border.color: root.borderColor
+                    implicitHeight: batchMetadata.implicitHeight + 26
+                    ColumnLayout {
+                        id: batchMetadata
+                        anchors.fill: parent
+                        anchors.margins: 13
+                        spacing: 8
+                        Text { text: "BATCH FLAC METADATA + ARTWORK"; color: root.mutedColor; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
+                        Text { text: "Match each FLAC file against YouTube Music using contributing artist, title, and album. Review on a copy of your library first."; color: root.mutedColor; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                        RowLayout {
+                            Layout.fillWidth: true
+                            TextField { id: metadataFolder; Layout.fillWidth: true; text: root.metadataFolderPath; placeholderText: "Folder containing FLAC files…"; color: root.textColor; placeholderTextColor: root.mutedColor; selectByMouse: true; onTextEdited: root.metadataFolderPath = text; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
+                            Button { text: "Browse"; onClicked: metadataFolderDialog.open(); background: Rectangle { radius: 10; color: root.panelColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                        }
+                        Button {
+                            text: "Rewrite Folder from YouTube Music"
+                            Layout.preferredHeight: 39
+                            onClicked: backend.rewriteFolderMetadata(metadataFolder.text)
+                            background: Rectangle { radius: 10; color: "#3475EE" }
+                            contentItem: Text { text: parent.text; color: "white"; font.pixelSize: 10; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                        }
+                    }
+                }
                 Connections {
                     target: backend
                     function onMetadataLoaded(data) {
@@ -860,6 +900,34 @@ ApplicationWindow {
                 onClicked: backend.embedArtwork(coverMediaPath.text, coverSource.text)
                 background: Rectangle { radius: 12; color: "#3475EE" }
                 contentItem: Text { text: parent.text; color: "white"; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+            }
+            Rectangle {
+                Layout.fillWidth: true
+                radius: 15
+                color: root.elevatedColor
+                border.width: 1
+                border.color: root.borderColor
+                implicitHeight: batchCovers.implicitHeight + 26
+                ColumnLayout {
+                    id: batchCovers
+                    anchors.fill: parent
+                    anchors.margins: 13
+                    spacing: 8
+                    Text { text: "BATCH COVER UPGRADE"; color: root.mutedColor; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
+                    Text { text: "Find matching YouTube Music artwork and replace embedded FLAC covers."; color: root.mutedColor; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        TextField { id: coverFolder; Layout.fillWidth: true; text: root.coverFolderPath; placeholderText: "Folder containing FLAC files…"; color: root.textColor; placeholderTextColor: root.mutedColor; selectByMouse: true; onTextEdited: root.coverFolderPath = text; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
+                        Button { text: "Browse"; onClicked: coverFolderDialog.open(); background: Rectangle { radius: 10; color: root.panelColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                    }
+                    Button {
+                        text: "Upgrade Folder Covers"
+                        Layout.preferredHeight: 39
+                        onClicked: backend.upgradeFolderCovers(coverFolder.text)
+                        background: Rectangle { radius: 10; color: "#3475EE" }
+                        contentItem: Text { text: parent.text; color: "white"; font.pixelSize: 10; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    }
+                }
             }
         }
     }
