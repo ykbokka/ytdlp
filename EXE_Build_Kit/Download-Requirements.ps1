@@ -114,17 +114,17 @@ try {
     $python = Get-PythonCommand
     New-Item -ItemType Directory -Force -Path $WorkRoot, $AssetsRoot | Out-Null
 
-    Write-Host "[1/7] Downloading the app source..." -ForegroundColor Cyan
+    Write-Host "[1/8] Downloading the app source..." -ForegroundColor Cyan
     Download-File $RepoRaw $SourcePath
     if ((Get-Item $SourcePath).Length -lt 10000) {
         throw "Downloaded app source is unexpectedly small; refusing to continue."
     }
 
-    Write-Host "[2/7] Downloading yt-dlp..." -ForegroundColor Cyan
+    Write-Host "[2/8] Downloading yt-dlp..." -ForegroundColor Cyan
     $ytDlpPath = Join-Path $AssetsRoot "yt-dlp.exe"
     Download-File "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" $ytDlpPath
 
-    Write-Host "[3/7] Downloading and extracting Deno..." -ForegroundColor Cyan
+    Write-Host "[3/8] Downloading and extracting Deno..." -ForegroundColor Cyan
     $denoZip = Join-Path $WorkRoot "deno.zip"
     Download-File "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip" $denoZip
     $denoExtract = Join-Path $WorkRoot "deno_extract"
@@ -134,7 +134,7 @@ try {
     if (-not $denoExe) { throw "Deno archive did not contain deno.exe." }
     Copy-Item $denoExe.FullName (Join-Path $AssetsRoot "deno.exe") -Force
 
-    Write-Host "[4/7] Downloading and extracting FFmpeg/FFprobe..." -ForegroundColor Cyan
+    Write-Host "[4/8] Downloading and extracting FFmpeg/FFprobe..." -ForegroundColor Cyan
     $ffmpegZip = Join-Path $WorkRoot "ffmpeg.zip"
     Download-File "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" $ffmpegZip
     $ffmpegExtract = Join-Path $WorkRoot "ffmpeg_extract"
