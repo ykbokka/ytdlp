@@ -6295,7 +6295,7 @@ class YTMMusicToolkit(ctk.CTk):
                     "--newline",
                     "--windows-filenames",
                     "--concurrent-fragments",
-                    "4",
+                    str({"conservative": 2, "balanced": 8, "aggressive": 16}.get(getattr(self, "performance_mode", "balanced"), 8)),
                     "--no-playlist",
                     *youtube_extractor_args_list(
                         result.get("quality_extractor_arg")
