@@ -46,6 +46,8 @@ The downloader's **Performance** selector now tunes the whole transfer strategy 
 
 When aria2c is present, direct HTTP/HTTPS media downloads use the bundled executable with the selected connection count, split into byte ranges (1 MiB pieces in Aggressive mode), and skip slow file preallocation on Windows. The app also ignores any unrelated per-user `aria2.conf` settings and explicitly removes aria2 speed caps, so an old config cannot silently limit this downloader. The yt-dlp adaptive read buffer also scales from 1 MiB to 4 MiB. If aria2c is absent when running the source directly, the app falls back to yt-dlp's chunked HTTP option (5 MiB / 10 MiB / 16 MiB by preset).
 
+Metadata lookups and playlist previews use lightweight extraction settings, without aria2 or the large transfer buffers. Playlist preview fetches only the playlist list and cover; per-video format inspection is deferred until that item is actually about to download, so large playlists do not spend minutes scanning every entry before the user can start.
+
 DASH and HLS/M3U8 manifest downloads are deliberately kept on yt-dlp's native downloader for compatibility. If yt-dlp reports an aria2c-specific failure, the app retries that stage once with the native downloader. These settings can improve throughput when the server and connection support parallel/range downloads, but no client-side setting can exceed the source server's limits, and excessive parallelism can sometimes trigger throttling; use Conservative or Balanced if Aggressive performs worse on a particular connection.
 
 The spec intentionally fails if required helper executables, ytmusicapi locale data, or the certificate bundle are missing.
