@@ -2,20 +2,13 @@
 """
 PyInstaller spec for the standalone YTM Music Toolkit EXE.
 
-Expected layout:
-EXE_Build_Kit/
-  YTM_Music_Toolkit.spec
-  build_workspace/
-    YTM_Music_Toolkit.pyw
-    assets/
-      yt-dlp.exe
-      deno.exe
-      ffmpeg.exe
-      ffprobe.exe
-      app.ico (optional)
+The EXE bundles the Python runtime, third-party Python packages, package data,
+and the yt-dlp, Deno, FFmpeg, and FFprobe executables. User-specific settings,
+authentication files, downloads, and logs remain outside the EXE intentionally.
 """
 
 import os
+
 from PyInstaller.utils.hooks import collect_all
 
 SPEC_DIR = os.path.abspath(SPECPATH)
@@ -42,16 +35,66 @@ for filename in required_binaries:
         )
     app_binaries.append((source_path, "."))
 
-ctk_datas, ctk_binaries, ctk_hiddenimports = collect_all("customtkinter")
-comtypes_datas, comtypes_binaries, comtypes_hiddenimports = collect_all("comtypes")
-ytm_datas, ytm_binaries, ytm_hiddenimports = collect_all("ytmusicapi")
+# Collect code, hidden imports, native extensions, and package data for all
+# third-party libraries directly used by the application and their common
+# runtime dependencies. PyInstaller also bundles the Python standard library
+# and interpreter runtime automatically.
+packages_to_collect = [
+    "customtkinter",
+    "comtypes",
+    "ytmusicapi",
+    "requests",
+    "PIL",
+    "mutagen",
+    "certifi",
+    "charset_normalizer",
+    "idna",
+    "urllib3",
+]
+
+app_datas = []
+app_binaries_from_packages = []
+app_hiddenimports = []
+
+for package_name in packages_to_collect:
+    package_datas, package_binaries, package_hiddenimports = collect_all(package_name)
+    app_datas += package_datas
+    app_binaries_from_packages += package_binaries
+    app_hiddenimports += package_hiddenimports
+
+# Explicitly add every ytmusicapi locale file at the exact relative location
+# expected by ytmusicapi's gettext.translation("base", localedir=...).
+import ytmusicapi
+
+YTMUSICAPI_DIR = os.path.dirname(ytmusicapi.__file__)
+LOCALES_DIR = os.path.join(YTMUSICAPI_DIR, "locales")
+
+if not os.path.isdir(LOCALES_DIR):
+    raise FileNotFoundError(
+        "ytmusicapi locale directory not found: " + LOCALES_DIR
+        + "\nReinstall ytmusicapi in the build environment before building."
+    )
+
+locale_file_count = 0
+for root, _, filenames in os.walk(LOCALES_DIR):
+    for filename in filenames:
+        source_path = os.path.join(root, filename)
+        relative_dir = os.path.relpath(os.path.dirname(source_path), YTMUSICAPI_DIR)
+        destination_dir = os.path.join("ytmusicapi", relative_dir)
+        app_datas.append((source_path, destination_dir))
+        locale_file_count += 1
+
+if locale_file_count == 0:
+    raise FileNotFoundError(
+        "No ytmusicapi locale files were found in: " + LOCALES_DIR
+    )
 
 a = Analysis(
     [SOURCE],
     pathex=[WORKSPACE],
-    binaries=app_binaries + ctk_binaries + comtypes_binaries + ytm_binaries,
-    datas=ctk_datas + comtypes_datas + ytm_datas,
-    hiddenimports=ctk_hiddenimports + comtypes_hiddenimports + ytm_hiddenimports,
+    binaries=app_binaries + app_binaries_from_packages,
+    datas=app_datas,
+    hiddenimports=app_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
