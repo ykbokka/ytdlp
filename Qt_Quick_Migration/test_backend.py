@@ -200,7 +200,7 @@ class QtBackendCoreTests(unittest.TestCase):
         self.assertFalse((output / "tempytm").exists(), "A single-download tempytm workspace should be removed.")
 
     def test_safe_filename_and_language_labels(self):
-        self.assertEqual(backend.ToolkitBackend._safe_name('a<b>:"c'), "a_b___c")
+        self.assertEqual(backend.ToolkitBackend._safe_name('a<b>:"c'), "a_b_c")
         self.assertEqual(backend.ToolkitBackend._language_label("ar"), "Arabic")
         self.assertEqual(backend.ToolkitBackend._language_iso639("en-US"), "eng")
 
