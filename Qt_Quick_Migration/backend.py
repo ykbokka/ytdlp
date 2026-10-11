@@ -670,70 +670,167 @@ class ToolkitBackend(QObject):
     def _download_one(self, url, file_type, quality, audio_format, subtitles):
         if file_type == "Video (MKV)":
             return self._download_mkv_with_flac_tracks(url, quality, subtitles)
+
         output = Path(self.download_dir).expanduser()
         output.mkdir(parents=True, exist_ok=True)
         temp = output / "tempytm"
+        if temp.exists():
+            shutil.rmtree(temp)
         temp.mkdir(parents=True, exist_ok=True)
-        cmd = self._base_command(True) + self._format_args(file_type, quality, audio_format)
-        cmd += ["--output", str(output / "%(title).180B [%(id)s].%(ext)s"),
-                "--paths", f"temp:{temp}", "--windows-filenames", "--embed-metadata",
-                "--embed-thumbnail", "--write-thumbnail", "--convert-thumbnails", "jpg"]
-        if subtitles == "Auto subtitles":
-            cmd += ["--write-auto-subs", "--sub-langs", "all,-live_chat"]
-        elif subtitles == "Manual subtitles":
-            cmd += ["--write-subs", "--sub-langs", "all,-live_chat"]
-        if self.conflict_mode == "skip":
-            cmd.append("--no-overwrites")
-        elif self.conflict_mode == "replace":
-            cmd.append("--force-overwrites")
-        else:
-            cmd += ["--output", str(output / "%(title).180B [%(id)s]-%(autonumber)03d.%(ext)s")]
-        cmd += ["--progress-template", "download:__YT_PROGRESS__%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s", url]
-        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                                   encoding="utf-8", errors="replace", bufsize=1, **hidden_kwargs())
-        with self.process_lock:
-            self.active_process = process
-            self.paused = False
+
         try:
-            assert process.stdout is not None
+            # Work only inside tempytm. The final output folder receives completed
+            # media and requested subtitle sidecars after the process succeeds.
+            info = self._extract(url, flat=False)
+            title = str(info.get("title") or info.get("id") or "Untitled")
+            video_id = str(info.get("id") or uuid.uuid4().hex[:8])
+            guessed_stem = self._safe_name(f"{title} [{video_id}]")
+            expected_extension = {
+                "FLAC": ".flac", "MP3": ".mp3", "M4A": ".m4a", "Opus": ".opus"
+            }.get(audio_format, ".flac") if file_type == "Audio only" else (
+                ".mp4" if file_type == "Video (MP4)" else ".mkv"
+            )
+            predicted_output = output / (guessed_stem + expected_extension)
+            if self.conflict_mode == "skip" and predicted_output.exists():
+                self._log(f"Skipped existing output: {predicted_output.name}")
+                self.statusChanged.emit(f"Skipped existing file: {predicted_output.name}")
+                return True
+
+            staging_template = str(temp / "%(title).180B [%(id)s].%(ext)s")
+            cmd = self._base_command(True) + self._format_args(file_type, quality, audio_format)
+            cmd += [
+                "--output", staging_template,
+                "--paths", f"temp:{temp}",
+                "--windows-filenames",
+                "--embed-metadata",
+                "--embed-thumbnail",
+                "--write-thumbnail",
+                "--convert-thumbnails", "jpg",
+            ]
+            if subtitles == "Auto subtitles":
+                cmd += ["--write-auto-subs", "--sub-langs", "all,-live_chat"]
+            elif subtitles == "Manual subtitles":
+                cmd += ["--write-subs", "--sub-langs", "all,-live_chat"]
+
+            cmd += [
+                "--progress-template",
+                "download:__YT_PROGRESS__%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s",
+                url,
+            ]
+            process = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                encoding="utf-8", errors="replace", bufsize=1, **hidden_kwargs()
+            )
+            with self.process_lock:
+                self.active_process = process
+                self.paused = False
+
             tail = []
-            for line in process.stdout:
-                line = line.rstrip()
-                if not line:
-                    continue
-                tail.append(line)
-                tail = tail[-40:]
-                if line.startswith("__YT_PROGRESS__"):
-                    fields = line[len("__YT_PROGRESS__"):].split("|")
-                    try:
-                        percent = float(fields[0].replace("%", "").strip())
-                    except (ValueError, IndexError):
-                        percent = 0.0
-                    detail = " • ".join(x.strip() for x in fields[1:] if x.strip())
-                    self.progressChanged.emit(percent, f"{percent:.1f}% {detail}")
-                elif "Destination:" in line or "Merging formats" in line or "ERROR:" in line or "WARNING:" in line:
-                    self.logMessage.emit(line)
+            try:
+                assert process.stdout is not None
+                for line in process.stdout:
+                    line = line.rstrip()
+                    if not line:
+                        continue
+                    tail.append(line)
+                    tail = tail[-45:]
+                    if line.startswith("__YT_PROGRESS__"):
+                        fields = line[len("__YT_PROGRESS__"):].split("|")
+                        try:
+                            percent = float(fields[0].replace("%", "").strip())
+                        except (ValueError, IndexError):
+                            percent = 0.0
+                        detail = " • ".join(x.strip() for x in fields[1:] if x.strip())
+                        self.progressChanged.emit(percent, f"{percent:.1f}% {detail}".strip())
+                    elif "Destination:" in line or "Merging formats" in line or "ERROR:" in line or "WARNING:" in line:
+                        self.logMessage.emit(line)
+                    if self.cancel_event.is_set():
+                        self._terminate_process_tree(process)
+                        break
+                code = process.wait()
                 if self.cancel_event.is_set():
-                    process.terminate()
-                    break
-            code = process.wait()
-            if self.cancel_event.is_set():
-                raise InterruptedError("Download cancelled.")
-            if code:
-                raise RuntimeError("\n".join(tail[-12:]) or f"yt-dlp exited with {code}")
+                    raise InterruptedError("Download cancelled.")
+                if code:
+                    raise RuntimeError("\n".join(tail[-14:]) or f"yt-dlp exited with {code}")
+            finally:
+                with self.process_lock:
+                    if self.active_process is process:
+                        self.active_process = None
+                    self.paused = False
+                try:
+                    if process.poll() is None:
+                        self._terminate_process_tree(process)
+                except Exception:
+                    pass
+
+            expected_media = {
+                ".flac", ".mp3", ".m4a", ".mp4", ".mkv", ".webm", ".opus",
+                ".ogg", ".wav", ".aac", ".wma", ".m4v", ".mov"
+            }
+            staged_files = [item for item in temp.iterdir() if item.is_file()]
+            media_files = [
+                item for item in staged_files
+                if item.suffix.lower() in expected_media
+                and not item.name.lower().endswith((".part", ".ytdl", ".tmp", ".temp"))
+            ]
+            preferred = [item for item in media_files if item.suffix.lower() == expected_extension]
+            if not preferred:
+                preferred = media_files
+            if not preferred:
+                raise RuntimeError("yt-dlp completed, but no final media file was found inside tempytm.")
+            media_source = max(preferred, key=lambda item: item.stat().st_mtime)
+            source_stem = media_source.stem
+
+            if self.conflict_mode == "replace":
+                media_target = output / media_source.name
+            elif self.conflict_mode == "skip":
+                media_target = output / media_source.name
+                if media_target.exists():
+                    self._log(f"Skipped completed duplicate: {media_target.name}")
+                    return True
+            else:
+                media_target = output / media_source.name
+                suffix = 2
+                while media_target.exists():
+                    media_target = output / f"{source_stem} ({suffix}){media_source.suffix}"
+                    suffix += 1
+
+            os.replace(media_source, media_target)
+            self._log(f"Completed media exported from tempytm: {media_target.name}")
+
+            subtitle_extensions = {".vtt", ".srt", ".ass", ".ssa", ".lrc", ".ttml"}
+            if subtitles in {"Auto subtitles", "Manual subtitles"}:
+                for sidecar in list(temp.iterdir()):
+                    if not sidecar.is_file() or sidecar.suffix.lower() not in subtitle_extensions:
+                        continue
+                    mapped_name = sidecar.name
+                    if source_stem and source_stem in mapped_name:
+                        mapped_name = mapped_name.replace(source_stem, media_target.stem, 1)
+                    sidecar_target = output / mapped_name
+                    if self.conflict_mode == "rename" and sidecar_target.exists():
+                        sidecar_target = self._unique_sidecar_path(output, mapped_name)
+                    try:
+                        os.replace(sidecar, sidecar_target)
+                    except OSError as exc:
+                        self._log(f"Subtitle sidecar could not be exported ({sidecar.name}): {exc}")
+
             self.progressChanged.emit(100, "Download complete")
             return True
         finally:
             with self.process_lock:
-                if self.active_process is process:
-                    self.active_process = None
+                self.active_process = None
                 self.paused = False
-            try:
-                if process.poll() is None:
-                    process.kill()
-            except OSError:
-                pass
             shutil.rmtree(temp, ignore_errors=True)
+
+    @staticmethod
+    def _unique_sidecar_path(folder, filename):
+        path = Path(filename)
+        candidate = Path(folder) / path.name
+        n = 2
+        while candidate.exists():
+            candidate = Path(folder) / f"{path.stem} ({n}){path.suffix}"
+            n += 1
+        return candidate
 
     @Slot(str, str, str, str, str)
     def startDownload(self, url, file_type, quality, audio_format, subtitles):
