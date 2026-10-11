@@ -642,10 +642,16 @@ ApplicationWindow {
                     spacing: 9
                     Button {
                         id: downloadButton
-                        text: "Start Download  →"
+                        text: (urlField.text.indexOf("list=") >= 0 || urlField.text.indexOf("/playlist") >= 0) ? "Add Playlist to Queue" : "Start Download  →"
                         Layout.preferredHeight: 43
-                        Layout.preferredWidth: 165
-                        onClicked: root.startDownload()
+                        Layout.preferredWidth: 190
+                        onClicked: {
+                            root.downloadUrl = urlField.text
+                            if (urlField.text.indexOf("list=") >= 0 || urlField.text.indexOf("/playlist") >= 0)
+                                backend.addQueueUrl(urlField.text)
+                            else
+                                root.startDownload()
+                        }
                         background: Rectangle { radius: 12; color: downloadButton.down ? "#2859B9" : downloadButton.hovered ? "#4C83F3" : "#3475EE"; Behavior on color { ColorAnimation { duration: 130 } } }
                         contentItem: Text { text: downloadButton.text; color: "white"; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                         scale: down ? 0.98 : 1
