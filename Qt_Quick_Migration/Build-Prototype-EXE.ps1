@@ -44,13 +44,17 @@ try {
         if ($Code -ne 0) { throw "Bundled tool failed its startup check: $($Tool.Path). Rerun Install-Dependencies.bat." }
     }
 
-    Write-Host "Running Python syntax checks, backend tests and QML smoke test..."
-    Invoke-Native $Python @("-m", "compileall", "-q", "main.py", "backend.py", "ytmusic_resolver.py", "smoke_test.py", "test_backend.py", "test_ytmusic_resolver.py") "Python syntax check failed"
-    Invoke-Native $Python @("-m", "unittest", "test_backend.py", "test_ytmusic_resolver.py", "-v") "Backend regression tests failed"
-    $OldQtPlatform = $env:QT_QPA_PLATFORM
-    $env:QT_QPA_PLATFORM = "offscreen"
-    try { Invoke-Native $Python @("smoke_test.py") "Qt Quick QML startup test failed" }
-    finally { $env:QT_QPA_PLATFORM = $OldQtPlatform }
+    Push-Location $Root
+    try {
+        Write-Host "Running Python syntax checks, backend tests and QML smoke test..."
+        Invoke-Native $Python @("-m", "compileall", "-q", "main.py", "backend.py", "ytmusic_resolver.py", "smoke_test.py", "test_backend.py", "test_ytmusic_resolver.py") "Python syntax check failed"
+        Invoke-Native $Python @("-m", "unittest", "test_backend.py", "test_ytmusic_resolver.py", "-v") "Backend regression tests failed"
+        $OldQtPlatform = $env:QT_QPA_PLATFORM
+        $env:QT_QPA_PLATFORM = "offscreen"
+        try { Invoke-Native $Python @("smoke_test.py") "Qt Quick QML startup test failed" }
+        finally { $env:QT_QPA_PLATFORM = $OldQtPlatform }
+    }
+    finally { Pop-Location }
 
     if (-not (Test-Path -LiteralPath $DistDir)) { New-Item -ItemType Directory -Force -Path $DistDir | Out-Null }
     if (Test-Path -LiteralPath $BuildDir) { Remove-Item -LiteralPath $BuildDir -Recurse -Force }
