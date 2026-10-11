@@ -31,10 +31,14 @@ function Get-PythonCommand {
 
 function Invoke-Checked {
     param([string]$Program, [string[]]$Arguments, [string]$Failure)
-    & $Program @Arguments
+
+    # Merge native stderr into stdout before displaying it. This avoids
+    # Windows PowerShell 5.1 treating harmless native warnings as terminating
+    # PowerShell errors when ErrorActionPreference is Stop.
+    & $Program @Arguments 2>&1 | ForEach-Object { Write-Host $_ }
+
     if ($LASTEXITCODE -ne 0) { throw $Failure }
 }
-
 function Download-File {
     param([string]$Url, [string]$Destination)
 
