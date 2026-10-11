@@ -55,7 +55,7 @@ try {
     if (-not (Test-Path -LiteralPath $DistDir)) { New-Item -ItemType Directory -Force -Path $DistDir | Out-Null }
     if (Test-Path -LiteralPath $BuildDir) { Remove-Item -LiteralPath $BuildDir -Recurse -Force }
 
-    $Args = @(
+    $PyInstallerArgs = @(
         "--noconfirm", "--clean", "--onefile", "--windowed",
         "--name", "YouTube Toolkit Qt Preview",
         "--distpath", $DistDir, "--workpath", $BuildDir, "--specpath", $Root,
@@ -81,16 +81,16 @@ try {
     )
 
     if (Test-Path -LiteralPath $Licenses -PathType Container) {
-        $Args += @("--add-data", "$Licenses;licenses")
+        $PyInstallerArgs += @("--add-data", "$Licenses;licenses")
     }
     Get-ChildItem -LiteralPath $Assets -Filter "*.dll" -File -ErrorAction SilentlyContinue |
-        ForEach-Object { $Args += @("--add-binary", "$($_.FullName);.") }
-    if (Test-Path -LiteralPath $Icon -PathType Leaf) { $Args += @("--icon", $Icon) }
+        ForEach-Object { $PyInstallerArgs += @("--add-binary", "$($_.FullName);.") }
+    if (Test-Path -LiteralPath $Icon -PathType Leaf) { $PyInstallerArgs += @("--icon", $Icon) }
 
     Write-Host ""
     Write-Host "Building a one-file app with the Python runtime, Qt/QML UI, app modules, packages, yt-dlp, FFmpeg, FFprobe, Deno, aria2c and helper DLLs..."
     Push-Location $Root
-    try { Invoke-Native $Python (@("-m", "PyInstaller") + $Args) "PyInstaller could not create the standalone EXE" }
+    try { Invoke-Native $Python (@("-m", "PyInstaller") + $PyInstallerArgs) "PyInstaller could not create the standalone EXE" }
     finally { Pop-Location }
 
     $Output = Join-Path $DistDir "YouTube Toolkit Qt Preview.exe"
