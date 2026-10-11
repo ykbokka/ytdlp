@@ -179,6 +179,7 @@ class ToolkitBackend(QObject):
     logMessage = Signal(str)
     progressChanged = Signal(float, str)
     previewReady = Signal("QVariantMap")
+    previewFailed = Signal(str, str)
     queueChanged = Signal("QVariantList")
     operationFinished = Signal(str, bool, str)
     metadataLoaded = Signal("QVariantMap")
@@ -226,6 +227,7 @@ class ToolkitBackend(QObject):
         self.paused = False
         self.last_operation_id = ""
         self._workers: dict[str, OperationWorker] = {}
+        self._preview_requests: dict[str, str] = {}
         self._log("Qt Quick backend ready.")
         if not get_ytdlp():
             self._log("WARNING: yt-dlp executable was not found. Prepare the EXE build-kit assets or install yt-dlp.")
@@ -312,8 +314,10 @@ class ToolkitBackend(QObject):
         except OSError as exc:
             self._log(f"Could not update operation history: {exc}")
 
-    def _run_async(self, label, fn):
+    def _run_async(self, label, fn, context=None):
         key = f"{label}-{uuid.uuid4().hex[:8]}"
+        if label == "preview" and context:
+            self._preview_requests[key] = str(context)
         worker = OperationWorker(key, fn)
         worker.signals.result.connect(self._worker_result)
         worker.signals.error.connect(self._worker_error)
@@ -326,6 +330,9 @@ class ToolkitBackend(QObject):
     def _worker_result(self, key, payload):
         marker = payload.pop("_kind", "") if isinstance(payload, dict) else ""
         if marker == "preview":
+            requested = self._preview_requests.get(key, "")
+            if requested:
+                payload["_requestedUrl"] = requested
             self.previewReady.emit(payload)
         elif marker == "metadata":
             self.metadataLoaded.emit(payload)
@@ -352,6 +359,9 @@ class ToolkitBackend(QObject):
     @Slot(str, str)
     def _worker_error(self, key, trace):
         last = trace.strip().splitlines()[-1] if trace.strip() else "Unknown error"
+        requested_preview = self._preview_requests.get(key)
+        if requested_preview:
+            self.previewFailed.emit(requested_preview, last)
         if "InterruptedError" in trace and "cancelled" in trace.lower():
             message = "Download stopped by user."
             self._log(f"{key} stopped by user.")
@@ -368,6 +378,7 @@ class ToolkitBackend(QObject):
     @Slot(str)
     def _worker_finished(self, key):
         self._workers.pop(key, None)
+        self._preview_requests.pop(key, None)
         if key == self.last_operation_id:
             self.last_operation_id = ""
 
@@ -654,7 +665,7 @@ class ToolkitBackend(QObject):
 
         self.statusChanged.emit("Inspecting URL or resolving YouTube Music search…")
         self._log(f"Preview requested: {requested}")
-        self._run_async("preview", work)
+        self._run_async("preview", work, requested)
 
     def _format_args(self, file_type, quality, audio_format):
         if file_type == "Audio only":
