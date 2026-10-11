@@ -209,6 +209,20 @@ def get_ytdlp_runtime_args():
         "--resize-buffer",
     ]
 
+    # For direct HTTP media URLs, a bundled aria2c can split a single file
+    # across multiple HTTP connections. Keep DASH and HLS on yt-dlp's native
+    # downloader; this also avoids sending manifest fragment lists to aria2c.
+    aria2 = find_executable("aria2c")
+    if aria2:
+        args.extend([
+            "--downloader", "aria2c",
+            "--downloader", "dash,m3u8:native",
+            "--downloader-args", "aria2c:-x 16 -s 16 -k 1M",
+        ])
+    else:
+        # Optional fallback for direct HTTP downloads when aria2c is absent.
+        args.extend(["--http-chunk-size", "10M"])
+
     deno = find_executable("deno")
     if not deno:
         default_deno = Path.home() / ".deno" / "bin" / "deno.exe"
@@ -6027,7 +6041,7 @@ class YTMMusicToolkit(ctk.CTk):
             "--newline",
             "--windows-filenames",
             "--concurrent-fragments",
-            "4",
+            str({"conservative": 2, "balanced": 8, "aggressive": 16}.get(getattr(self, "performance_mode", "balanced"), 8)),
             "--embed-metadata",
             "--embed-thumbnail",
         ]
@@ -8852,7 +8866,7 @@ def _v3_build_command(self, source_url, result, selected_format):
         get_ytdlp_command(),
         *get_ytdlp_runtime_args(),
         "--newline", "--windows-filenames",
-        "--concurrent-fragments", str({"conservative": 2, "balanced": 4, "aggressive": 8}.get(getattr(self, "performance_mode", "balanced"), 4)),
+        "--concurrent-fragments", str({"conservative": 2, "balanced": 8, "aggressive": 16}.get(getattr(self, "performance_mode", "balanced"), 8)),
         "--retries", "10", "--fragment-retries", "10", "--retry-sleep", "exp=1:30",
         "--no-overwrites", "--format-sort", "res,fps,hdr:12,vcodec,channels,acodec,size,br,asr,proto,ext",
     ]
@@ -9298,7 +9312,7 @@ def _v3_build_command_final(self, source_url, result, selected_format):
         "--fragment-retries", "10",
         "--retry-sleep", "exp=1:30",
         "--socket-timeout", "20",
-        "--concurrent-fragments", str({"conservative": 2, "balanced": 4, "aggressive": 8}.get(getattr(self, "performance_mode", "balanced"), 4)),
+        "--concurrent-fragments", str({"conservative": 2, "balanced": 8, "aggressive": 16}.get(getattr(self, "performance_mode", "balanced"), 8)),
         "--format-sort", "res,fps,hdr:12,vcodec,channels,acodec,size,br,asr,proto,ext",
     ]
 
