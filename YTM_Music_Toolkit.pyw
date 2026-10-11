@@ -3241,12 +3241,14 @@ class YTMMusicToolkit(ctk.CTk):
         )
 
         tab_downloader = self.tabs.add("Downloader")
+        tab_queue = self.tabs.add("Queue")
         tab_metadata = self.tabs.add("Metadata")
         tab_cover = self.tabs.add("Cover Art")
         tab_crop = self.tabs.add("Crop Art")
         tab_pipeline = self.tabs.add("Library Overhaul")
         self._apple_tab_pages = [
             tab_downloader,
+            tab_queue,
             tab_metadata,
             tab_cover,
             tab_crop,
@@ -3254,6 +3256,7 @@ class YTMMusicToolkit(ctk.CTk):
         ]
 
         self.build_downloader_tab(tab_downloader)
+        self.build_queue_tab(tab_queue)
         self.build_metadata_tab(tab_metadata)
         self.build_cover_tab(tab_cover)
         self.build_crop_tab(tab_crop)
@@ -4344,6 +4347,17 @@ class YTMMusicToolkit(ctk.CTk):
                     )
                     continue
 
+                if isinstance(widget, ctk.CTkScrollableFrame):
+                    widget.configure(
+                        fg_color=palette["window_bg"],
+                        corner_radius=16,
+                        border_width=1,
+                        border_color=palette["separator"],
+                        scrollbar_button_color=palette["separator_hover"],
+                        scrollbar_button_hover_color=palette["muted"],
+                    )
+                    continue
+
                 if isinstance(widget, ctk.CTkFrame):
                     if not hasattr(widget, "_apple_original_fg_color"):
                         try:
@@ -4409,7 +4423,7 @@ class YTMMusicToolkit(ctk.CTk):
                     is_primary = any(
                         word in label for word in (
                             "start", "download", "rewrite", "upgrade", "overhaul",
-                            "crop", "apply", "save changes",
+                            "crop", "apply", "save changes", "process queue", "add playlist",
                         )
                     )
 
@@ -7751,6 +7765,8 @@ class YTMMusicToolkit(ctk.CTk):
 
 
     def run_download_worker(self, user_input):
+        self._last_download_outcome = "running"
+        queue_run = bool(getattr(self, "_v3_queue_active", False))
         used_ytm_matching = (
             not is_youtube_url(user_input)
             or is_youtube_music_url(user_input)
@@ -7991,6 +8007,57 @@ class YTMMusicToolkit(ctk.CTk):
 
             else:
                 result, error = payload
+                queue_item = getattr(self, "_queue_active_item", None)
+                queued_meta = (
+                    queue_item.get("playlist_metadata")
+                    if queue_run and isinstance(queue_item, dict)
+                    else None
+                )
+                if isinstance(queued_meta, dict):
+                    resolver = self.ensure_resolver()
+                    queued_result = resolver.direct_result_from_metadata(queued_meta)
+                    expected_video_id = str(
+                        (queue_item or {}).get("video_id")
+                        or (queued_result or {}).get("video_id")
+                        or ""
+                    ).strip()
+                    queued_video_id = str((queued_result or {}).get("video_id") or "").strip()
+
+                    if queued_result and expected_video_id and queued_video_id == expected_video_id:
+                        result = queued_result
+                        error = None
+
+                        if queue_item.get("ytmusic_liked_entry"):
+                            result["source"] = "YouTube Music Liked Music (authenticated library)"
+                            result["ytm_matched"] = True
+                            result["ytmusic_liked_entry"] = True
+                            result["quality_extractor_arg"] = LIKED_MUSIC_EXTRACTOR_ARG
+                        elif queue_item.get("playlist_uses_ytm"):
+                            try:
+                                ytm_result = resolver.search(
+                                    str(queued_meta.get("artist") or ""),
+                                    str(queued_meta.get("title") or ""),
+                                    str(queued_meta.get("album") or ""),
+                                )
+                            except Exception as match_exc:
+                                ytm_result = None
+                                write_failure_log(
+                                    "queue_playlist_ytm_match",
+                                    match_exc,
+                                    details=f"Playlist track: {queue_item.get('title') or user_input}",
+                                )
+
+                            match_id = str((ytm_result or {}).get("video_id") or "").strip()
+                            if ytm_result and match_id == expected_video_id:
+                                result = dict(ytm_result)
+                                result["video_id"] = expected_video_id
+                                result["source_url"] = queued_meta.get("source_url") or user_input
+                                result["requested_artist"] = queued_meta.get("artist") or ""
+                                result["requested_title"] = queued_meta.get("title") or ""
+                                result["playlist_source_locked"] = True
+                            else:
+                                result = queued_result
+
                 used_ytm_matching = bool(result and result.get("ytm_matched"))
 
                 if self.stop_requested:
@@ -8003,10 +8070,20 @@ class YTMMusicToolkit(ctk.CTk):
 
                 current_source = user_input.strip()
                 single_mode = self.downloader_quality_mode_for_source(current_source)
+                queue_item = getattr(self, "_queue_active_item", None)
+                queued_quality_is_locked = (
+                    queue_run
+                    and isinstance(queue_item, dict)
+                    and isinstance(self._selected_download_format, dict)
+                    and self._selected_download_format.get("kind") in {"video", "audio"}
+                )
                 quality_source_matches = (
-                    single_mode == "single"
-                    and self._dl_preview_quality_source == current_source
-                    and self._dl_preview_mode == "single"
+                    queued_quality_is_locked
+                    or (
+                        single_mode == "single"
+                        and self._dl_preview_quality_source == current_source
+                        and self._dl_preview_mode == "single"
+                    )
                 )
 
                 selected_spec = self.selected_quality_spec(self._selected_download_format)
@@ -8061,11 +8138,14 @@ class YTMMusicToolkit(ctk.CTk):
                         if used_ytm_matching
                         else "Download complete. Source YouTube metadata/artwork was used directly."
                     )
-                messagebox.showinfo("Success", message)
+                if not queue_run:
+                    messagebox.showinfo("Success", message)
 
+            self._last_download_outcome = "success"
             self.after(0, finish_success)
 
         except DownloadCancelled as exc:
+            self._last_download_outcome = "cancelled"
             self.append_log(self.dl_log, f"[CANCELLED] {exc}")
             self.set_operation_progress(
                 "dl",
@@ -8076,6 +8156,7 @@ class YTMMusicToolkit(ctk.CTk):
             # Cancellation is user-requested, so it is not treated as a failure log.
 
         except Exception as exc:
+            self._last_download_outcome = "failed"
             log_path = write_failure_log(
                 "download_worker",
                 exc,
@@ -8085,13 +8166,14 @@ class YTMMusicToolkit(ctk.CTk):
                 self.dl_log,
                 f"[ERROR] {exc} | Failure log: {log_path or FAILURE_LOG_DIR}",
             )
-            self.after(
-                0,
-                lambda e=str(exc), p=(log_path or FAILURE_LOG_DIR): messagebox.showerror(
-                    "Download Error",
-                    f"{e}\n\nFailure log:\n{p}",
-                ),
-            )
+            if not queue_run:
+                self.after(
+                    0,
+                    lambda e=str(exc), p=(log_path or FAILURE_LOG_DIR): messagebox.showerror(
+                        "Download Error",
+                        f"{e}\n\nFailure log:\n{p}",
+                    ),
+                )
             self.set_operation_progress(
                 "dl",
                 0,
@@ -8103,8 +8185,12 @@ class YTMMusicToolkit(ctk.CTk):
         finally:
             self.stop_requested = False
             self.download_running = False
-            self.set_header_status("● READY", busy=False)
-            self.taskbar_progress.set_state(0)
+            if queue_run:
+                self.set_header_status("● QUEUE", busy=True)
+                self.taskbar_progress.set_state(2)
+            else:
+                self.set_header_status("● READY", busy=False)
+                self.taskbar_progress.set_state(0)
             self.active_process = None
             self.after(0, self.reset_downloader_ui)
 
@@ -9856,7 +9942,7 @@ def _v3_video_quality_options_final(formats, file_type, mode="single"):
         )]
         # Playlist ceilings are generic during preview; each video's real
         # formats are inspected immediately before its own download begins.
-        playlist_heights = heights or sorted(VIDEO_QUALITY_LABELS, reverse=True)
+        playlist_heights = sorted(VIDEO_QUALITY_LABELS, reverse=True)
         for height in playlist_heights:
             label = VIDEO_QUALITY_LABELS.get(height, f"{height}P")
             options.append((label, {
@@ -10412,7 +10498,6 @@ def _v4_preview_menu(self):
     queue_count = len(getattr(self, "_v3_queue", []) or [])
     menu.add_command(label="ⓘ  Inspect Details", command=self._v3_show_media_details)
     menu.add_command(label=f"＋  Add to Queue   ({queue_count})", command=self._v3_queue_current)
-    menu.add_command(label="  Process Queue", command=self._v3_process_queue)
     menu.add_separator()
     menu.add_command(label="↻  Check yt-dlp", command=self._v3_check_ytdlp_update)
     return menu
@@ -10882,6 +10967,1425 @@ def _v6_execute_through_temp(self, result, item_index=1, item_total=1, selected_
 
 YTMMusicToolkit.run_download_worker = _v6_run_download_worker
 YTMMusicToolkit.execute_download_for_result = _v6_execute_through_temp
+
+
+
+# ============================================================
+# DEDICATED QUEUE TAB (V7)
+# ============================================================
+# Keeps Add to Queue on Downloader, adds a dedicated Queue tab, and mirrors
+# pause/resume/stop controls across both tabs while the queue is processing.
+
+
+def _queue_palette(self):
+    mode = str(getattr(self, "appearance_mode", "dark") or "dark").lower()
+    return APPLE_THEME_PALETTES.get(mode, APPLE_THEME_PALETTES["dark"])
+
+
+def _queue_set_status(self, text):
+    def apply():
+        try:
+            self.queue_status_label.configure(text=str(text))
+        except Exception:
+            pass
+    try:
+        self.after(0, apply)
+    except Exception:
+        pass
+
+
+def _queue_render_queue(self):
+    """Rebuild the visible queue list from the current queue model."""
+    palette = _queue_palette(self)
+    items = list(getattr(self, "_v3_queue", []) or [])
+
+    for row in list(getattr(self, "_queue_row_widgets", []) or []):
+        try:
+            row.destroy()
+        except Exception:
+            pass
+    self._queue_row_widgets = []
+
+    count = len(items)
+    try:
+        self.queue_count_label.configure(
+            text=f"{count} item" if count == 1 else f"{count} items"
+        )
+    except Exception:
+        pass
+    try:
+        self.dl_queue_count.configure(text=f"Queue: {count}")
+    except Exception:
+        pass
+    try:
+        access = getattr(self, "dl_queue_access_button", None)
+        if access:
+            access.configure(text=f"☷  Queue  ·  {count}")
+    except Exception:
+        pass
+
+    active = bool(getattr(self, "_v3_queue_active", False))
+    try:
+        self.queue_clear_button.configure(
+            state="disabled" if active or not items else "normal"
+        )
+    except Exception:
+        pass
+
+    if not items:
+        empty = ctk.CTkFrame(
+            self.queue_items_frame,
+            fg_color="transparent",
+            corner_radius=12,
+        )
+        empty.pack(fill="x", padx=10, pady=24)
+        ctk.CTkLabel(
+            empty,
+            text="Your queue is empty",
+            font=(APP_FONT, 18, "bold"),
+            text_color=palette["text"],
+        ).pack(anchor="center", pady=(15, 5))
+        ctk.CTkLabel(
+            empty,
+            text="Add a YouTube or YouTube Music link from the Downloader tab.",
+            font=(APP_FONT, 12),
+            text_color=palette["muted"],
+            wraplength=690,
+            justify="center",
+        ).pack(anchor="center", pady=(0, 15))
+        self._queue_row_widgets.append(empty)
+        return
+
+    for index, item in enumerate(items, 1):
+        if not isinstance(item, dict):
+            continue
+
+        queue_id = str(item.get("queue_id") or id(item))
+        item.setdefault("queue_id", queue_id)
+        item.setdefault("status", "Queued")
+
+        status = str(item.get("status") or "Queued")
+        file_type = str(item.get("file_type") or "auto").lower()
+        type_label = FILE_LABEL_BY_TYPE_V3.get(file_type, file_type.upper())
+        quality = str(item.get("quality") or "Best available")
+        subtitles = "Subtitles: EN / AR" if item.get("subtitles") else "Subtitles: off"
+        source_url = str(item.get("url") or "")
+
+        status_lower = status.lower()
+        if status_lower == "processing":
+            status_color = palette["orange"]
+        elif status_lower == "failed":
+            status_color = palette["red"]
+        elif status_lower == "stopped":
+            status_color = palette["orange"]
+        else:
+            status_color = palette["blue"]
+
+        row = ctk.CTkFrame(
+            self.queue_items_frame,
+            fg_color=palette["surface"],
+            corner_radius=14,
+            border_width=1,
+            border_color=palette["separator"],
+        )
+        row.pack(fill="x", padx=5, pady=5)
+        row.grid_columnconfigure(0, weight=1)
+        self._queue_row_widgets.append(row)
+
+        ctk.CTkLabel(
+            row,
+            text=f"{index:02d}   {item.get('title') or type_label}",
+            font=(APP_FONT, 12, "bold"),
+            text_color=palette["text"],
+            anchor="w",
+        ).grid(row=0, column=0, sticky="ew", padx=(15, 8), pady=(11, 2))
+
+        ctk.CTkLabel(
+            row,
+            text=status,
+            font=(APP_FONT, 10, "bold"),
+            text_color=status_color,
+            fg_color=palette["surface_elevated"],
+            corner_radius=8,
+        ).grid(row=0, column=1, sticky="e", padx=(4, 10), pady=(10, 2))
+
+        ctk.CTkButton(
+            row,
+            text="×",
+            width=28,
+            height=28,
+            font=(APP_FONT, 15, "bold"),
+            fg_color=palette["surface_elevated"],
+            hover_color=palette["separator_hover"],
+            text_color=palette["muted"],
+            border_width=1,
+            border_color=palette["separator"],
+            corner_radius=9,
+            state="disabled" if active else "normal",
+            command=lambda qid=queue_id: self._queue_remove_item(qid),
+        ).grid(row=0, column=2, padx=(0, 10), pady=(8, 2))
+
+        ctk.CTkLabel(
+            row,
+            text=source_url,
+            font=(APP_FONT, 11),
+            text_color=palette["muted"],
+            anchor="w",
+            justify="left",
+            wraplength=730,
+        ).grid(row=1, column=0, columnspan=3, sticky="ew", padx=15, pady=(0, 4))
+
+        ctk.CTkLabel(
+            row,
+            text=f"{type_label}    ·    {quality}    ·    {subtitles}",
+            font=(APP_FONT, 10),
+            text_color=palette["muted"],
+            anchor="w",
+        ).grid(row=2, column=0, columnspan=3, sticky="ew", padx=15, pady=(0, 11))
+
+
+def _queue_refresh_ui(self):
+    try:
+        self.after(0, self._queue_render_queue)
+    except Exception:
+        pass
+
+
+def _queue_remove_item(self, queue_id):
+    if getattr(self, "_v3_queue_active", False):
+        return
+    items = list(getattr(self, "_v3_queue", []) or [])
+    self._v3_queue = [
+        item for item in items
+        if str(item.get("queue_id") or id(item)) != str(queue_id)
+    ]
+    self._queue_refresh_ui()
+
+
+def _queue_clear(self):
+    if getattr(self, "_v3_queue_active", False):
+        return
+    self._v3_queue = []
+    self._queue_set_status("Queue cleared.")
+    self._queue_refresh_ui()
+
+
+def _queue_open_tab(self):
+    try:
+        self.tabs.set("Queue")
+        self._queue_refresh_ui()
+    except Exception as exc:
+        write_failure_log("queue_tab_open", exc)
+
+
+def _queue_build_queue_tab(self, tab):
+    tab.grid_columnconfigure(0, weight=1)
+    tab.grid_rowconfigure(1, weight=1)
+
+    palette = _queue_palette(self)
+    header = ctk.CTkFrame(
+        tab,
+        fg_color=palette["surface"],
+        corner_radius=18,
+        border_width=1,
+        border_color=palette["separator"],
+    )
+    header.grid(row=0, column=0, sticky="ew", padx=16, pady=(12, 8))
+    header.grid_columnconfigure(0, weight=1)
+
+    ctk.CTkLabel(
+        header,
+        text="Download Queue",
+        font=(APP_FONT, 20, "bold"),
+        text_color=palette["text"],
+        anchor="w",
+    ).grid(row=0, column=0, sticky="ew", padx=18, pady=(15, 2))
+
+    ctk.CTkLabel(
+        header,
+        text="Add links from Downloader, then process them in order.",
+        font=(APP_FONT, 11),
+        text_color=palette["muted"],
+        anchor="w",
+        wraplength=700,
+        justify="left",
+    ).grid(row=1, column=0, sticky="ew", padx=18, pady=(0, 13))
+
+    self.queue_count_label = ctk.CTkLabel(
+        header,
+        text="0 items",
+        font=(APP_FONT, 11, "bold"),
+        text_color=palette["blue"],
+        fg_color=palette["surface_elevated"],
+        corner_radius=10,
+    )
+    self.queue_count_label.grid(row=0, column=1, sticky="e", padx=(5, 12), pady=(14, 3))
+
+    self.queue_clear_button = ctk.CTkButton(
+        header,
+        text="Clear Queue",
+        width=100,
+        height=30,
+        font=(APP_FONT, 10, "bold"),
+        fg_color=palette["surface_elevated"],
+        hover_color=palette["separator_hover"],
+        text_color=palette["text"],
+        border_width=1,
+        border_color=palette["separator"],
+        corner_radius=10,
+        command=self._queue_clear,
+    )
+    self.queue_clear_button.grid(row=1, column=1, sticky="e", padx=(5, 12), pady=(0, 13))
+
+    self.queue_items_frame = ctk.CTkScrollableFrame(
+        tab,
+        fg_color=palette["window_bg"],
+        corner_radius=16,
+        border_width=1,
+        border_color=palette["separator"],
+        scrollbar_button_color=palette["separator_hover"],
+        scrollbar_button_hover_color=palette["muted"],
+    )
+    self.queue_items_frame.grid(row=1, column=0, sticky="nsew", padx=16, pady=8)
+    self._queue_row_widgets = []
+
+    activity = ctk.CTkFrame(
+        tab,
+        fg_color=palette["surface"],
+        corner_radius=16,
+        border_width=1,
+        border_color=palette["separator"],
+    )
+    activity.grid(row=2, column=0, sticky="ew", padx=16, pady=(4, 8))
+    activity.grid_columnconfigure(0, weight=1)
+
+    self.queue_status_label = ctk.CTkLabel(
+        activity,
+        text="Queue is idle.",
+        font=(APP_FONT, 12, "bold"),
+        text_color=palette["text"],
+        anchor="w",
+    )
+    self.queue_status_label.grid(row=0, column=0, sticky="ew", padx=16, pady=(12, 5))
+
+    self.queue_progress = ctk.CTkProgressBar(
+        activity,
+        height=8,
+        corner_radius=5,
+        fg_color=palette["surface_elevated"],
+        progress_color=palette["blue"],
+    )
+    self.queue_progress.grid(row=1, column=0, columnspan=2, sticky="ew", padx=16, pady=(0, 7))
+    self.queue_progress.set(0)
+
+    self.queue_progress_message = ctk.CTkLabel(
+        activity,
+        text="Ready to process queued items.",
+        font=(APP_FONT, 10),
+        text_color=palette["muted"],
+        anchor="w",
+    )
+    self.queue_progress_message.grid(row=2, column=0, sticky="ew", padx=16, pady=(0, 12))
+
+    self.queue_progress_percent = ctk.CTkLabel(
+        activity,
+        text="0%",
+        font=(APP_FONT, 10, "bold"),
+        text_color=palette["muted"],
+        anchor="e",
+    )
+    self.queue_progress_percent.grid(row=2, column=1, sticky="e", padx=(8, 16), pady=(0, 12))
+
+    controls = ctk.CTkFrame(tab, fg_color="transparent")
+    controls.grid(row=3, column=0, sticky="ew", padx=16, pady=(4, 14))
+    controls.grid_columnconfigure(0, weight=1)
+    controls.grid_columnconfigure(1, weight=1)
+    self.queue_controls_frame = controls
+
+    self.queue_process_button = ctk.CTkButton(
+        controls,
+        text="Process Queue",
+        command=self._v3_process_queue,
+        height=44,
+        font=(APP_FONT, 14, "bold"),
+        fg_color=palette["blue"],
+        hover_color=palette["blue_hover"],
+        text_color="#FFFFFF",
+        corner_radius=12,
+    )
+    self.queue_process_button.grid(row=0, column=0, columnspan=2, sticky="ew")
+
+    self.queue_pause_button = ctk.CTkButton(
+        controls,
+        text="Pause",
+        command=self.toggle_pause,
+        height=44,
+        font=(APP_FONT, 13, "bold"),
+        fg_color=palette["surface_elevated"],
+        hover_color=palette["separator_hover"],
+        text_color=palette["text"],
+        border_width=1,
+        border_color=palette["separator"],
+        corner_radius=12,
+    )
+    self.queue_pause_button.grid(row=0, column=0, sticky="ew", padx=(0, 5))
+    self.queue_pause_button.grid_remove()
+
+    self.queue_resume_button = ctk.CTkButton(
+        controls,
+        text="Resume",
+        command=self.toggle_pause,
+        height=44,
+        font=(APP_FONT, 13, "bold"),
+        fg_color=palette["surface_elevated"],
+        hover_color=palette["separator_hover"],
+        text_color=palette["text"],
+        border_width=1,
+        border_color=palette["separator"],
+        corner_radius=12,
+    )
+    self.queue_resume_button.grid(row=0, column=0, sticky="ew", padx=(0, 5))
+    self.queue_resume_button.grid_remove()
+
+    self.queue_stop_button = ctk.CTkButton(
+        controls,
+        text="Stop Queue",
+        command=self.stop_active_process,
+        height=44,
+        font=(APP_FONT, 13, "bold"),
+        fg_color=palette["red"],
+        hover_color=palette["red_hover"],
+        text_color="#FFFFFF",
+        corner_radius=12,
+    )
+    self.queue_stop_button.grid(row=0, column=1, sticky="ew", padx=(5, 0))
+    self.queue_stop_button.grid_remove()
+
+    self._v3_queue = getattr(self, "_v3_queue", [])
+    self._v3_queue_active = False
+    self._v3_queue_stop_requested = False
+    self._queue_hide_activity_controls()
+    self._queue_render_queue()
+
+
+def _queue_show_activity_controls(self):
+    try:
+        self.queue_process_button.grid_remove()
+        self.queue_resume_button.grid_remove()
+        self.queue_pause_button.configure(state="normal")
+        self.queue_stop_button.configure(state="normal")
+        self.queue_pause_button.grid(row=0, column=0, sticky="ew", padx=(0, 5))
+        self.queue_stop_button.grid(row=0, column=1, sticky="ew", padx=(5, 0))
+        self.queue_clear_button.configure(state="disabled")
+    except Exception:
+        pass
+
+
+def _queue_hide_activity_controls(self):
+    try:
+        self.queue_pause_button.grid_remove()
+        self.queue_resume_button.grid_remove()
+        self.queue_stop_button.grid_remove()
+        self.queue_process_button.grid(row=0, column=0, columnspan=2, sticky="ew")
+        self.queue_process_button.configure(state="normal", text="Process Queue")
+        self.queue_clear_button.configure(state="normal" if self._v3_queue else "disabled")
+    except Exception:
+        pass
+
+
+def _queue_sync_pause_controls(self):
+    if not getattr(self, "_v3_queue_active", False):
+        return
+    try:
+        if self.is_paused:
+            self.queue_pause_button.grid_remove()
+            self.queue_resume_button.configure(state="normal")
+            self.queue_resume_button.grid(row=0, column=0, sticky="ew", padx=(0, 5))
+        else:
+            self.queue_resume_button.grid_remove()
+            self.queue_pause_button.configure(state="normal")
+            self.queue_pause_button.grid(row=0, column=0, sticky="ew", padx=(0, 5))
+    except Exception:
+        pass
+
+
+def _queue_remove_item_from_model(self, item):
+    current = list(getattr(self, "_v3_queue", []) or [])
+    queue_id = str(item.get("queue_id") or id(item))
+    self._v3_queue = [
+        queued for queued in current
+        if queued is not item and str(queued.get("queue_id") or id(queued)) != queue_id
+    ]
+
+
+def _queue_process_queue(self):
+    if getattr(self, "_v3_queue_active", False) or getattr(self, "download_running", False):
+        messagebox.showinfo(
+            "Queue",
+            "Another download is already running. Stop it or let it finish before processing the queue.",
+        )
+        return
+
+    items = [item for item in list(getattr(self, "_v3_queue", []) or []) if isinstance(item, dict)]
+    if not items:
+        messagebox.showinfo("Queue", "The queue is empty. Add a link from the Downloader tab first.")
+        self._queue_refresh_ui()
+        return
+
+    for item in items:
+        item.setdefault("queue_id", str(time.time_ns()))
+        item["status"] = "Queued"
+
+    self._v3_queue_active = True
+    self._v3_queue_stop_requested = False
+    self._v3_queue_batch_total = len(items)
+    self._v3_queue_item_index = 1
+    self._v3_queue_item_total = len(items)
+    self._v3_queue_completed = 0
+    self._v3_queue_failed = 0
+    self.stop_requested = False
+    self.is_paused = False
+    self.active_process = None
+    self.download_running = True
+
+    try:
+        self.dl_start.configure(state="disabled", text=" Processing Queue...")
+        self.dl_progress.set(0)
+        self.dl_progress_percent.configure(text="0%")
+        self.show_downloader_activity_ui()
+    except Exception:
+        pass
+
+    self._queue_show_activity_controls()
+    self._queue_set_status(f"Starting queue · {len(items)} item(s)")
+    self.set_header_status("● QUEUE", busy=True)
+    self.set_operation_progress("dl", 0, f"Queue ready · {len(items)} item(s)", taskbar=True)
+    self._queue_refresh_ui()
+
+    threading.Thread(
+        target=self._v3_queue_worker,
+        args=(items,),
+        daemon=True,
+    ).start()
+
+
+def _queue_worker(self, items):
+    completed = 0
+    failed = 0
+    stopped = False
+    total = len(items)
+
+    try:
+        for index, item in enumerate(items, 1):
+            if getattr(self, "_v3_queue_stop_requested", False):
+                stopped = True
+                break
+
+            item["status"] = "Processing"
+            self._v3_queue_item_index = index
+            self._v3_queue_item_total = total
+            self._v3_queue_batch_total = total
+            self._last_download_outcome = "running"
+            self._v3_selected_file_type = item.get("file_type") or "auto"
+            self._v3_selected_file_quality = item.get("quality") or ""
+            self._selected_file_type = self._v3_selected_file_type
+            self._selected_file_quality = self._v3_selected_file_quality
+            self._selected_download_format = self._v3_selected_file_quality
+            self._selected_download_subtitles = bool(item.get("subtitles"))
+            self.download_running = True
+            self.stop_requested = False
+            self.is_paused = False
+            self.active_process = None
+
+            self._queue_set_status(f"Processing item {index} of {total}…")
+            self.set_operation_progress(
+                "dl",
+                0,
+                f"Queue item {index}/{total} — preparing...",
+                taskbar=True,
+            )
+            self._queue_refresh_ui()
+
+            try:
+                self._queue_v8_prepare_item_download(item)
+                self.run_download_worker(item["url"])
+            except DownloadCancelled:
+                self._last_download_outcome = "cancelled"
+            except Exception as exc:
+                self._last_download_outcome = "failed"
+                write_failure_log(
+                    "queue_item_unhandled",
+                    exc,
+                    details=f"Queue item {index}/{total}\nURL: {item.get('url')}",
+                )
+
+            outcome = str(getattr(self, "_last_download_outcome", "success"))
+            if getattr(self, "_v3_queue_stop_requested", False) or outcome == "cancelled":
+                item["status"] = "Stopped"
+                stopped = True
+                self._queue_set_status(f"Stopped on item {index} of {total}. Remaining items are still queued.")
+                self._queue_refresh_ui()
+                break
+
+            if outcome == "failed":
+                item["status"] = "Failed"
+                failed += 1
+                self._queue_set_status(f"Item {index} failed. Continuing with the next queued item…")
+            else:
+                completed += 1
+                _queue_remove_item_from_model(self, item)
+                self._queue_set_status(f"Completed item {index} of {total}.")
+
+            self.download_running = False
+            self.active_process = None
+            self.is_paused = False
+            self.stop_requested = False
+            self._queue_refresh_ui()
+    except Exception as exc:
+        failed += 1
+        log_path = write_failure_log("queue_worker", exc)
+        self._queue_set_status(f"Queue stopped after an unexpected error. Log: {log_path or FAILURE_LOG_DIR}")
+    finally:
+        self.download_running = False
+        self.active_process = None
+        self.is_paused = False
+        self.stop_requested = False
+        self._v3_queue_active = False
+        self._v3_queue_stop_requested = False
+        self._v3_queue_completed = completed
+        self._v3_queue_failed = failed
+        self._queue_active_item = None
+        self.after(
+            0,
+            lambda c=completed, f=failed, t=total, stop=stopped: self._queue_finish_controls(c, f, t, stop),
+        )
+
+
+def _queue_finish_controls(self, completed, failed, total, stopped):
+    try:
+        _QUEUE_ORIGINAL_RESET_DOWNLOADER_UI(self)
+    except Exception:
+        pass
+
+    self._queue_hide_activity_controls()
+    remaining = len(getattr(self, "_v3_queue", []) or [])
+    if stopped:
+        message = f"Queue stopped · {completed}/{total} completed · {remaining} item(s) remain"
+    elif failed:
+        message = f"Queue finished · {completed}/{total} completed · {failed} failed · {remaining} remain"
+    else:
+        message = f"Queue complete · {completed}/{total} completed"
+
+    try:
+        self.queue_status_label.configure(text=message)
+        self.queue_progress.set(min(1.0, completed / max(1, total)))
+        self.queue_progress_percent.configure(text=f"{(completed / max(1, total)) * 100:.0f}%")
+        self.queue_progress_message.configure(text=message)
+        self.queue_clear_button.configure(state="normal" if remaining else "disabled")
+    except Exception:
+        pass
+
+    try:
+        self.set_operation_progress(
+            "dl",
+            (completed / max(1, total)) * 100.0,
+            message,
+            taskbar=False,
+        )
+        self.set_label(self.dl_status, f"Status: {message}")
+    except Exception:
+        pass
+
+    self.set_header_status("● READY", busy=False)
+    self._queue_refresh_ui()
+
+
+def _queue_set_operation_progress(self, prefix, percent, message, taskbar=False):
+    queue_progress = None
+    if prefix == "dl" and getattr(self, "_v3_queue_active", False):
+        try:
+            local_value = max(0.0, min(100.0, float(percent)))
+        except (TypeError, ValueError):
+            local_value = 0.0
+
+        playlist_context = getattr(self, "_dl_playlist_progress_context", None)
+        if playlist_context:
+            try:
+                item_index, item_total = playlist_context
+                item_total = max(1, int(item_total))
+                item_index = max(1, min(item_total, int(item_index)))
+                local_value = ((item_index - 1) + (local_value / 100.0)) / item_total * 100.0
+            except Exception:
+                pass
+
+        total = max(1, int(getattr(self, "_v3_queue_batch_total", 1) or 1))
+        index = max(1, min(total, int(getattr(self, "_v3_queue_item_index", 1) or 1)))
+        queue_progress = ((index - 1) + (local_value / 100.0)) / total * 100.0
+        queue_progress = max(0.0, min(100.0, queue_progress))
+
+        if not playlist_context:
+            percent = queue_progress
+
+    _QUEUE_ORIGINAL_SET_OPERATION_PROGRESS(self, prefix, percent, message, taskbar=taskbar)
+
+    if queue_progress is not None:
+        def update_queue_meter(value=queue_progress, msg=str(message)):
+            try:
+                self.queue_progress.set(value / 100.0)
+                self.queue_progress_percent.configure(text=f"{value:.0f}%")
+                self.queue_progress_message.configure(text=msg)
+            except Exception:
+                pass
+        try:
+            self.after(0, update_queue_meter)
+        except Exception:
+            pass
+
+
+def _queue_show_downloader_activity_ui(self):
+    _QUEUE_ORIGINAL_SHOW_ACTIVITY_UI(self)
+    if getattr(self, "_v3_queue_active", False):
+        self._queue_show_activity_controls()
+
+
+def _queue_hide_downloader_running_controls(self):
+    if getattr(self, "_v3_queue_active", False):
+        return
+    _QUEUE_ORIGINAL_HIDE_RUNNING_CONTROLS(self)
+    try:
+        self._queue_hide_activity_controls()
+    except Exception:
+        pass
+
+
+def _queue_reset_downloader_ui(self):
+    if getattr(self, "_v3_queue_active", False):
+        self.is_paused = False
+        self.active_process = None
+        try:
+            self.after(0, self._queue_sync_pause_controls)
+        except Exception:
+            pass
+        return
+    _QUEUE_ORIGINAL_RESET_DOWNLOADER_UI(self)
+    try:
+        self._queue_hide_activity_controls()
+    except Exception:
+        pass
+
+
+def _queue_toggle_pause(self):
+    _QUEUE_ORIGINAL_TOGGLE_PAUSE(self)
+    if getattr(self, "_v3_queue_active", False):
+        try:
+            self.after(0, self._queue_sync_pause_controls)
+        except Exception:
+            pass
+
+
+def _queue_stop_active_process(self):
+    if getattr(self, "_v3_queue_active", False):
+        self._v3_queue_stop_requested = True
+        self._queue_set_status("Stopping queue after the active item is cancelled…")
+    _QUEUE_ORIGINAL_STOP_ACTIVE_PROCESS(self)
+
+
+def _queue_current_final(self):
+    value = self.dl_input.get().strip()
+    if not value or not is_youtube_url(value):
+        messagebox.showerror("Queue", "Enter a valid YouTube or YouTube Music URL first.")
+        return
+
+    file_type = _v3_file_type_id_final(self.dl_file_type.get()) if getattr(self, "dl_file_type", None) else "auto"
+    quality = self.dl_format.get().strip() if getattr(self, "dl_format", None) and self._dl_quality_visible else ""
+    if file_type in LOSSLESS_AUDIO_TYPES_V3:
+        quality = _v3_audio_quality_options_final(file_type)[0][0]
+
+    self._v3_queue = getattr(self, "_v3_queue", [])
+    duplicate = any(
+        str(item.get("url") or "") == value
+        and item.get("file_type") == file_type
+        and item.get("quality") == quality
+        for item in self._v3_queue
+        if isinstance(item, dict)
+    )
+    if duplicate:
+        self._queue_set_status("That link and format are already in the queue.")
+        return
+
+    self._v3_queue.append({
+        "queue_id": str(time.time_ns()),
+        "url": value,
+        "file_type": file_type,
+        "quality": quality,
+        "subtitles": bool(self.dl_subs.get()) if hasattr(self, "dl_subs") else False,
+        "status": "Queued",
+    })
+    self._queue_set_status("Added to queue.")
+    self._queue_refresh_ui()
+
+
+def _queue_install_preview_button(self):
+    """Keep Add to Queue visible and replace the old ellipsis with a Queue shortcut."""
+    try:
+        utility = self.dl_queue_count.master
+        inspect_button = None
+        add_button = None
+        check_button = None
+
+        for widget in list(utility.winfo_children()):
+            if not isinstance(widget, ctk.CTkButton):
+                continue
+            label = str(widget.cget("text") or "").strip().lower()
+            if "process queue" in label:
+                widget.destroy()
+            elif "inspect details" in label:
+                inspect_button = widget
+            elif "queue" in label and "check" not in label:
+                add_button = widget
+            elif "check yt-dlp" in label:
+                check_button = widget
+
+        if inspect_button:
+            self.dl_inspect_details_button = inspect_button
+            inspect_button.grid_configure(row=1, column=0, sticky="w", pady=(6, 0))
+        if add_button:
+            self.dl_add_queue_button = add_button
+            add_button.configure(text="＋ Add to Queue", width=130)
+            add_button.grid_configure(row=1, column=1, sticky="w", pady=(6, 0))
+
+        if not check_button:
+            check_button = ctk.CTkButton(
+                utility,
+                text="↻ Check yt-dlp",
+                width=120,
+                height=30,
+                font=(APP_FONT, 10, "bold"),
+                fg_color="transparent",
+                hover_color=APPLE_SEPARATOR_HOVER,
+                text_color=APPLE_TEXT,
+                corner_radius=10,
+                command=self._v3_check_ytdlp_update,
+            )
+            check_button.grid(row=2, column=0, sticky="w", pady=(5, 0))
+        self.dl_check_ytdlp_button = check_button
+        check_button.grid_configure(row=2, column=0, sticky="w", pady=(5, 0))
+        self.dl_queue_count.grid_configure(row=2, column=1, sticky="e", pady=(5, 0))
+    except Exception as exc:
+        write_failure_log("queue_downloader_utility_setup", exc)
+
+    try:
+        preview = self.dl_preview_card
+        preview.grid_columnconfigure(2, weight=0)
+
+        for old_button in (
+            getattr(self, "dl_preview_menu_button", None),
+            getattr(self, "dl_queue_access_button", None),
+        ):
+            if old_button is not None:
+                try:
+                    old_button.destroy()
+                except Exception:
+                    pass
+
+        palette = _queue_palette(self)
+        self.dl_queue_access_button = ctk.CTkButton(
+            preview,
+            text=f"☷  Queue  ·  {len(getattr(self, '_v3_queue', []) or [])}",
+            width=112,
+            height=32,
+            font=(APP_FONT, 11, "bold"),
+            fg_color=palette["surface_elevated"],
+            hover_color=palette["separator_hover"],
+            text_color=palette["text"],
+            border_width=1,
+            border_color=palette["separator"],
+            corner_radius=10,
+            command=self.open_queue_tab,
+        )
+        self.dl_queue_access_button.grid(
+            row=0,
+            column=2,
+            sticky="ne",
+            padx=(0, 12),
+            pady=(10, 10),
+        )
+        self._queue_refresh_ui()
+    except Exception as exc:
+        write_failure_log("queue_preview_button_install", exc)
+
+
+def _queue_preview_menu(self):
+    """The old popover no longer processes the queue; Queue has its own tab."""
+    import tkinter as tk
+    palette = _queue_palette(self)
+    menu = tk.Menu(
+        self,
+        tearoff=False,
+        bg=palette["surface"],
+        fg=palette["text"],
+        activebackground=palette["blue"],
+        activeforeground="#FFFFFF",
+        borderwidth=1,
+        relief="solid",
+        font=(APP_FONT, 10),
+    )
+    menu.add_command(label="ⓘ  Inspect Details", command=self._v3_show_media_details)
+    menu.add_command(label="↻  Check yt-dlp", command=self._v3_check_ytdlp_update)
+    return menu
+
+
+def _queue_show_preview_action(self):
+    self.open_queue_tab()
+
+
+_QUEUE_ORIGINAL_RESET_DOWNLOADER_UI = YTMMusicToolkit.reset_downloader_ui
+_QUEUE_ORIGINAL_SHOW_ACTIVITY_UI = YTMMusicToolkit.show_downloader_activity_ui
+_QUEUE_ORIGINAL_HIDE_RUNNING_CONTROLS = YTMMusicToolkit.hide_downloader_running_controls
+_QUEUE_ORIGINAL_TOGGLE_PAUSE = YTMMusicToolkit.toggle_pause
+_QUEUE_ORIGINAL_STOP_ACTIVE_PROCESS = YTMMusicToolkit.stop_active_process
+_QUEUE_ORIGINAL_SET_OPERATION_PROGRESS = YTMMusicToolkit.set_operation_progress
+
+YTMMusicToolkit.build_queue_tab = _queue_build_queue_tab
+YTMMusicToolkit._queue_set_status = _queue_set_status
+YTMMusicToolkit.open_queue_tab = _queue_open_tab
+YTMMusicToolkit._queue_render_queue = _queue_render_queue
+YTMMusicToolkit._queue_refresh_ui = _queue_refresh_ui
+YTMMusicToolkit._queue_remove_item = _queue_remove_item
+YTMMusicToolkit._queue_clear = _queue_clear
+YTMMusicToolkit._queue_show_activity_controls = _queue_show_activity_controls
+YTMMusicToolkit._queue_hide_activity_controls = _queue_hide_activity_controls
+YTMMusicToolkit._queue_sync_pause_controls = _queue_sync_pause_controls
+YTMMusicToolkit._queue_finish_controls = _queue_finish_controls
+YTMMusicToolkit._queue_remove_item_from_model = _queue_remove_item_from_model
+YTMMusicToolkit._v3_queue_current = _queue_current_final
+YTMMusicToolkit._v3_process_queue = _queue_process_queue
+YTMMusicToolkit._v3_queue_worker = _queue_worker
+YTMMusicToolkit._v4_install_preview_menu = _queue_install_preview_button
+YTMMusicToolkit._v4_preview_menu = _queue_preview_menu
+YTMMusicToolkit._v4_show_preview_menu = _queue_show_preview_action
+YTMMusicToolkit.reset_downloader_ui = _queue_reset_downloader_ui
+YTMMusicToolkit.show_downloader_activity_ui = _queue_show_downloader_activity_ui
+YTMMusicToolkit.hide_downloader_running_controls = _queue_hide_downloader_running_controls
+YTMMusicToolkit.toggle_pause = _queue_toggle_pause
+YTMMusicToolkit.stop_active_process = _queue_stop_active_process
+YTMMusicToolkit.set_operation_progress = _queue_set_operation_progress
+
+
+
+# ============================================================
+# PLAYLISTS BECOME INDIVIDUAL QUEUE ITEMS (V8)
+# ============================================================
+
+
+def _queue_v8_capture_quality_policy(self):
+    file_type = _v3_file_type_id_final(
+        self.dl_file_type.get() if getattr(self, "dl_file_type", None) else "auto"
+    )
+    current_label = ""
+    try:
+        current_label = str(self.dl_format.get() or "").strip()
+    except Exception:
+        pass
+
+    if file_type in AUDIO_FILE_TYPES_V3:
+        options = _v3_audio_quality_options_final(file_type)
+        for label, spec in options:
+            if str(label).strip() == current_label:
+                chosen = dict(spec)
+                chosen["file_type"] = file_type
+                return str(label).strip(), chosen
+        if options:
+            label, spec = options[0]
+            chosen = dict(spec)
+            chosen["file_type"] = file_type
+            return str(label).strip(), chosen
+
+    for label, spec in list(getattr(self, "_dl_preview_quality_options", []) or []):
+        if str(label).strip() == current_label and isinstance(spec, dict) and spec.get("kind") == "video":
+            chosen = dict(spec)
+            chosen["file_type"] = file_type
+            clean_label = str(label).strip()
+            if chosen.get("best_per_item"):
+                clean_label = "Best Option Separate"
+            return clean_label, chosen
+
+    if current_label.lower() == "best option separate":
+        return "Best Option Separate", {"kind": "video", "best_per_item": True, "file_type": file_type}
+
+    match = re.search(r"\b(4320|2160|1440|1080|720|576|480|360)\s*[pP]\b", current_label)
+    if match:
+        height = int(match.group(1))
+        return current_label, {
+            "kind": "video", "height": height, "best": False,
+            "playlist_ceiling": True, "file_type": file_type,
+        }
+
+    return "Best Option Separate", {"kind": "video", "best_per_item": True, "file_type": file_type}
+
+
+def _queue_v8_add_playlist_to_queue(self):
+    source_url = str(self.dl_input.get() or "").strip()
+    if not source_url or not is_playlist_url(source_url):
+        messagebox.showerror("Playlist Queue", "Enter a YouTube or YouTube Music playlist URL first.")
+        self._queue_v8_update_main_action_button()
+        return
+
+    if getattr(self, "_v3_queue_active", False) or getattr(self, "download_running", False):
+        messagebox.showinfo("Playlist Queue", "Wait for the current download or queue to finish before adding another playlist.")
+        return
+    if getattr(self, "_queue_playlist_loading", False):
+        return
+
+    quality_label, quality_spec = self._queue_v8_capture_quality_policy()
+    file_type = str(quality_spec.get("file_type") or getattr(self, "_v3_selected_file_type", "auto") or "auto").lower()
+    snapshot = {
+        "file_type": file_type,
+        "quality": quality_label,
+        "quality_spec": dict(quality_spec),
+        "subtitles": bool(self.dl_subs.get()) if hasattr(self, "dl_subs") else False,
+        "playlist_uses_ytm": is_youtube_music_url(source_url),
+    }
+
+    self._queue_playlist_loading = True
+    self._queue_set_status("Reading playlist tracks…")
+    try:
+        self.dl_start.configure(state="disabled", text=" Reading Playlist…")
+    except Exception:
+        pass
+
+    threading.Thread(
+        target=self._queue_v8_resolve_playlist_worker,
+        args=(source_url, snapshot),
+        daemon=True,
+    ).start()
+
+
+def _queue_v8_resolve_playlist_worker(self, source_url, snapshot):
+    try:
+        resolver = self.ensure_resolver()
+        entries = resolver.resolve_playlist_urls(source_url)
+        if not entries:
+            raise RuntimeError("The playlist returned no readable video entries.")
+
+        prepared = []
+        total = len(entries)
+        for index, entry in enumerate(entries, 1):
+            if not isinstance(entry, dict):
+                continue
+
+            video_id = str(
+                entry.get("video_id") or entry.get("id") or entry.get("videoId") or ""
+            ).strip()
+            candidate = str(
+                entry.get("source_url") or entry.get("webpage_url") or entry.get("url") or ""
+            ).strip()
+            if not video_id:
+                video_id = str(extract_youtube_video_id(candidate) or "").strip()
+            if not video_id:
+                continue
+
+            track_url = f"https://www.youtube.com/watch?v={video_id}"
+            try:
+                metadata = resolver.metadata_from_playlist_entry(entry, track_url)
+            except Exception as metadata_exc:
+                metadata = None
+                write_failure_log(
+                    "queue_playlist_track_metadata",
+                    metadata_exc,
+                    details=f"Track {index}/{total}: {track_url}",
+                )
+
+            title = str(
+                (metadata or {}).get("title")
+                or entry.get("track")
+                or entry.get("title")
+                or entry.get("fulltitle")
+                or f"Track {index}"
+            ).strip()
+
+            prepared.append({
+                "url": track_url,
+                "video_id": video_id,
+                "title": title,
+                "playlist_metadata": metadata,
+                "playlist_uses_ytm": bool(snapshot.get("playlist_uses_ytm")),
+                "ytmusic_liked_entry": bool(entry.get("ytmusic_liked_entry")),
+                "playlist_index": index,
+                "playlist_total": total,
+                "playlist_title": str(entry.get("playlist_title") or entry.get("playlist") or ""),
+            })
+
+        if not prepared:
+            raise RuntimeError("No playlist tracks had usable YouTube video IDs.")
+
+        self.after(
+            0,
+            lambda rows=prepared, url=source_url, settings=dict(snapshot): self._queue_v8_finish_playlist_add(
+                url, settings, rows, None
+            ),
+        )
+    except Exception as exc:
+        log_path = write_failure_log("queue_playlist_resolve", exc, details=f"Playlist: {source_url}")
+        message = str(exc)
+        if log_path:
+            message += f"\nFailure log: {log_path}"
+        self.after(
+            0,
+            lambda err=message, url=source_url, settings=dict(snapshot): self._queue_v8_finish_playlist_add(
+                url, settings, [], err
+            ),
+        )
+
+
+def _queue_v8_finish_playlist_add(self, source_url, snapshot, rows, error=None):
+    self._queue_playlist_loading = False
+    if error:
+        self._queue_set_status("Could not read playlist.")
+        self._queue_v8_update_main_action_button()
+        messagebox.showerror("Playlist Queue", error)
+        return
+
+    self._v3_queue = getattr(self, "_v3_queue", [])
+    existing = {
+        (str(item.get("url") or ""), str(item.get("file_type") or "auto"), str(item.get("quality") or ""))
+        for item in self._v3_queue
+        if isinstance(item, dict)
+    }
+
+    added = 0
+    skipped = 0
+    total = len(rows)
+    for row in rows:
+        item_url = str(row.get("url") or "").strip()
+        if not item_url:
+            continue
+
+        file_type = str(snapshot.get("file_type") or "auto").lower()
+        quality_label = str(snapshot.get("quality") or "Best Option Separate")
+        key = (item_url, file_type, quality_label)
+        if key in existing:
+            skipped += 1
+            continue
+
+        quality_spec = dict(snapshot.get("quality_spec") or {})
+        if quality_spec:
+            quality_spec["file_type"] = file_type
+
+        self._v3_queue.append({
+            "queue_id": str(time.time_ns()),
+            "url": item_url,
+            "video_id": row.get("video_id") or extract_youtube_video_id(item_url),
+            "title": row.get("title") or item_url,
+            "file_type": file_type,
+            "quality": quality_label,
+            "quality_spec": quality_spec,
+            "subtitles": bool(snapshot.get("subtitles")),
+            "status": "Queued",
+            "playlist_title": row.get("playlist_title") or "",
+            "playlist_index": row.get("playlist_index"),
+            "playlist_total": row.get("playlist_total") or total,
+            "playlist_metadata": row.get("playlist_metadata"),
+            "playlist_uses_ytm": bool(row.get("playlist_uses_ytm")),
+            "ytmusic_liked_entry": bool(row.get("ytmusic_liked_entry")),
+        })
+        existing.add(key)
+        added += 1
+
+    if added:
+        message = f"Added {added} playlist track(s) to the queue."
+        if skipped:
+            message += f" Skipped {skipped} duplicate item(s)."
+        self._queue_set_status(message)
+        self._queue_refresh_ui()
+        try:
+            self.tabs.set("Queue")
+        except Exception:
+            pass
+    else:
+        self._queue_set_status("All tracks from this playlist are already in the queue.")
+        self._queue_refresh_ui()
+
+    self._queue_v8_update_main_action_button()
+
+
+def _queue_v8_queue_current(self):
+    current_url = str(self.dl_input.get() or "").strip()
+    if is_playlist_url(current_url):
+        return self.add_playlist_to_queue()
+    if not current_url or not is_youtube_url(current_url):
+        messagebox.showerror("Queue", "Enter a valid YouTube or YouTube Music URL first.")
+        return
+
+    quality_label, quality_spec = self._queue_v8_capture_quality_policy()
+    file_type = str(quality_spec.get("file_type") or getattr(self, "_v3_selected_file_type", "auto") or "auto").lower()
+    quality_spec = dict(quality_spec)
+    quality_spec["file_type"] = file_type
+
+    self._v3_queue = getattr(self, "_v3_queue", [])
+    duplicate = any(
+        isinstance(item, dict)
+        and str(item.get("url") or "") == current_url
+        and str(item.get("file_type") or "auto") == file_type
+        and str(item.get("quality") or "") == quality_label
+        for item in self._v3_queue
+    )
+    if duplicate:
+        self._queue_set_status("That link and format are already in the queue.")
+        return
+
+    title = ""
+    try:
+        if str(getattr(self, "_dl_preview_source", "") or "").strip() == current_url:
+            candidate = str(self.dl_title.cget("text") or "").strip()
+            if candidate and not candidate.lower().startswith(("waiting", "resolving", "reading")):
+                title = candidate
+    except Exception:
+        pass
+
+    self._v3_queue.append({
+        "queue_id": str(time.time_ns()),
+        "url": current_url,
+        "video_id": extract_youtube_video_id(current_url) or "",
+        "title": title,
+        "file_type": file_type,
+        "quality": quality_label,
+        "quality_spec": quality_spec,
+        "subtitles": bool(self.dl_subs.get()) if hasattr(self, "dl_subs") else False,
+        "status": "Queued",
+    })
+    self._queue_set_status("Added to queue.")
+    self._queue_refresh_ui()
+
+
+def _queue_v8_prepare_item_download(self, item):
+    """Resolve this item's requested ceiling against its actual formats."""
+    source_url = str(item.get("url") or "").strip()
+    if not source_url or is_playlist_url(source_url):
+        raise RuntimeError("Queue items must be individual video URLs, not playlist URLs.")
+
+    file_type = str(item.get("file_type") or "auto").lower()
+    requested = dict(item.get("quality_spec") or {})
+    requested["file_type"] = file_type
+    extractor_arg = LIKED_MUSIC_EXTRACTOR_ARG if item.get("ytmusic_liked_entry") else None
+
+    if requested.get("kind") == "audio" or file_type in AUDIO_FILE_TYPES_V3:
+        if requested.get("kind") != "audio":
+            options = _v3_audio_quality_options_final(file_type)
+            wanted = str(item.get("quality") or "")
+            requested = next(
+                (dict(spec) for label, spec in options if str(label).strip() == wanted.strip()),
+                dict(options[0][1]) if options else {},
+            )
+        resolved_spec = dict(requested)
+        resolved_spec["file_type"] = file_type
+    else:
+        try:
+            maximum_height = int(requested.get("height") or 0)
+        except (TypeError, ValueError):
+            maximum_height = 0
+        best_per_item = bool(requested.get("best_per_item")) or maximum_height <= 0
+
+        formats, actual_extractor_arg = inspect_youtube_formats(
+            source_url,
+            timeout=45,
+            preferred_strategy=extractor_arg,
+        )
+        extractor_arg = actual_extractor_arg
+        options = _v3_quality_options_final(formats, file_type, "single")
+        resolved_spec = select_best_video_quality_spec(
+            options,
+            maximum_height=None if best_per_item else maximum_height,
+        )
+        if not resolved_spec:
+            ceiling = "" if best_per_item else f" at or below {maximum_height}p"
+            raise RuntimeError(f"No usable video format{ceiling} was found for this queue item.")
+        resolved_spec = dict(resolved_spec)
+        resolved_spec["file_type"] = file_type
+
+    quality_label = str(item.get("quality") or "Best available")
+    self._queue_active_item = item
+    self._v5_pending_spec = None
+    self._v3_selected_file_type = file_type
+    self._v3_selected_file_quality = quality_label
+    self._selected_file_type = file_type
+    self._selected_file_quality = quality_label
+    self._selected_download_format = dict(resolved_spec)
+    self._selected_download_subtitles = bool(item.get("subtitles"))
+    self._dl_preview_quality_options = [(quality_label, dict(resolved_spec))]
+    self._dl_preview_quality_source = source_url
+    self._dl_preview_mode = "single"
+    self._dl_preview_quality_mode = "single"
+    self._dl_preview_is_playlist = False
+    self._dl_youtube_extractor_arg = extractor_arg
+    self._last_quality_extractor_arg = extractor_arg
+
+
+def _queue_v8_set_playlist_quality_options(self):
+    source_url = str(self.dl_input.get() or "").strip()
+    if not source_url or not is_playlist_url(source_url):
+        return
+
+    file_type = _v3_file_type_id_final(
+        self.dl_file_type.get() if getattr(self, "dl_file_type", None) else "auto"
+    )
+    self._v3_selected_file_type = file_type
+    self._dl_preview_quality_source = source_url
+    self._dl_preview_mode = "playlist"
+    self._dl_preview_quality_mode = "playlist"
+    self._dl_preview_is_playlist = True
+
+    if file_type in AUDIO_FILE_TYPES_V3:
+        try:
+            self._v3_file_type_changed(self.dl_file_type.get())
+        except Exception:
+            pass
+        return
+
+    selected = ""
+    try:
+        selected = str(self.dl_format.get() or "").strip()
+    except Exception:
+        pass
+
+    options = _v3_video_quality_options_final(
+        getattr(self, "_v3_preview_formats", []) or [],
+        file_type,
+        "playlist",
+    )
+    labels = [label for label, _ in options]
+    normalized = {str(label).strip(): label for label in labels}
+    chosen = normalized.get(
+        selected,
+        next((label for label in labels if str(label).strip() == "Best Option Separate"), labels[0] if labels else ""),
+    )
+
+    self._dl_preview_quality_options = options
+    self._dl_quality_visible = bool(options)
+    try:
+        self.dl_quality_label.configure(text=" File Quality")
+        self.dl_quality_label.grid(row=0, column=1, sticky="w", padx=22, pady=(14, 4))
+        self.dl_format.grid(row=1, column=1, sticky="ew", padx=22, pady=(0, 8))
+        self.dl_format.configure(values=labels)
+        if chosen:
+            self.dl_format.set(chosen)
+            self._v3_selected_file_quality = str(chosen).strip()
+    except Exception:
+        pass
+
+
+def _queue_v8_update_main_action_button(self):
+    try:
+        if getattr(self, "_v3_queue_active", False) or getattr(self, "download_running", False):
+            return
+        if getattr(self, "_queue_playlist_loading", False):
+            self.dl_start.configure(state="disabled", text=" Reading Playlist…")
+            return
+
+        current_url = str(self.dl_input.get() or "").strip()
+        if current_url and is_playlist_url(current_url):
+            self.dl_start.configure(
+                state="normal",
+                text=" Add Playlist to Queue",
+                command=self.add_playlist_to_queue,
+            )
+        else:
+            self.dl_start.configure(
+                state="normal",
+                text=" Start Download",
+                command=self.start_download,
+            )
+    except Exception:
+        pass
+
+
+def _queue_v8_target_changed(self, *args):
+    _QUEUE_V8_ORIGINAL_TARGET_CHANGED(self, *args)
+    self._queue_v8_set_playlist_quality_options()
+    self._queue_v8_update_main_action_button()
+
+
+def _queue_v8_install_preview_button(self):
+    _QUEUE_V8_ORIGINAL_INSTALL_PREVIEW(self)
+    self._queue_v8_set_playlist_quality_options()
+    self._queue_v8_update_main_action_button()
+
+
+def _queue_v8_show_quality_selector(self, quality_options=None, animated=True, source_value="", source_mode=None):
+    source = str(source_value or self._dl_preview_quality_source or self.dl_input.get()).strip()
+    if self.downloader_quality_mode_for_source(source) != "playlist":
+        return _QUEUE_V8_ORIGINAL_SHOW_QUALITY_SELECTOR(
+            self,
+            quality_options=quality_options,
+            animated=animated,
+            source_value=source,
+            source_mode=source_mode,
+        )
+
+    previous = ""
+    try:
+        previous = str(self.dl_format.get() or "").strip()
+    except Exception:
+        pass
+
+    result = _QUEUE_V8_ORIGINAL_SHOW_QUALITY_SELECTOR(
+        self,
+        quality_options=quality_options,
+        animated=animated,
+        source_value=source,
+        source_mode=source_mode,
+    )
+    try:
+        labels = [str(label).strip() for label, _ in (self._dl_preview_quality_options or [])]
+        if previous and previous in labels:
+            actual = next(label for label in self.dl_format.cget("values") if str(label).strip() == previous)
+            self.dl_format.set(actual)
+            self._v3_selected_file_quality = previous
+    except Exception:
+        pass
+    return result
+
+
+def _queue_v8_start_download(self):
+    current_url = str(self.dl_input.get() or "").strip()
+    if current_url and is_playlist_url(current_url):
+        return self.add_playlist_to_queue()
+    return _QUEUE_V8_ORIGINAL_START_DOWNLOAD(self)
+
+
+def _queue_v8_finish_controls(self, completed, failed, total, stopped):
+    _QUEUE_V8_ORIGINAL_FINISH_CONTROLS(self, completed, failed, total, stopped)
+    self._queue_v8_update_main_action_button()
+
+
+_QUEUE_V8_ORIGINAL_TARGET_CHANGED = YTMMusicToolkit.on_downloader_target_changed
+_QUEUE_V8_ORIGINAL_INSTALL_PREVIEW = YTMMusicToolkit._v4_install_preview_menu
+_QUEUE_V8_ORIGINAL_START_DOWNLOAD = YTMMusicToolkit.start_download
+_QUEUE_V8_ORIGINAL_FINISH_CONTROLS = YTMMusicToolkit._queue_finish_controls
+_QUEUE_V8_ORIGINAL_SHOW_QUALITY_SELECTOR = YTMMusicToolkit.show_download_quality_selector
+_QUEUE_V8_ORIGINAL_RESET_DOWNLOADER_UI = YTMMusicToolkit.reset_downloader_ui
+
+
+def _queue_v8_reset_downloader_ui(self):
+    _QUEUE_V8_ORIGINAL_RESET_DOWNLOADER_UI(self)
+    self._queue_v8_update_main_action_button()
+
+
+YTMMusicToolkit.add_playlist_to_queue = _queue_v8_add_playlist_to_queue
+YTMMusicToolkit._queue_v8_capture_quality_policy = _queue_v8_capture_quality_policy
+YTMMusicToolkit._queue_v8_resolve_playlist_worker = _queue_v8_resolve_playlist_worker
+YTMMusicToolkit._queue_v8_finish_playlist_add = _queue_v8_finish_playlist_add
+YTMMusicToolkit._queue_v8_prepare_item_download = _queue_v8_prepare_item_download
+YTMMusicToolkit._queue_v8_set_playlist_quality_options = _queue_v8_set_playlist_quality_options
+YTMMusicToolkit._queue_v8_update_main_action_button = _queue_v8_update_main_action_button
+YTMMusicToolkit._queue_current_final = _queue_v8_queue_current
+YTMMusicToolkit._v3_queue_current = _queue_v8_queue_current
+YTMMusicToolkit.on_downloader_target_changed = _queue_v8_target_changed
+YTMMusicToolkit._v4_install_preview_menu = _queue_v8_install_preview_button
+YTMMusicToolkit.show_download_quality_selector = _queue_v8_show_quality_selector
+YTMMusicToolkit.start_download = _queue_v8_start_download
+YTMMusicToolkit.reset_downloader_ui = _queue_v8_reset_downloader_ui
+YTMMusicToolkit._queue_finish_controls = _queue_v8_finish_controls
 
 
 # ============================================================
