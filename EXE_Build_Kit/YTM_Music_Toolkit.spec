@@ -44,13 +44,14 @@ for filename in required_binaries:
 
 ctk_datas, ctk_binaries, ctk_hiddenimports = collect_all("customtkinter")
 comtypes_datas, comtypes_binaries, comtypes_hiddenimports = collect_all("comtypes")
+ytm_datas, ytm_binaries, ytm_hiddenimports = collect_all("ytmusicapi")
 
 a = Analysis(
     [SOURCE],
     pathex=[WORKSPACE],
-    binaries=app_binaries + ctk_binaries + comtypes_binaries,
-    datas=ctk_datas + comtypes_datas,
-    hiddenimports=ctk_hiddenimports + comtypes_hiddenimports,
+    binaries=app_binaries + ctk_binaries + comtypes_binaries + ytm_binaries,
+    datas=ctk_datas + comtypes_datas + ytm_datas,
+    hiddenimports=ctk_hiddenimports + comtypes_hiddenimports + ytm_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
