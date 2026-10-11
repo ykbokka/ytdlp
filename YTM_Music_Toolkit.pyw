@@ -7512,10 +7512,10 @@ class YTMMusicToolkit(ctk.CTk):
 
                     download_result = dict(result)
                     source_title = sanitize_filename(result.get("title") or "video")
-                    video_id = str(result.get("video_id") or "").strip()
-                    download_result["output_filename"] = (
-                        f"{index:04d} - {source_title[:140]} [{video_id}]"
-                    )
+                    # Keep playlist filenames clean and title-based. The unique-stem
+                    # helper below handles duplicate titles without playlist numbering
+                    # or exposing YouTube IDs in every filename.
+                    download_result["output_filename"] = source_title[:180]
                     self._dl_playlist_progress_context = (index, total)
                     try:
                         downloaded = self.execute_download_for_result(
