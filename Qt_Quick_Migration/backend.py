@@ -1135,6 +1135,11 @@ class ToolkitBackend(QObject):
                         "id": uuid.uuid4().hex[:10],
                         "title": str(track.get("title") or track.get("video_id") or "Liked track"),
                         "url": str(track.get("source_url") or ""),
+                        "video_id": str(track.get("video_id") or ""),
+                        "artist": str(track.get("artist") or ""),
+                        "album": str(track.get("album") or ""),
+                        "ytm_metadata": track.get("ytm_metadata") or {},
+                        "ytm_enrich": True,
                         "status": "Pending",
                         "duration": str(track.get("duration") or "—"),
                     })
@@ -1157,16 +1162,44 @@ class ToolkitBackend(QObject):
                             source = f"https://www.youtube.com/watch?v={vid}"
                         if source and source not in seen:
                             seen.add(source)
-                            rows.append({"id": uuid.uuid4().hex[:10],
-                                         "title": str(entry.get("title") or vid or source),
-                                         "url": source, "status": "Pending",
-                                         "duration": self._duration(entry.get("duration"))})
+                            artist_value = entry.get("artist") or entry.get("creator") or entry.get("uploader") or entry.get("channel") or ""
+                            if isinstance(artist_value, (list, tuple)):
+                                artist_value = ", ".join(str(name).strip() for name in artist_value if str(name).strip())
+                            album_value = entry.get("album") or ""
+                            if isinstance(album_value, dict):
+                                album_value = str(album_value.get("name") or "")
+                            rows.append({
+                                "id": uuid.uuid4().hex[:10],
+                                "title": str(entry.get("track") or entry.get("title") or vid or source),
+                                "url": source,
+                                "video_id": vid,
+                                "artist": str(artist_value or ""),
+                                "album": str(album_value or ""),
+                                "year": str(entry.get("release_year") or entry.get("upload_date") or "")[:4],
+                                "ytm_enrich": "music.youtube.com" in url.lower(),
+                                "status": "Pending",
+                                "duration": self._duration(entry.get("duration")),
+                            })
                 if not rows:
                     source = str(data.get("webpage_url") or url)
-                    rows.append({"id": uuid.uuid4().hex[:10],
-                                 "title": str(data.get("title") or url),
-                                 "url": source, "status": "Pending",
-                                 "duration": self._duration(data.get("duration"))})
+                    artist_value = data.get("artist") or data.get("creator") or data.get("uploader") or data.get("channel") or ""
+                    if isinstance(artist_value, (list, tuple)):
+                        artist_value = ", ".join(str(name).strip() for name in artist_value if str(name).strip())
+                    album_value = data.get("album") or ""
+                    if isinstance(album_value, dict):
+                        album_value = str(album_value.get("name") or "")
+                    rows.append({
+                        "id": uuid.uuid4().hex[:10],
+                        "title": str(data.get("track") or data.get("title") or url),
+                        "url": source,
+                        "video_id": str(data.get("id") or ""),
+                        "artist": str(artist_value or ""),
+                        "album": str(album_value or ""),
+                        "year": str(data.get("release_year") or data.get("upload_date") or "")[:4],
+                        "ytm_enrich": "music.youtube.com" in url.lower(),
+                        "status": "Pending",
+                        "duration": self._duration(data.get("duration")),
+                    })
                 return {"_kind": "queue", "items": self.queue_items + rows,
                         "message": f"Added {len(rows)} item(s) to queue."}
             except Exception:
@@ -1226,7 +1259,29 @@ class ToolkitBackend(QObject):
                     self._save_config()
                     self.statusChanged.emit(f"Downloading: {item['title']}")
                     try:
-                        self._download_one(item["url"], file_type, quality, audio_format, subtitles, preserve_temp=True)
+                        actual_url, metadata_result = self._resolve_user_input_with_metadata(item["url"])
+                        if item.get("ytm_metadata") and isinstance(item.get("ytm_metadata"), dict):
+                            known = dict(item["ytm_metadata"])
+                            known_id = str(known.get("video_id") or "").strip()
+                            queued_id = str(item.get("video_id") or "").strip()
+                            if known_id and queued_id and known_id == queued_id:
+                                metadata_result = known
+                        elif item.get("ytm_enrich"):
+                            queued_id = str(item.get("video_id") or "").strip()
+                            artist = str(item.get("artist") or "").strip()
+                            title = str(item.get("title") or "").strip()
+                            album = str(item.get("album") or "").strip()
+                            if queued_id and title:
+                                try:
+                                    candidate = YTMResolver().search(artist, title, album)
+                                    if str((candidate or {}).get("video_id") or "").strip() == queued_id:
+                                        metadata_result = candidate
+                                    elif candidate:
+                                        self._log(f"Rejected playlist YT Music metadata for {title}: video ID did not match.")
+                                except Exception as exc:
+                                    self._log(f"Playlist YT Music metadata lookup failed for {title}: {exc}")
+                        self._download_one(actual_url, file_type, quality, audio_format, subtitles,
+                                           preserve_temp=True, metadata_result=metadata_result)
                         item["status"] = "Completed"
                         completed += 1
                     except InterruptedError:
