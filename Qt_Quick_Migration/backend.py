@@ -27,8 +27,15 @@ from ytmusic_resolver import YTMResolver, split_artist_title, canonicalize_thumb
 
 CONFIG_FILE = Path.home() / ".ytm_music_toolkit.json"
 COOKIE_ENV = "YTM_MUSIC_TOOLKIT_COOKIES"
-MEDIA_EXTENSIONS = {".flac", ".mp3", ".m4a", ".mp4", ".mkv", ".webm", ".opus", ".ogg", ".wav", ".aac", ".wma", ".m4v", ".mov"}
+MEDIA_EXTENSIONS = {".flac", ".mp3", ".m4a", ".mp4", ".opus", ".ogg", ".wav", ".aac", ".wma", ".m4v", ".mov"}
 AUDIO_EXTENSIONS = {".flac", ".mp3", ".m4a", ".opus", ".ogg", ".wav", ".aac", ".wma"}
+
+
+def derive_title_from_filename(path: str | Path) -> str:
+    name = Path(path).stem
+    name = re.sub(r"^\\d+[\\s._-]+", "", name)
+    name = name.replace("_", " ")
+    return re.sub(r"\\s+", " ", name).strip()
 
 
 def resource_dirs() -> list[Path]:
