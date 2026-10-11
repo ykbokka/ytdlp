@@ -626,50 +626,73 @@ class ToolkitBackend(QObject):
         return ["-f", f"bestvideo{ceiling}+bestaudio/best{ceiling}/best", "--merge-output-format", "mkv"]
 
     def _run_stage(self, command, stage, progress_start=0.0, progress_span=100.0):
-        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                                encoding="utf-8", errors="replace", bufsize=1, **hidden_kwargs())
-        with self.process_lock:
-            self.active_process = proc
-            self.paused = False
-        tail = []
-        try:
-            assert proc.stdout is not None
-            for line in proc.stdout:
-                line = line.rstrip()
-                if not line:
-                    continue
-                tail.append(line)
-                tail = tail[-35:]
-                if line.startswith("__YT_PROGRESS__"):
-                    fields = line[len("__YT_PROGRESS__"):].split("|")
-                    try:
-                        part = float(fields[0].replace("%", "").strip())
-                    except (ValueError, IndexError):
-                        part = 0.0
-                    percent = progress_start + progress_span * max(0.0, min(100.0, part)) / 100.0
-                    detail = " • ".join(x.strip() for x in fields[1:] if x.strip())
-                    self.progressChanged.emit(percent, f"{stage}: {part:.1f}% {detail}".strip())
-                elif "Destination:" in line or "Merging formats" in line or "ERROR:" in line or "WARNING:" in line:
-                    self.logMessage.emit(line)
-                if self.cancel_event.is_set():
-                    self._terminate_process_tree(proc)
-                    break
-            code = proc.wait()
-            if self.cancel_event.is_set():
-                raise InterruptedError("Download cancelled.")
-            if code:
-                raise RuntimeError(f"{stage} failed:\n" + ("\n".join(tail[-14:]) or f"Process exited with code {code}"))
-            return tail
-        finally:
+        active_command = list(command)
+        active_stage = stage
+
+        for attempt in range(2):
+            proc = subprocess.Popen(
+                active_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, encoding="utf-8", errors="replace", bufsize=1,
+                **hidden_kwargs()
+            )
             with self.process_lock:
-                if self.active_process is proc:
-                    self.active_process = None
+                self.active_process = proc
                 self.paused = False
+
+            tail = []
             try:
-                if proc.poll() is None:
-                    proc.kill()
-            except OSError:
-                pass
+                assert proc.stdout is not None
+                for line in proc.stdout:
+                    line = line.rstrip()
+                    if not line:
+                        continue
+                    tail.append(line)
+                    tail = tail[-45:]
+                    if line.startswith("__YT_PROGRESS__"):
+                        fields = line[len("__YT_PROGRESS__"):].split("|")
+                        try:
+                            part = float(fields[0].replace("%", "").strip())
+                        except (ValueError, IndexError):
+                            part = 0.0
+                        percent = progress_start + progress_span * max(0.0, min(100.0, part)) / 100.0
+                        detail = " • ".join(x.strip() for x in fields[1:] if x.strip())
+                        self.progressChanged.emit(percent, f"{active_stage}: {part:.1f}% {detail}".strip())
+                    elif "Destination:" in line or "Merging formats" in line or "ERROR:" in line or "WARNING:" in line:
+                        self.logMessage.emit(line)
+                    if self.cancel_event.is_set():
+                        self._terminate_process_tree(proc)
+                        break
+                code = proc.wait()
+                if self.cancel_event.is_set():
+                    raise InterruptedError("Download cancelled.")
+            finally:
+                with self.process_lock:
+                    if self.active_process is proc:
+                        self.active_process = None
+                    self.paused = False
+                try:
+                    if proc.poll() is None:
+                        self._terminate_process_tree(proc)
+                except Exception:
+                    pass
+
+            if code == 0:
+                return tail
+
+            native_command = build_native_ytdlp_fallback_command(active_command)
+            aria2_error = any("aria2c" in line.lower() for line in tail)
+            if attempt == 0 and aria2_error and native_command:
+                self._log(f"{active_stage}: aria2c failed; retrying once with yt-dlp's native downloader.")
+                active_command = native_command
+                active_stage = f"{stage} (native fallback)"
+                continue
+
+            raise RuntimeError(
+                f"{active_stage} failed:\\n" +
+                ("\\n".join(tail[-14:]) or f"Process exited with code {code}")
+            )
+
+        raise RuntimeError(f"{stage} failed without a usable fallback.")
 
     def _metadata_for_source(self, info, url, requested_result=None):
         """Use YT Music enrichment only when it is tied to the exact source video ID."""
