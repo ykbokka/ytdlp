@@ -232,6 +232,7 @@ class ToolkitBackend(QObject):
         self.last_operation_id = ""
         self._workers: dict[str, OperationWorker] = {}
         self._preview_requests: dict[str, str] = {}
+        self._queue_progress_context: dict[str, int] | None = None
         self._log("Qt Quick backend ready.")
         if not get_ytdlp():
             self._log("WARNING: yt-dlp executable was not found. Prepare the EXE build-kit assets or install yt-dlp.")
@@ -280,6 +281,29 @@ class ToolkitBackend(QObject):
 
     def _log(self, text):
         self.logMessage.emit(f"[{time.strftime('%H:%M:%S')}] {text}")
+
+    @staticmethod
+    def _queue_progress_percent(item_index, total_items, item_percent):
+        """Convert a current item's 0-100 progress into whole-queue progress."""
+        total = max(1, int(total_items))
+        index = max(0, min(total - 1, int(item_index)))
+        try:
+            current = float(item_percent)
+        except (TypeError, ValueError):
+            current = 0.0
+        current = max(0.0, min(100.0, current))
+        return (index + current / 100.0) * 100.0 / total
+
+    def _emit_download_progress(self, percent, detail):
+        context = self._queue_progress_context
+        if context:
+            index = context["index"]
+            total = context["total"]
+            aggregate = self._queue_progress_percent(index, total, percent)
+            detail = f"Playlist {index + 1}/{total} · {detail}"
+            self.progressChanged.emit(aggregate, detail)
+        else:
+            self.progressChanged.emit(float(percent), str(detail or ""))
 
     @staticmethod
     def _clear_temp_contents(folder):
@@ -720,7 +744,7 @@ class ToolkitBackend(QObject):
                             part = 0.0
                         percent = progress_start + progress_span * max(0.0, min(100.0, part)) / 100.0
                         detail = " • ".join(x.strip() for x in fields[1:] if x.strip())
-                        self.progressChanged.emit(percent, f"{active_stage}: {part:.1f}% {detail}".strip())
+                        self._emit_download_progress(percent, f"{active_stage}: {part:.1f}% {detail}".strip())
                     elif "Destination:" in line or "Merging formats" in line or "ERROR:" in line or "WARNING:" in line:
                         self.logMessage.emit(line)
                     if self.cancel_event.is_set():
@@ -1107,7 +1131,7 @@ class ToolkitBackend(QObject):
             merge_cmd.append(str(staged_final))
             self.statusChanged.emit("Muxing video and language-specific FLAC audio tracks…")
             self._log(f"Merging {len(audio_paths)} FLAC audio track(s) into {final_path.name}")
-            self.progressChanged.emit(90, "Muxing audio tracks into MKV")
+            self._emit_download_progress(90, "Muxing audio tracks into MKV")
             self._run_stage(merge_cmd, "Mux", 90, 10)
             if not staged_final.is_file() or staged_final.stat().st_size <= 0:
                 raise RuntimeError("FFmpeg finished without producing the staged MKV output.")
@@ -1131,7 +1155,7 @@ class ToolkitBackend(QObject):
                         raise
                     self._log(f"Subtitles were not added: {exc}")
 
-            self.progressChanged.emit(100, "Download complete")
+            self._emit_download_progress(100, "Download complete")
             self._log(f"Completed MKV with {len(audio_paths)} FLAC track(s): {final_path}")
             return True
         finally:
@@ -1225,7 +1249,7 @@ class ToolkitBackend(QObject):
                             except (ValueError, IndexError):
                                 percent = 0.0
                             detail = " • ".join(x.strip() for x in fields[1:] if x.strip())
-                            self.progressChanged.emit(percent, f"{percent:.1f}% {detail}".strip())
+                            self._emit_download_progress(percent, f"{percent:.1f}% {detail}".strip())
                         elif "Destination:" in line or "Merging formats" in line or "ERROR:" in line or "WARNING:" in line:
                             self.logMessage.emit(line)
                         if self.cancel_event.is_set():
@@ -1578,9 +1602,11 @@ class ToolkitBackend(QObject):
                 if queue_temp.exists():
                     shutil.rmtree(queue_temp)
                 queue_temp.mkdir(parents=True, exist_ok=True)
-                for item in pending:
+                for item_index, item in enumerate(pending):
                     if self.cancel_event.is_set():
                         break
+                    self._queue_progress_context = {"index": item_index, "total": len(pending)}
+                    self._emit_download_progress(0, f"Starting: {item['title']}")
                     item["status"] = "Downloading"
                     self.queue_items = [dict(x) for x in self.queue_items]
                     for current in self.queue_items:
@@ -1628,6 +1654,11 @@ class ToolkitBackend(QObject):
                         item["status"] = "Failed"
                         failed += 1
                         self._log(f"Queue item failed: {item['title']}: {exc}")
+                    if item["status"] in {"Completed", "Failed"}:
+                        self._emit_download_progress(
+                            100,
+                            f"Processed ({item['status'].lower()}): {item['title']}"
+                        )
                     for current in self.queue_items:
                         if current.get("id") == item.get("id"):
                             current["status"] = item["status"]
@@ -1638,6 +1669,7 @@ class ToolkitBackend(QObject):
                     message = f"Queue stopped: {completed} completed, {failed} failed."
                 return {"_kind": "download", "ok": failed == 0, "message": message}
             finally:
+                self._queue_progress_context = None
                 self.download_active = False
                 shutil.rmtree(queue_temp, ignore_errors=True)
         self.last_operation_id = self._run_async("queue-run", work)
