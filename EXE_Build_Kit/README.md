@@ -1,6 +1,6 @@
 # YTM Music Toolkit — One-File EXE Build Kit
 
-This kit builds a **single-file Windows GUI executable** at `dist\YTM Music Toolkit.exe`. The intended end-user machine does not need Python, pip, Deno, yt-dlp, FFmpeg, or FFprobe installed separately.
+This kit builds a **single-file Windows GUI executable** at `EXE_Build_Kit\dist\YTM Music Toolkit.exe`. The target PC should not need Python, pip, Deno, yt-dlp, FFmpeg, or FFprobe installed separately.
 
 ## Two-step build workflow
 
@@ -8,64 +8,63 @@ This kit builds a **single-file Windows GUI executable** at `dist\YTM Music Tool
 
 Double-click `Download-Requirements.bat`.
 
-It downloads the app source, yt-dlp, Deno, FFmpeg/FFprobe, creates the isolated build virtual environment, and installs the Python build dependencies listed in `requirements-build.txt`. It also checks that the files needed for building are present.
+It downloads the app source and helper tools, creates an isolated 64-bit Python build environment, installs the build/runtime Python packages, runs startup/import checks, and writes a build manifest containing the tool/package versions and SHA-256 hashes of the main build inputs.
 
-Run this again only when you want to refresh the downloaded source/tools or prepare a new build environment. It needs internet access and a supported Python 3.10–3.14 installation on the build PC.
+The build PC must be 64-bit Windows with 64-bit Python 3.11–3.14 and internet access. The current build workspace stores the exact tools and Python environment prepared for that build. Run preparation again only when refreshing the source/tools or recreating the build environment.
 
 ### Step 2 — Assemble the EXE
 
 Double-click `Build.bat`.
 
-This step **only invokes PyInstaller using the already-prepared files**. It does not download the source, download media tools, create a virtual environment, or install Python packages. If something is missing, it stops and tells you to run `Download-Requirements.bat` first.
+This step only validates the prepared files and runs PyInstaller. It does not download anything, install packages, or create a virtual environment. It runs offline preflight checks, confirms the helper tools launch, checks Python imports and package consistency, performs a clean PyInstaller assembly, and prints the final EXE size and SHA-256 hash.
 
-The finished file is placed at `EXE_Build_Kit\dist\YTM Music Toolkit.exe`.
+The output is `EXE_Build_Kit\dist\YTM Music Toolkit.exe`. If a requirement is missing or broken, the builder stops instead of accidentally treating an older EXE as a successful new build.
 
 Keep the `build_workspace` folder intact between preparation and assembly.
 
-## What the EXE bundles
+## What the EXE is configured to bundle
 
-- The Python interpreter/runtime and the application source.
-- The Python standard-library modules required by the application.
-- Third-party packages, their collected package data, native extensions, and hidden imports.
-- Explicit `ytmusicapi` locale files required by gettext translations.
-- `yt-dlp.exe`, including the EJS scripts shipped in the official standalone build.
-- Deno, the JavaScript runtime used by yt-dlp.
-- FFmpeg and FFprobe for media processing.
+- The Python interpreter/runtime and the application.
+- Standard-library functionality required by the app; PyInstaller's Windows hooks handle Tcl/Tk resources for the GUI.
+- Third-party packages and collected submodules, package data, native extensions, and package metadata.
+- psutil, which is used by the download pause/resume feature.
+- The CustomTkinter theme resources and its companion packages.
+- ytmusicapi's locale files at the package-relative path expected by gettext.
+- The certifi root CA bundle used for HTTPS requests.
+- yt-dlp, Deno, FFmpeg, and FFprobe as bundled helper executables in the one-file payload.
 
-The spec intentionally fails the build if required helper executables or the expected `ytmusicapi` locale directory are missing.
+The official yt-dlp standalone executable includes its EJS challenge-solver scripts; those do not need to be installed separately. See the [official yt-dlp EJS guide](https://github.com/yt-dlp/yt-dlp/wiki/ejs).
 
-## Build-machine vs. end-user requirements
+The spec intentionally fails if required helper executables, ytmusicapi locale data, or the certificate bundle are missing.
 
-The **build machine** needs internet access and Python 3.10–3.14 to prepare and compile the EXE. The **end-user machine** does not need Python installed separately.
+## What standalone means
 
-The application still needs:
+The target PC should not need a separate Python, Deno, yt-dlp, FFmpeg, or FFprobe installation. PyInstaller extracts its embedded one-file payload into a temporary runtime directory when the EXE launches; that is normal and does not mean the user must install the bundled parts.
+
+The app still needs:
 - Internet access for YouTube / YouTube Music and other online services.
-- A valid user session or authentication when a feature accesses account-specific content such as Liked Music. A Windows reset removes browser sessions and local authentication files; the EXE cannot recreate or preserve those credentials.
-- Normal Windows facilities and permissions, including access to a writable temporary directory and a destination for downloads.
+- A valid user session or authentication for account-specific features such as Liked Music. A Windows reset removes local browser sessions and user authentication files, so the EXE cannot recreate those credentials.
+- Normal Windows permissions and a writable temporary directory and download destination.
 
-User-specific settings, authentication files, downloads, and failure logs are intentionally kept outside the EXE. Do not embed personal cookies or account credentials in a distributable EXE.
+Personal settings, authentication files, downloads, and failure logs intentionally remain outside the EXE. Never embed personal cookies or account credentials in a public distributable.
 
-## One-file behavior
+## Stability and verification
 
-PyInstaller extracts bundled files into a temporary runtime directory when the EXE starts. That is normal and does not mean the user needs to install those components. The EXE may be large because it contains the Python runtime, libraries, and media tools.
+A successful build and preflight checks are useful, but they **do not prove** the EXE works on every clean Windows installation. Test it in a clean Windows 11 VM or another Windows installation without Python, Deno, yt-dlp, or FFmpeg installed. Verify first launch, authenticated Liked Music access, downloads, metadata, cover art, and media merging. Also verify that the app does not accidentally load dependencies from the build folder or system PATH.
 
-## Validation before release
-
-A successful build alone does not prove portability. Test the resulting EXE on a clean Windows 11 VM or another Windows installation without Python, Deno, yt-dlp, or FFmpeg installed. Verify launch, YouTube Music Liked Music access after authentication, a download, metadata, cover art, and media merging. Also check that no dependency is accidentally being loaded from the build folder or system PATH.
-
-The scripts have not themselves run a clean-machine validation. Do not call the build fully verified until that test passes.
+The project has not yet been validated on a clean Windows machine as part of these scripts. Do not call it fully verified until that test passes.
 
 ## Licensing and security
 
-- The FFmpeg package is sourced from Gyan's Windows builds. Review applicable licensing terms before redistribution.
-- yt-dlp, Deno, Python, and bundled libraries have their own licensing terms.
-- Windows Defender or other antivirus software may scrutinize unsigned PyInstaller executables. Test the output before distributing it.
+- FFmpeg is sourced from Gyan's Windows builds. Review the applicable license terms before redistributing the EXE.
+- yt-dlp, Deno, Python, and the bundled Python libraries have their own license terms.
+- Unsigned PyInstaller executables may be flagged for inspection by Windows Defender or other antivirus software. Test the output before distributing it.
 
 ## Files
 
-- `Download-Requirements.bat` — one-click download and setup of all build requirements.
-- `Download-Requirements.ps1` — downloads tools, prepares the build virtual environment, and installs dependencies.
+- `Download-Requirements.bat` — one-click download/setup and validation of build requirements.
+- `Download-Requirements.ps1` — downloads tools, prepares the build virtual environment, smoke-tests dependencies, and records a manifest.
 - `Build.bat` — one-click entry point for assembling the EXE only.
-- `Build-EXE.ps1` — runs PyInstaller using the prepared files only.
-- `YTM_Music_Toolkit.spec` — defines the one-file executable and collected resources.
-- `requirements-build.txt` — dependencies used only to build the EXE.
+- `Build-EXE.ps1` — offline preflight checks and PyInstaller assembly.
+- `YTM_Music_Toolkit.spec` — high-coverage package/data/native-binary collection rules.
+- `requirements-build.txt` — packages needed by the build environment and runtime collection.
