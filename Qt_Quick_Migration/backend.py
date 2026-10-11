@@ -185,6 +185,19 @@ class ToolkitBackend(QObject):
     def _log(self, text):
         self.logMessage.emit(f"[{time.strftime('%H:%M:%S')}] {text}")
 
+    @staticmethod
+    def _clear_temp_contents(folder):
+        folder = Path(folder)
+        folder.mkdir(parents=True, exist_ok=True)
+        for item in folder.iterdir():
+            try:
+                if item.is_dir() and not item.is_symlink():
+                    shutil.rmtree(item, ignore_errors=True)
+                else:
+                    item.unlink(missing_ok=True)
+            except OSError:
+                pass
+
     def _record_history(self, operation, ok, message):
         history_path = Path.home() / "Documents" / "YTDLP" / "operation_history.json"
         try:
@@ -528,13 +541,20 @@ class ToolkitBackend(QObject):
                    "pl":"pol","nl":"nld","sv":"swe","uk":"ukr","fa":"fas","ur":"urd","bn":"ben","ta":"tam","te":"tel"}
         return mapping.get(base, "und")
 
-    def _download_mkv_with_flac_tracks(self, url, quality, subtitles):
+    def _download_mkv_with_flac_tracks(self, url, quality, subtitles, preserve_temp=False):
         output = Path(self.download_dir).expanduser()
         output.mkdir(parents=True, exist_ok=True)
         temp = output / "tempytm"
-        temp.mkdir(parents=True, exist_ok=True)
+        if preserve_temp:
+            self._clear_temp_contents(temp)
+        else:
+            if temp.exists():
+                shutil.rmtree(temp)
+            temp.mkdir(parents=True, exist_ok=True)
         try:
-            info = self._extract(url, flat=False)
+            info = self._extract(url, flat=False, track_process=True)
+            if self.cancel_event.is_set():
+                raise InterruptedError("Download cancelled.")
             title = str(info.get("title") or info.get("id") or "Untitled")
             video_id = str(info.get("id") or uuid.uuid4().hex[:8])
             final_stem = self._safe_name(f"{title} [{video_id}]")
@@ -712,21 +732,26 @@ class ToolkitBackend(QObject):
                 self.paused = False
             shutil.rmtree(temp, ignore_errors=True)
 
-    def _download_one(self, url, file_type, quality, audio_format, subtitles):
+    def _download_one(self, url, file_type, quality, audio_format, subtitles, preserve_temp=False):
         if file_type == "Video (MKV)":
-            return self._download_mkv_with_flac_tracks(url, quality, subtitles)
+            return self._download_mkv_with_flac_tracks(url, quality, subtitles, preserve_temp=preserve_temp)
 
         output = Path(self.download_dir).expanduser()
         output.mkdir(parents=True, exist_ok=True)
         temp = output / "tempytm"
-        if temp.exists():
-            shutil.rmtree(temp)
-        temp.mkdir(parents=True, exist_ok=True)
+        if preserve_temp:
+            self._clear_temp_contents(temp)
+        else:
+            if temp.exists():
+                shutil.rmtree(temp)
+            temp.mkdir(parents=True, exist_ok=True)
 
         try:
-            # Work only inside tempytm. The final output folder receives completed
-            # media and requested subtitle sidecars after the process succeeds.
-            info = self._extract(url, flat=False)
+            # All staging and intermediate files live in tempytm. Only completed
+            # media and explicitly requested subtitle sidecars leave this folder.
+            info = self._extract(url, flat=False, track_process=True)
+            if self.cancel_event.is_set():
+                raise InterruptedError("Download cancelled.")
             title = str(info.get("title") or info.get("id") or "Untitled")
             video_id = str(info.get("id") or uuid.uuid4().hex[:8])
             guessed_stem = self._safe_name(f"{title} [{video_id}]")
@@ -865,7 +890,10 @@ class ToolkitBackend(QObject):
             with self.process_lock:
                 self.active_process = None
                 self.paused = False
-            shutil.rmtree(temp, ignore_errors=True)
+            if preserve_temp:
+                self._clear_temp_contents(temp)
+            else:
+                shutil.rmtree(temp, ignore_errors=True)
 
     @staticmethod
     def _unique_sidecar_path(folder, filename):
@@ -1070,7 +1098,11 @@ class ToolkitBackend(QObject):
         self.download_active = True
         def work():
             completed = failed = 0
+            queue_temp = Path(self.download_dir).expanduser() / "tempytm"
             try:
+                if queue_temp.exists():
+                    shutil.rmtree(queue_temp)
+                queue_temp.mkdir(parents=True, exist_ok=True)
                 for item in pending:
                     if self.cancel_event.is_set():
                         break
@@ -1083,7 +1115,7 @@ class ToolkitBackend(QObject):
                     self._save_config()
                     self.statusChanged.emit(f"Downloading: {item['title']}")
                     try:
-                        self._download_one(item["url"], file_type, quality, audio_format, subtitles)
+                        self._download_one(item["url"], file_type, quality, audio_format, subtitles, preserve_temp=True)
                         item["status"] = "Completed"
                         completed += 1
                     except InterruptedError:
@@ -1104,6 +1136,7 @@ class ToolkitBackend(QObject):
                 return {"_kind": "download", "ok": failed == 0, "message": message}
             finally:
                 self.download_active = False
+                shutil.rmtree(queue_temp, ignore_errors=True)
         self.last_operation_id = self._run_async("queue-run", work)
 
     @staticmethod
