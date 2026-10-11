@@ -353,7 +353,7 @@ class ToolkitBackend(QObject):
                        "M4A": ["--extract-audio", "--audio-format", "m4a", "--audio-quality", "0"],
                        "Opus": ["--extract-audio", "--audio-format", "opus", "--audio-quality", "0"]}
             return ["-f", "bestaudio/best"] + formats.get(audio_format, formats["FLAC"])
-        match = re.search(r"(\d{3,4})\s*p", str(quality), re.I)
+            match = re.search(r"(\d{3,4})\s*p", str(quality), re.I)
         height = int(match.group(1)) if match else 0
         ceiling = f"[height<={height}]" if height else ""
         if file_type == "Video (MP4)":
@@ -409,8 +409,8 @@ class ToolkitBackend(QObject):
 
     @staticmethod
     def _safe_name(value):
-        value = re.sub(r'[<>:"/\\\\|?*\\x00-\\x1f]+', "_", str(value or "Untitled"))
-        value = re.sub(r"\\s+", " ", value).strip(" .")
+        value = re.sub(r'[<>:"/\\|?*\x00-\x1f]+', "_", str(value or "Untitled"))
+        value = re.sub(r"\s+", " ", value).strip(" .")
         return (value[:150] or "Untitled")
 
     @staticmethod
@@ -461,7 +461,7 @@ class ToolkitBackend(QObject):
             if not available_video:
                 raise RuntimeError("No video streams were reported by yt-dlp.")
 
-            match = re.search(r"(\\d{3,4})\\s*p", str(quality), re.I)
+            match = re.search(r"(\d{3,4})\s*p", str(quality), re.I)
             ceiling = int(match.group(1)) if match else 0
             selector = f"bestvideo[height<={ceiling}]/bestvideo" if ceiling else "bestvideo"
 
