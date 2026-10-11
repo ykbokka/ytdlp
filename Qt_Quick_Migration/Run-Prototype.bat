@@ -27,6 +27,15 @@ echo Installing or validating prototype dependencies...
 if errorlevel 1 goto :failed
 
 echo.
+echo Checking Python syntax...
+".venv\Scripts\python.exe" -m compileall -q backend.py main.py smoke_test.py
+if errorlevel 1 goto :failed
+
+echo Running an offscreen Qt Quick load test...
+".venv\Scripts\python.exe" smoke_test.py
+if errorlevel 1 goto :failed
+
+echo.
 echo Launching the Qt Quick version...
 ".venv\Scripts\python.exe" main.py
 if errorlevel 1 goto :failed
