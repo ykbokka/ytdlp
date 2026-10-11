@@ -13,14 +13,15 @@ This keeps the saved current version and its Python environment separate. You do
 
 The GitHub Actions smoke test has successfully loaded the QML interface offscreen and compiled the Python modules. This is a syntax/startup check, **not proof that every UI flow or media format has passed end-to-end testing**.
 
-## Optional: build a standalone test EXE
+## Build a self-contained Windows EXE
 
-The one-file builder is `Build-Prototype-EXE.bat`. It still needs the media/helper executables from the existing build kit:
+1. Double-click `Install-Dependencies.bat` in this folder. It creates/uses the isolated `.venv`, installs Python and PyInstaller packages, and downloads helper tools into `build_assets\`.
+2. Double-click `Build-Prototype-EXE.bat`. It checks the prerequisites, runs Python/backend/QML smoke tests, and builds the one-file app.
+3. Find the result at `dist\YouTube Toolkit Qt Preview.exe`.
 
-1. From the repository root, run `EXE_Build_Kit\Download-Requirements.bat` to prepare its helper assets.
-2. Then run `Qt_Quick_Migration\Build-Prototype-EXE.bat`.
+The EXE bundles the Python runtime, Python packages, Qt/QML UI, backend and YouTube Music resolver modules, `yt-dlp.exe`, `ffmpeg.exe`, `ffprobe.exe`, `deno.exe`, `aria2c.exe`, and helper DLLs. The EXE should not require a separate Python installation or separate copies of these tools on the target PC.
 
-The output should be `Qt_Quick_Migration\dist\YouTube Toolkit Qt Preview.exe`. The new one-file builder has **not yet been validated on Windows**, so test the Python prototype first. It does not overwrite the current EXE.
+The first install/build needs internet and can download several large files. Already-valid tool downloads are reused later. The build targets 64-bit Windows. Personal cookies and user settings intentionally remain outside the EXE; cookie files are private credentials, not application dependencies. The build does not overwrite the existing production EXE.
 
 ## Included in this migration build
 
@@ -50,7 +51,8 @@ Use a temporary output folder and disposable test media first. Batch tag changes
 - `ytmusic_resolver.py`: exact contributing-artist search and authenticated Liked Music resolver.
 - `requirements.txt` / `requirements-build.txt`: prototype and packaging dependencies.
 - `Run-Prototype.bat`: one-click Python setup, QML smoke test, and launch.
-- `Build-Prototype-EXE.bat` / `Build-Prototype-EXE.ps1`: isolated one-file EXE build.
+- `Install-Dependencies.bat` / `Install-Dependencies.ps1`: install packaging dependencies and download helper tools.
+- `Build-Prototype-EXE.bat` / `Build-Prototype-EXE.ps1`: test and build the self-contained one-file EXE.
 - `smoke_test.py`: headless QML-load check.
 
 ## Next migration stages
