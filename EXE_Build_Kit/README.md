@@ -8,7 +8,7 @@ This kit builds a **single-file Windows GUI executable** at `EXE_Build_Kit\dist\
 
 Double-click `Download-Requirements.bat`.
 
-It downloads the app source and helper tools, creates an isolated 64-bit Python build environment, installs the build/runtime Python packages, runs startup/import checks, and writes a build manifest containing the tool/package versions and SHA-256 hashes of the main build inputs.
+It downloads the app source and helper tools, creates an isolated 64-bit Python build environment, installs the build/runtime Python packages, runs startup/import checks, and writes a build manifest containing the tool/package versions and SHA-256 hashes of the main build inputs. Large downloads suppress Windows PowerShell's expensive per-transfer progress redraws, report measured MiB/s after each file, and use longer timeouts with retries. pip's own progress bar is disabled to reduce console overhead, and compatible wheels are preferred.
 
 The build PC must be 64-bit Windows with 64-bit Python 3.11–3.14 and internet access. The current build workspace stores the exact tools and Python environment prepared for that build. Run preparation again only when refreshing the source/tools or recreating the build environment.
 
