@@ -1255,7 +1255,7 @@ def _run_ytdlp_info(url, strategy, timeout):
 def _run_ytdlp_info_once(url, strategy, cookie_args, timeout):
     command = [
         get_ytdlp_command(),
-        *get_ytdlp_runtime_args(getattr(self, "performance_mode", "aggressive")),
+        *get_ytdlp_runtime_args(),
         "--dump-single-json",
         "--skip-download",
         "--no-playlist",
@@ -9960,16 +9960,18 @@ _original_final_save = YTMMusicToolkit.save_config
 def _v3_load_config_final(self):
     _original_final_load(self)
     self.config_version = 5
-    self.performance_mode = getattr(self, "performance_mode", "aggressive") or "aggressive"
+    # New installs start in Aggressive mode. Existing saved choices are loaded
+    # below, with the old default Balanced setting migrated once to Aggressive.
+    self.performance_mode = "aggressive"
     self.conflict_mode = getattr(self, "conflict_mode", "rename") or "rename"
     try:
         if os.path.exists(CONFIG_FILE):
             data = json.loads(Path(CONFIG_FILE).read_text(encoding="utf-8"))
             old_version = int(data.get("config_version", 0) or 0)
-            saved_mode = str(data.get("performance_mode", self.performance_mode)).strip().lower()
-            # Upgrade older installs that stored the former default "balanced"
-            # so the new faster preset is active after updating the EXE.
+            saved_mode = str(data.get("performance_mode", "aggressive")).strip().lower()
             if old_version < 5 and saved_mode == "balanced":
+                saved_mode = "aggressive"
+            if saved_mode not in {"conservative", "balanced", "aggressive"}:
                 saved_mode = "aggressive"
             self.performance_mode = saved_mode
             self.conflict_mode = str(data.get("conflict_mode", self.conflict_mode))
