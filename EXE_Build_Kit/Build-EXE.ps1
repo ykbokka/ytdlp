@@ -78,14 +78,13 @@ try {
     $pythonArgs += @("-m", "venv", $VenvRoot)
     Invoke-Checked $pythonExe $pythonArgs "Could not create the build virtual environment."
 
-    $venvPython = Join-Path $VenvRoot "Scriptspython.exe"
+    $venvPython = Join-Path $VenvRoot "Scripts\python.exe"
     Invoke-Checked $venvPython @("-m", "pip", "install", "--upgrade", "pip") "Could not upgrade pip."
     Invoke-Checked $venvPython @("-m", "pip", "install", "-r", $Requirements) "Could not install build dependencies."
 
     Write-Host "[6/6] Building the single-file GUI executable..." -ForegroundColor Cyan
-    $pyinstaller = Join-Path $VenvRoot "Scriptspyinstaller.exe"
     $specPath = Join-Path $PSScriptRoot "YTM_Music_Toolkit.spec"
-    Invoke-Checked $pyinstaller @("--noconfirm", "--clean", "--onefile", "--windowed", "--name", "YTM Music Toolkit", "--distpath", $DistRoot, "--workpath", (Join-Path $WorkRoot "pyinstaller_work"), "--specpath", $WorkRoot, "--add-binary", ((Join-Path $AssetsRoot "yt-dlp.exe") + ";."), "--add-binary", ((Join-Path $AssetsRoot "deno.exe") + ";."), "--add-binary", ((Join-Path $AssetsRoot "ffmpeg.exe") + ";."), "--add-binary", ((Join-Path $AssetsRoot "ffprobe.exe") + ";."), "--collect-all", "customtkinter", "--collect-all", "comtypes", $SourcePath) "PyInstaller failed. Review the build output above."
+    Invoke-Checked $venvPython @("-m", "PyInstaller", $specPath, "--noconfirm", "--clean", "--distpath", $DistRoot, "--workpath", (Join-Path $WorkRoot "pyinstaller_work")) "PyInstaller failed. Review the build output above."
 
     $exePath = Join-Path $DistRoot "YTM Music Toolkit.exe"
     if (-not (Test-Path $exePath)) { throw "Build command completed but the expected EXE was not found." }
