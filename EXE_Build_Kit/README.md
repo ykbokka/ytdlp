@@ -44,7 +44,9 @@ The official yt-dlp standalone executable includes its EJS challenge-solver scri
 
 When aria2c is present, direct HTTP/HTTPS media downloads use aria2c with up to 16 connections, a 1 MiB split size, and the bundled executable. This can improve throughput on servers that support ranged downloads, but it is not guaranteed to beat the server or network's limits. If aria2c is absent when running the source directly, the app falls back to yt-dlp's experimental 10 MiB HTTP chunk option.
 
-DASH and HLS/M3U8 manifest downloads are deliberately kept on yt-dlp's native downloader; aria2c is assigned to direct HTTP/FTP only. This is a compatibility and safety boundary, not an arbitrary performance setting.
+DASH and HLS/M3U8 manifest downloads are deliberately kept on yt-dlp's native downloader; aria2c is assigned to direct HTTP/FTP only. This is a compatibility and safety boundary, not an arbitrary performance setting. If yt-dlp reports an aria2c-specific failure, the app retries that stage once with the native downloader and the experimental 10 MiB HTTP-chunk option.
+
+The downloader's **Performance** selector controls fragment concurrency: Conservative uses 2, Balanced uses 8, and Aggressive uses 16. This affects DASH/HLS fragment downloads; it does not force 16 connections on every source.
 
 The spec intentionally fails if required helper executables, ytmusicapi locale data, or the certificate bundle are missing.
 
