@@ -91,6 +91,31 @@ def get_ytdlp() -> list[str]:
         return []
 
 
+def build_native_ytdlp_fallback_command(command: list[str]) -> list[str] | None:
+    """Remove only the aria2 routing options, preserving yt-dlp's own selection."""
+    source = list(command or [])
+    fallback = []
+    index = 0
+    changed = False
+    while index < len(source):
+        token = str(source[index])
+        if token == "--downloader" and index + 1 < len(source):
+            downloader = str(source[index + 1]).strip().lower()
+            if downloader in {"aria2c", "dash,m3u8:native"}:
+                index += 2
+                changed = True
+                continue
+        if token == "--downloader-args" and index + 1 < len(source):
+            argument = str(source[index + 1]).strip().lower()
+            if argument.startswith("aria2c:"):
+                index += 2
+                changed = True
+                continue
+        fallback.append(source[index])
+        index += 1
+    return fallback if changed and fallback else None
+
+
 class WorkerSignals(QObject):
     result = Signal(str, object)
     error = Signal(str, str)
@@ -386,7 +411,12 @@ class ToolkitBackend(QObject):
         cmd = get_ytdlp()
         if not cmd:
             raise RuntimeError("yt-dlp executable not found. Install it or prepare EXE_Build_Kit assets.")
-        cmd.extend(["--ignore-config", "--no-warnings", "--encoding", "utf-8", "--remote-components", "ejs:github"])
+        cmd.extend([
+            "--ignore-config", "--no-warnings", "--encoding", "utf-8",
+            "--socket-timeout", "10",
+            "--remote-components", "ejs:github",
+            "--extractor-args", "youtube:player_client=default,web_embedded",
+        ])
         if self.cookie_path and cookie_is_valid(self.cookie_path):
             cmd.extend(["--cookies", self.cookie_path])
         deno = find_tool("deno")
