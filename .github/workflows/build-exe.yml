@@ -1,13 +1,6 @@
 name: Build YTM Music Toolkit EXE
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "YTM_Music_Toolkit.pyw"
-      - "EXE_Build_Kit/**"
-      - ".github/workflows/build-exe.yml"
   workflow_dispatch:
 
 permissions:
