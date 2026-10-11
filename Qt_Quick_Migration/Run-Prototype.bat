@@ -28,10 +28,13 @@ if errorlevel 1 goto :failed
 
 echo.
 echo Checking Python syntax...
-".venv\Scripts\python.exe" -m compileall -q backend.py main.py smoke_test.py
+".venv\Scripts\python.exe" -m compileall -q backend.py main.py smoke_test.py test_backend.py test_ytmusic_resolver.py
 if errorlevel 1 goto :failed
 
 echo Running an offscreen Qt Quick load test...
+".venv\Scripts\python.exe" -m unittest test_backend.py test_ytmusic_resolver.py -v
+if errorlevel 1 goto :failed
+
 ".venv\Scripts\python.exe" smoke_test.py
 if errorlevel 1 goto :failed
 
