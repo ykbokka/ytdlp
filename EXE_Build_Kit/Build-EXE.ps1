@@ -54,7 +54,9 @@ try {
         (Join-Path $AssetsRoot "yt-dlp.exe"),
         (Join-Path $AssetsRoot "deno.exe"),
         (Join-Path $AssetsRoot "ffmpeg.exe"),
-        (Join-Path $AssetsRoot "ffprobe.exe")
+        (Join-Path $AssetsRoot "ffprobe.exe"),
+        (Join-Path $AssetsRoot "aria2c.exe"),
+        (Join-Path $AssetsRoot "aria2-LICENSE.txt")
     )
 
     foreach ($file in $requiredFiles) {
@@ -114,6 +116,7 @@ try {
     Test-Tool (Join-Path $AssetsRoot "deno.exe") @("--version")
     Test-Tool (Join-Path $AssetsRoot "ffmpeg.exe") @("-version")
     Test-Tool (Join-Path $AssetsRoot "ffprobe.exe") @("-version")
+    Test-Tool (Join-Path $AssetsRoot "aria2c.exe") @("--version")
 
     New-Item -ItemType Directory -Force -Path $DistRoot, $PyInstallerWork | Out-Null
 
