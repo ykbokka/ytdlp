@@ -52,3 +52,36 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: python smoke_test.py
+
+
+  windows-qml-smoke-test:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: Qt_Quick_Migration/requirements.txt
+
+      - name: Install prototype dependencies
+        run: python -m pip install -r Qt_Quick_Migration/requirements.txt
+
+      - name: Compile Python files
+        run: python -m compileall -q Qt_Quick_Migration
+
+      - name: Run backend and resolver regression tests
+        working-directory: Qt_Quick_Migration
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m unittest test_backend.py test_ytmusic_resolver.py -v
+
+      - name: Load QML on Windows
+        working-directory: Qt_Quick_Migration
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python smoke_test.py
