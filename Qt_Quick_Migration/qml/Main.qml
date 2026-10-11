@@ -90,6 +90,8 @@ easing.type: Easing.OutCubic } }
     function applySettings(s) {
         if (!s) return
         downloadDirectory = s.downloadDir || ""
+        metadataFolderPath = s.metadataDir || ""
+        coverFolderPath = s.coverDir || ""
         cookiePath = s.cookiePath || ""
         hasCookies = !!s.hasCookies
         performanceMode = s.performanceMode || "aggressive"
@@ -458,12 +460,18 @@ font.bold: true }
     FolderDialog {
         id: metadataFolderDialog
         title: "Choose FLAC metadata folder"
-        onAccepted: root.metadataFolderPath = selectedFolder.toLocalFile()
+        onAccepted: {
+            root.metadataFolderPath = selectedFolder.toLocalFile()
+            backend.setOperationDirectory("metadata", root.metadataFolderPath)
+        }
     }
     FolderDialog {
         id: coverFolderDialog
         title: "Choose FLAC cover-art folder"
-        onAccepted: root.coverFolderPath = selectedFolder.toLocalFile()
+        onAccepted: {
+            root.coverFolderPath = selectedFolder.toLocalFile()
+            backend.setOperationDirectory("cover", root.coverFolderPath)
+        }
     }
 
     Connections {
