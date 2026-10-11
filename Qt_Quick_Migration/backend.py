@@ -185,6 +185,30 @@ class ToolkitBackend(QObject):
     def _log(self, text):
         self.logMessage.emit(f"[{time.strftime('%H:%M:%S')}] {text}")
 
+    def _record_history(self, operation, ok, message):
+        history_path = Path.home() / "Documents" / "YTDLP" / "operation_history.json"
+        try:
+            history_path.parent.mkdir(parents=True, exist_ok=True)
+            entries = []
+            if history_path.is_file():
+                try:
+                    loaded = json.loads(history_path.read_text(encoding="utf-8"))
+                    if isinstance(loaded, list):
+                        entries = loaded
+                except (OSError, json.JSONDecodeError):
+                    entries = []
+            entries.append({
+                "time": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "operation": str(operation or "operation"),
+                "success": bool(ok),
+                "message": str(message or "")[:500],
+            })
+            temporary = history_path.with_suffix(".json.tmp")
+            temporary.write_text(json.dumps(entries[-250:], indent=2, ensure_ascii=False), encoding="utf-8")
+            os.replace(temporary, history_path)
+        except OSError as exc:
+            self._log(f"Could not update operation history: {exc}")
+
     def _run_async(self, label, fn):
         key = f"{label}-{uuid.uuid4().hex[:8]}"
         worker = OperationWorker(key, fn)
@@ -213,10 +237,12 @@ class ToolkitBackend(QObject):
             ok, message = bool(payload.get("ok")), str(payload.get("message", ""))
             self.operationFinished.emit(key, ok, message)
             self.statusChanged.emit(message)
+            self._record_history(key.split("-", 1)[0], ok, message)
         elif marker == "download":
             ok, message = bool(payload.get("ok")), str(payload.get("message", ""))
             self.operationFinished.emit(key, ok, message)
             self.statusChanged.emit(message)
+            self._record_history(key.split("-", 1)[0], ok, message)
         elif payload is not None:
             self.operationFinished.emit(key, True, str(payload))
 
@@ -1054,6 +1080,7 @@ class ToolkitBackend(QObject):
                         if current.get("id") == item.get("id"):
                             current["status"] = "Downloading"
                     self.queueChanged.emit(self.queue_items)
+                    self._save_config()
                     self.statusChanged.emit(f"Downloading: {item['title']}")
                     try:
                         self._download_one(item["url"], file_type, quality, audio_format, subtitles)
@@ -1070,6 +1097,7 @@ class ToolkitBackend(QObject):
                         if current.get("id") == item.get("id"):
                             current["status"] = item["status"]
                     self.queueChanged.emit(self.queue_items)
+                    self._save_config()
                 message = f"Queue finished: {completed} completed, {failed} failed."
                 if self.cancel_event.is_set():
                     message = f"Queue stopped: {completed} completed, {failed} failed."
@@ -1180,6 +1208,7 @@ class ToolkitBackend(QObject):
                 except Exception as exc:
                     failed += 1
                     self._log(f"Metadata rewrite failed for {path.name}: {exc}")
+            self.progressChanged.emit(100.0, "Metadata rewrite complete")
             return {"_kind": "done", "ok": failed == 0,
                     "message": f"Metadata rewrite finished: {changed} updated, {unmatched} unmatched, {failed} failed."}
 
@@ -1233,6 +1262,7 @@ class ToolkitBackend(QObject):
                 except Exception as exc:
                     failed += 1
                     self._log(f"Cover upgrade failed for {path.name}: {exc}")
+            self.progressChanged.emit(100.0, "Cover upgrade complete")
             return {"_kind": "done", "ok": failed == 0,
                     "message": f"Cover upgrade finished: {updated} updated, {unmatched} unmatched, {failed} failed."}
 
