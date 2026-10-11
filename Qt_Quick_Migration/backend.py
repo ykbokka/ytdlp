@@ -620,7 +620,6 @@ class ToolkitBackend(QObject):
         else:
             cmd += ["--output", str(output / "%(title).180B [%(id)s]-%(autonumber)03d.%(ext)s")]
         cmd += ["--progress-template", "download:__YT_PROGRESS__%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s", url]
-        self.cancel_event.clear() if not self.cancel_event.is_set() else None
         process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                    encoding="utf-8", errors="replace", bufsize=1, **hidden_kwargs())
         with self.process_lock:
@@ -1018,8 +1017,28 @@ class ToolkitBackend(QObject):
                 finally:
                     cover.unlink(missing_ok=True)
                     temp_out.unlink(missing_ok=True)
+            elif ext in {".mp4", ".m4v", ".mov"}:
+                ffmpeg = find_tool("ffmpeg")
+                if not ffmpeg:
+                    raise RuntimeError("FFmpeg was not found.")
+                cover = path.with_name("." + path.stem + ".cover-tmp.jpg")
+                temp_out = path.with_name("." + path.stem + ".cover-tmp" + ext)
+                cover.write_bytes(data)
+                try:
+                    p = subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-y",
+                                        "-i", str(path), "-i", str(cover), "-map", "0", "-map", "1:v:0",
+                                        "-c", "copy", "-disposition:v:1", "attached_pic",
+                                        "-metadata:s:v:1", "title=Cover", "-metadata:s:v:1", "comment=Cover",
+                                        "-movflags", "+faststart", str(temp_out)],
+                                       capture_output=True, text=True, timeout=180, **hidden_kwargs())
+                    if p.returncode:
+                        raise RuntimeError((p.stderr or "Could not embed the cover")[-1200:])
+                    os.replace(temp_out, path)
+                finally:
+                    cover.unlink(missing_ok=True)
+                    temp_out.unlink(missing_ok=True)
             else:
-                raise ValueError("This prototype embeds artwork into audio files and MKV video.")
+                raise ValueError("Artwork embedding supports FLAC, MP3, M4A, MKV, MP4, M4V, and MOV.")
             return {"_kind": "done", "ok": True, "message": f"Artwork embedded: {path.name}"}
         self._run_async("cover", work)
 
