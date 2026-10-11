@@ -961,19 +961,19 @@ class ToolkitBackend(QObject):
                 raise RuntimeError("yt-dlp completed, but no final media file was found inside tempytm.")
             media_source = max(preferred, key=lambda item: item.stat().st_mtime)
             source_stem = media_source.stem
+            self._apply_download_metadata(media_source, metadata)
 
-            if self.conflict_mode == "replace":
-                media_target = output / media_source.name
-            elif self.conflict_mode == "skip":
-                media_target = output / media_source.name
+            desired_stem = self._safe_name(f"{metadata.get('title') or source_stem} [{metadata.get('video_id') or video_id}]")
+            desired_name = desired_stem + media_source.suffix.lower()
+            media_target = output / desired_name
+            if self.conflict_mode == "skip":
                 if media_target.exists():
                     self._log(f"Skipped completed duplicate: {media_target.name}")
                     return True
-            else:
-                media_target = output / media_source.name
+            elif self.conflict_mode == "rename":
                 suffix = 2
                 while media_target.exists():
-                    media_target = output / f"{source_stem} ({suffix}){media_source.suffix}"
+                    media_target = output / f"{desired_stem} ({suffix}){media_source.suffix.lower()}"
                     suffix += 1
 
             os.replace(media_source, media_target)
@@ -1371,6 +1371,73 @@ class ToolkitBackend(QObject):
                 flac.clear_pictures()
                 flac.add_picture(picture)
         flac.save()
+
+    def _apply_download_metadata(self, path, metadata):
+        """Apply resolved source tags and the best matching artwork to downloaded media."""
+        path = Path(path)
+        ext = path.suffix.lower()
+        title = str(metadata.get("title") or "").strip()
+        artist = str(metadata.get("artist") or "").strip()
+        album = str(metadata.get("album") or "").strip()
+        year = str(metadata.get("year") or "").strip()
+        if ext == ".flac":
+            self._apply_ytmusic_flac_metadata(path, metadata, embed_cover=True)
+            return
+
+        try:
+            media = MutagenFile(str(path), easy=True)
+            if media is not None:
+                if media.tags is None:
+                    media.add_tags()
+                for key, value in (("title", title), ("artist", artist), ("album", album), ("date", year)):
+                    try:
+                        if value:
+                            media.tags[key] = [value]
+                        elif key in media.tags:
+                            del media.tags[key]
+                    except (KeyError, TypeError):
+                        pass
+                try:
+                    for key in ("albumartist", "album artist"):
+                        try:
+                            del media.tags[key]
+                        except (KeyError, TypeError):
+                            pass
+                except Exception:
+                    pass
+                media.save()
+        except Exception as exc:
+            self._log(f"Tag writing skipped for {path.name}: {exc}")
+
+        if ext not in {".mp3", ".m4a", ".mp4", ".m4v", ".mov", ".opus", ".ogg"}:
+            return
+        cover_bytes = self._cover_bytes_from_result(metadata)
+        if not cover_bytes:
+            return
+        try:
+            if ext == ".mp3":
+                tags = ID3(str(path))
+                tags.delall("APIC")
+                tags.add(APIC(encoding=3, mime="image/jpeg", type=3, desc="Cover", data=cover_bytes))
+                tags.save(str(path))
+            elif ext in {".m4a", ".mp4", ".m4v", ".mov"}:
+                mp4 = MP4(str(path))
+                mp4["covr"] = [MP4Cover(cover_bytes, imageformat=MP4Cover.FORMAT_JPEG)]
+                mp4.save()
+            elif ext in {".opus", ".ogg"}:
+                import base64
+                picture = Picture()
+                picture.type = 3
+                picture.mime = "image/jpeg"
+                picture.desc = "Cover"
+                picture.data = cover_bytes
+                encoded = base64.b64encode(picture.write()).decode("ascii")
+                media = MutagenFile(str(path), easy=True)
+                if media is not None:
+                    media["metadata_block_picture"] = [encoded]
+                    media.save()
+        except Exception as exc:
+            self._log(f"Artwork could not be embedded into {path.name}: {exc}")
 
     @Slot(str)
     def rewriteFolderMetadata(self, folder):
