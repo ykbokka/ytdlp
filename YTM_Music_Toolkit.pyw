@@ -38,7 +38,7 @@ except ImportError:
 
 
 # ============================================================
-# YTM MUSIC TOOLKIT
+# YouTube Toolkit
 # ============================================================
 # One windowed .pyw application merging the downloader,
 # metadata rewriter, cover updater, and crop tools.
@@ -56,7 +56,7 @@ except ImportError:
 # ============================================================
 
 
-APP_NAME = "YTM Music Toolkit V8"
+APP_NAME = "YouTube Toolkit V8"
 APP_FONT = "SF Pro Text"
 
 # Apple-inspired dark appearance: graphite surfaces, quiet separators,
@@ -162,7 +162,7 @@ def write_failure_log(context, exc, details=None):
         log_path = directory / f"FAILURE_{timestamp}_{unique:09d}_{safe_context}.log"
 
         lines = [
-            "YTM MUSIC TOOLKIT FAILURE LOG",
+            "YouTube Toolkit FAILURE LOG",
             "=" * 72,
             f"Time: {time.strftime('%Y-%m-%d %H:%M:%S')}",
             f"Context: {context}",
@@ -1300,7 +1300,7 @@ def _create_temporary_ytmusic_auth_from_cookie_file(cookie_path):
 def _no_session_message():
     return (
         "Cookie file not found. Put a Netscape-format cookies.txt next to "
-        "YTM Music Toolkit or at Documents\\YTDLP\\cookies.txt. "
+        "YouTube Toolkit or at Documents\\YTDLP\\cookies.txt. "
         "You can also set the YTM_MUSIC_TOOLKIT_COOKIES environment variable "
         "to the full file path. The app no longer reads cookies from browsers."
     )
@@ -3067,7 +3067,7 @@ class YTMMusicToolkit(ctk.CTk):
 
         ctk.CTkLabel(
             title_stack,
-            text="YTM Music Toolkit",
+            text="YouTube Toolkit",
             font=(APP_FONT, 21, "bold"),
             text_color="#ffffff",
             anchor="w",
