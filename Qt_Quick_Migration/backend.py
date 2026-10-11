@@ -344,24 +344,61 @@ class ToolkitBackend(QObject):
                             "--downloader-args", f"aria2c:-x {n} -s {n} -k {split} --file-allocation=none --no-conf=true --max-download-limit=0 --max-overall-download-limit=0"])
         return cmd
 
-    def _extract(self, url, flat=False):
+    def _extract(self, url, flat=False, track_process=False):
         cmd = self._base_command(False) + ["--dump-single-json", "--skip-download"]
         if flat:
             cmd.extend(["--flat-playlist", "--yes-playlist"])
         else:
             cmd.append("--no-playlist")
         cmd.append(url)
-        proc = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                              timeout=120, **hidden_kwargs())
-        if proc.returncode:
-            raise RuntimeError((proc.stderr or proc.stdout or "Metadata extraction failed")[-1600:])
+        proc = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+            encoding="utf-8", errors="replace", **hidden_kwargs()
+        )
+        if track_process:
+            with self.process_lock:
+                self.active_process = proc
+                self.paused = False
         try:
-            payload = json.loads(proc.stdout)
-        except json.JSONDecodeError as exc:
-            raise RuntimeError("yt-dlp returned invalid JSON metadata.") from exc
-        if not isinstance(payload, dict):
-            raise RuntimeError("yt-dlp returned no usable metadata object. For account-bound playlists, use Add to Queue and ensure cookies.txt is configured.")
-        return payload
+            deadline = time.monotonic() + 120
+            while True:
+                if track_process and self.cancel_event.is_set():
+                    self._terminate_process_tree(proc)
+                    try:
+                        proc.communicate(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.communicate()
+                    raise InterruptedError("Download cancelled during source inspection.")
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    self._terminate_process_tree(proc)
+                    raise TimeoutError("yt-dlp metadata extraction exceeded 120 seconds.")
+                try:
+                    stdout, stderr = proc.communicate(timeout=min(0.25, remaining))
+                    break
+                except subprocess.TimeoutExpired:
+                    continue
+            if proc.returncode:
+                raise RuntimeError((stderr or stdout or "Metadata extraction failed")[-1600:])
+            try:
+                payload = json.loads(stdout)
+            except json.JSONDecodeError as exc:
+                raise RuntimeError("yt-dlp returned invalid JSON metadata.") from exc
+            if not isinstance(payload, dict):
+                raise RuntimeError("yt-dlp returned no usable metadata object. For account-bound playlists, use Add to Queue and ensure cookies.txt is configured.")
+            return payload
+        finally:
+            if track_process:
+                with self.process_lock:
+                    if self.active_process is proc:
+                        self.active_process = None
+                    self.paused = False
+            if proc.poll() is None:
+                try:
+                    self._terminate_process_tree(proc)
+                except Exception:
+                    pass
 
     @staticmethod
     def _duration(value):
