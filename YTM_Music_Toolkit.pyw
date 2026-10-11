@@ -9136,7 +9136,7 @@ def _v3_execute(self, result, item_index=1, item_total=1, selected_format_overri
         "mp3": [".mp3"], "m4a": [".m4a"], "opus": [".opus"], "vorbis": [".ogg"], "flac": [".flac"], "alac": [".m4a"], "wav": [".wav"],
     }.get(file_type, [".mp4", ".mkv", ".flac"])
     result = dict(result)
-    result["output_filename"] = _v3_unique_stem(self.paths["downloader"], result.get("title") or result.get("output_filename") or "track", exts)
+    result["output_filename"] = _v3_unique_stem(self.paths["downloader"], result.get("output_filename") or result.get("title") or "track", exts)
     out = _ORIGINAL_EXECUTE_V3(self, result, item_index=item_index, item_total=item_total, selected_format_override=selected_format_override)
     kind = "audio" if spec.get("kind") == "audio" else "video"
     _v3_validate_output(out, kind)
@@ -9797,7 +9797,8 @@ def _v3_queue_worker(self, items):
             self._v3_queue_item_total = total
             self.set_operation_progress("dl", 0, f"Queue item {index}/{total} — preparing...", taskbar=True)
             try:
-                _ORIGINAL_RUN_WORKER_V3(self, item["url"])
+                self._v3_dry_run_active = False
+                self.run_download_worker(item["url"])
                 completed += 1
             except Exception as exc:
                 write_failure_log("v3_queue_item", exc, details=f"Queue item: {index}/{total}\nURL: {item.get('url')}")
@@ -10114,6 +10115,239 @@ def _v5_start_download(self):
 
 
 YTMMusicToolkit.start_download = _v5_start_download
+
+
+# ============================================================
+# DOWNLOAD TEMP WORKSPACE (V6)
+# ============================================================
+# All media downloads are staged under <download directory>\\tempytm.
+# Completed deliverables are moved to the real download folder immediately
+# after each item, leaving only temporary artifacts in the staging directory.
+# The workspace is removed when a single item, full playlist, queue item, or
+# cancelled/failed download worker finishes.
+
+_V6_FINAL_MEDIA_EXTENSIONS = {
+    ".mkv", ".mka", ".mp4", ".webm", ".mov", ".m4v",
+    ".flac", ".mp3", ".m4a", ".opus", ".ogg", ".oga", ".aac", ".wav",
+    ".vtt", ".srt", ".ass", ".ssa", ".lrc",
+}
+
+_V6_ORIGINAL_RUN_DOWNLOAD_WORKER = YTMMusicToolkit.run_download_worker
+_V6_ORIGINAL_EXECUTE_DOWNLOAD = YTMMusicToolkit.execute_download_for_result
+
+
+def _v6_clear_temp_contents(temp_root):
+    root = Path(temp_root)
+    if not root.exists():
+        return
+    for child in list(root.iterdir()):
+        try:
+            if child.is_dir():
+                shutil.rmtree(child, ignore_errors=True)
+            else:
+                child.unlink(missing_ok=True)
+        except Exception as exc:
+            write_failure_log("download_temp_cleanup_item", exc, details=f"Path: {child}")
+
+
+def _v6_unique_destination_path(destination_dir, filename):
+    folder = Path(destination_dir)
+    target = folder / filename
+    if not target.exists():
+        return target
+    suffix = target.suffix
+    stem = target.name[:-len(suffix)] if suffix else target.name
+    index = 1
+    while True:
+        candidate = folder / f"{stem} ({index}){suffix}"
+        if not candidate.exists():
+            return candidate
+        index += 1
+
+
+def _v6_update_history_path(old_path, new_path):
+    try:
+        history_path = Path(FAILURE_LOG_DIR) / "operation_history.json"
+        if not history_path.is_file():
+            return
+        records = json.loads(history_path.read_text(encoding="utf-8"))
+        if not isinstance(records, list):
+            return
+        old_text = str(old_path)
+        new_text = str(new_path)
+        for record in reversed(records):
+            if isinstance(record, dict) and str(record.get("file") or "") == old_text:
+                record["file"] = new_text
+                history_path.write_text(
+                    json.dumps(records[-250:], indent=2, ensure_ascii=False),
+                    encoding="utf-8",
+                )
+                return
+    except Exception as exc:
+        write_failure_log("download_temp_history_update", exc)
+
+
+def _v6_run_download_worker(self, user_input):
+    # "Inspect only" does not create a media workspace or change its output path.
+    if getattr(self, "_v3_dry_run_active", False):
+        return _V6_ORIGINAL_RUN_DOWNLOAD_WORKER(self, user_input)
+
+    if getattr(self, "_v6_download_temp_root", None):
+        return _V6_ORIGINAL_RUN_DOWNLOAD_WORKER(self, user_input)
+
+    original_output_path = self.paths["downloader"]
+    destination = Path(original_output_path).expanduser().resolve()
+    temp_root = destination / "tempytm"
+    try:
+        destination.mkdir(parents=True, exist_ok=True)
+        if temp_root.exists():
+            shutil.rmtree(temp_root)
+        temp_root.mkdir(parents=True, exist_ok=True)
+    except Exception as exc:
+        log_path = write_failure_log(
+            "download_temp_workspace_start",
+            exc,
+            details=f"Destination: {destination}\nTemporary workspace: {temp_root}",
+        )
+        self.append_log(
+            self.dl_log,
+            f"[ERROR] Could not prepare the tempytm workspace: {exc} | Failure log: {log_path or FAILURE_LOG_DIR}",
+        )
+        self.set_label(self.dl_status, "Status: Could not prepare temporary download folder")
+        self.download_running = False
+        self.after(0, self.reset_downloader_ui)
+        return
+
+    self._v6_download_destination = destination
+    self._v6_download_temp_root = temp_root
+    try:
+        return _V6_ORIGINAL_RUN_DOWNLOAD_WORKER(self, user_input)
+    finally:
+        # The worker catches cancellation and download failures internally, so
+        # this finally block also handles Stop, errors, and playlist early exits.
+        self.paths["downloader"] = original_output_path
+        try:
+            shutil.rmtree(temp_root, ignore_errors=True)
+        except Exception as exc:
+            write_failure_log("download_temp_workspace_final_cleanup", exc, details=f"Path: {temp_root}")
+        self._v6_download_destination = None
+        self._v6_download_temp_root = None
+
+
+def _v6_execute_through_temp(self, result, item_index=1, item_total=1, selected_format_override=None):
+    original_output_path = self.paths["downloader"]
+    destination = Path(
+        getattr(self, "_v6_download_destination", original_output_path)
+    ).expanduser().resolve()
+    temp_root = Path(
+        getattr(self, "_v6_download_temp_root", destination / "tempytm")
+    ).expanduser().resolve()
+    owns_workspace = getattr(self, "_v6_download_temp_root", None) is None
+
+    if owns_workspace:
+        destination.mkdir(parents=True, exist_ok=True)
+        if temp_root.exists():
+            shutil.rmtree(temp_root, ignore_errors=True)
+        temp_root.mkdir(parents=True, exist_ok=True)
+        self._v6_download_destination = destination
+        self._v6_download_temp_root = temp_root
+
+    temp_root.mkdir(parents=True, exist_ok=True)
+    playlist_context = getattr(self, "_dl_playlist_progress_context", None)
+    is_playlist_item = bool(playlist_context and int(playlist_context[1]) > 1)
+
+    result_for_download = dict(result or {})
+    selected = (
+        selected_format_override
+        if selected_format_override is not None
+        else self._selected_download_format
+    )
+    spec = _v3_selected_quality_spec(self, selected)
+    file_type = str(
+        (spec or {}).get("file_type")
+        or getattr(self, "_v3_selected_file_type", "auto")
+        or "auto"
+    ).lower()
+    extensions = {
+        "auto": [".mkv", ".mp4", ".flac", ".m4a", ".mp3", ".opus", ".ogg", ".wav", ".aac"],
+        "mp4": [".mp4"], "mkv": [".mkv"], "webm": [".webm", ".mkv"],
+        "mov": [".mov"], "mp3": [".mp3"], "m4a": [".m4a"],
+        "opus": [".opus"], "vorbis": [".ogg"], "flac": [".flac"],
+        "alac": [".m4a"], "wav": [".wav"],
+    }.get(file_type, [".mkv", ".mp4", ".flac", ".m4a", ".mp3"])
+
+    # Reserve the final basename against the REAL output folder before swapping
+    # the worker's output directory to tempytm.
+    base = (
+        result_for_download.get("output_filename")
+        or result_for_download.get("title")
+        or "track"
+    )
+    result_for_download["output_filename"] = _v3_unique_stem(
+        destination,
+        base,
+        extensions,
+    )
+
+    try:
+        self.paths["downloader"] = str(temp_root)
+        out = _V6_ORIGINAL_EXECUTE_DOWNLOAD(
+            self,
+            result_for_download,
+            item_index=item_index,
+            item_total=item_total,
+            selected_format_override=selected_format_override,
+        )
+        output_temp_path = Path(out).resolve()
+        moved_paths = {}
+
+        # Only final media/subtitle artifacts at the workspace root are exported.
+        # Nested working files, .part fragments, thumbnail files, and mux inputs
+        # are deliberately not moved into the user's download folder.
+        for source in list(temp_root.iterdir()):
+            if not source.is_file():
+                continue
+            if source.suffix.lower() not in _V6_FINAL_MEDIA_EXTENSIONS:
+                continue
+            if source.name.lower().endswith((".part", ".ytdl", ".tmp", ".temp")):
+                continue
+
+            target = _v6_unique_destination_path(destination, source.name)
+            source_key = source.resolve()
+            try:
+                os.replace(str(source), str(target))
+            except OSError:
+                shutil.move(str(source), str(target))
+            moved_paths[source_key] = target
+
+        final_output_path = moved_paths.get(output_temp_path)
+        if final_output_path is None or not final_output_path.is_file():
+            raise RuntimeError(
+                "The completed media file could not be moved out of tempytm. "
+                "Check the latest download failure log before retrying."
+            )
+
+        _v6_update_history_path(output_temp_path, final_output_path)
+
+        # Export happened immediately after the item completed. Discard any
+        # remaining thumbnail, partial, subtitle scratch, merge, or nested temp
+        # artifacts before another playlist item starts using the same workspace.
+        _v6_clear_temp_contents(temp_root)
+
+        return final_output_path
+    finally:
+        self.paths["downloader"] = original_output_path
+        if owns_workspace:
+            try:
+                shutil.rmtree(temp_root, ignore_errors=True)
+            except Exception as exc:
+                write_failure_log("download_temp_workspace_item_cleanup", exc, details=f"Path: {temp_root}")
+            self._v6_download_destination = None
+            self._v6_download_temp_root = None
+
+
+YTMMusicToolkit.run_download_worker = _v6_run_download_worker
+YTMMusicToolkit.execute_download_for_result = _v6_execute_through_temp
 
 
 # ============================================================
