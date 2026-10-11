@@ -8124,8 +8124,12 @@ class YTMMusicToolkit(ctk.CTk):
         finally:
             self.stop_requested = False
             self.download_running = False
-            self.set_header_status("● READY", busy=False)
-            self.taskbar_progress.set_state(0)
+            if queue_run:
+                self.set_header_status("● QUEUE", busy=True)
+                self.taskbar_progress.set_state(2)
+            else:
+                self.set_header_status("● READY", busy=False)
+                self.taskbar_progress.set_state(0)
             self.active_process = None
             self.after(0, self.reset_downloader_ui)
 
