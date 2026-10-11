@@ -4301,15 +4301,6 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.apply_apple_dark_theme()
 
-        # A theme change must not reset an active download, queue, URL or option.
-        try:
-            self.set_header_status(
-                "● READY" if not self.download_running else "● WORKING",
-                busy=bool(self.download_running),
-            )
-        except Exception:
-            pass
-
 
     def apply_apple_dark_theme(self):
         """Apply the selected Apple-style light or dark palette across all tabs."""
