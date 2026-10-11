@@ -4423,7 +4423,7 @@ class YTMMusicToolkit(ctk.CTk):
                     is_primary = any(
                         word in label for word in (
                             "start", "download", "rewrite", "upgrade", "overhaul",
-                            "crop", "apply", "save changes", "process queue",
+                            "crop", "apply", "save changes", "process queue", "add playlist",
                         )
                     )
 
@@ -12363,6 +12363,13 @@ _QUEUE_V8_ORIGINAL_INSTALL_PREVIEW = YTMMusicToolkit._v4_install_preview_menu
 _QUEUE_V8_ORIGINAL_START_DOWNLOAD = YTMMusicToolkit.start_download
 _QUEUE_V8_ORIGINAL_FINISH_CONTROLS = YTMMusicToolkit._queue_finish_controls
 _QUEUE_V8_ORIGINAL_SHOW_QUALITY_SELECTOR = YTMMusicToolkit.show_download_quality_selector
+_QUEUE_V8_ORIGINAL_RESET_DOWNLOADER_UI = YTMMusicToolkit.reset_downloader_ui
+
+
+def _queue_v8_reset_downloader_ui(self):
+    _QUEUE_V8_ORIGINAL_RESET_DOWNLOADER_UI(self)
+    self._queue_v8_update_main_action_button()
+
 
 YTMMusicToolkit.add_playlist_to_queue = _queue_v8_add_playlist_to_queue
 YTMMusicToolkit._queue_v8_capture_quality_policy = _queue_v8_capture_quality_policy
@@ -12377,6 +12384,7 @@ YTMMusicToolkit.on_downloader_target_changed = _queue_v8_target_changed
 YTMMusicToolkit._v4_install_preview_menu = _queue_v8_install_preview_button
 YTMMusicToolkit.show_download_quality_selector = _queue_v8_show_quality_selector
 YTMMusicToolkit.start_download = _queue_v8_start_download
+YTMMusicToolkit.reset_downloader_ui = _queue_v8_reset_downloader_ui
 YTMMusicToolkit._queue_finish_controls = _queue_v8_finish_controls
 
 
