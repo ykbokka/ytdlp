@@ -373,6 +373,11 @@ class ToolkitBackend(QObject):
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     self._terminate_process_tree(proc)
+                    try:
+                        proc.communicate(timeout=2)
+                    except subprocess.TimeoutExpired:
+                        proc.kill()
+                        proc.communicate()
                     raise TimeoutError("yt-dlp metadata extraction exceeded 120 seconds.")
                 try:
                     stdout, stderr = proc.communicate(timeout=min(0.25, remaining))
