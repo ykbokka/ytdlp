@@ -23,7 +23,7 @@ from mutagen import File as MutagenFile
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import ID3, APIC
 from mutagen.mp4 import MP4, MP4Cover
-from ytmusic_resolver import YTMResolver, split_artist_title
+from ytmusic_resolver import YTMResolver, split_artist_title, canonicalize_thumbnail_url
 
 CONFIG_FILE = Path.home() / ".ytm_music_toolkit.json"
 COOKIE_ENV = "YTM_MUSIC_TOOLKIT_COOKIES"
@@ -1077,6 +1077,167 @@ class ToolkitBackend(QObject):
             finally:
                 self.download_active = False
         self.last_operation_id = self._run_async("queue-run", work)
+
+    @staticmethod
+    def _tag_text(tags, key):
+        try:
+            value = tags.get(key) or []
+            if isinstance(value, (list, tuple)):
+                return ", ".join(str(item).strip() for item in value if str(item).strip())
+            return str(value or "").strip()
+        except Exception:
+            return ""
+
+    def _cover_bytes_from_result(self, result):
+        candidates = list(result.get("thumbnail_candidates") or [])
+        if result.get("cover_url"):
+            candidates.insert(0, result["cover_url"])
+        seen = set()
+        for candidate in candidates:
+            url = canonicalize_thumbnail_url(candidate)
+            if not url or url in seen:
+                continue
+            seen.add(url)
+            try:
+                response = requests.get(url, timeout=25, headers={"User-Agent": "Mozilla/5.0"})
+                response.raise_for_status()
+                from io import BytesIO
+                with Image.open(BytesIO(response.content)) as image:
+                    normalized = ImageOps.exif_transpose(image).convert("RGB")
+                    buffer = BytesIO()
+                    normalized.save(buffer, "JPEG", quality=100, subsampling=0)
+                    return buffer.getvalue()
+            except Exception as exc:
+                self._log(f"Artwork candidate failed; trying the next YT Music image: {exc}")
+        return b""
+
+    @staticmethod
+    def _set_flac_tag(flac, key, value):
+        value = str(value or "").strip()
+        if value:
+            flac[key] = [value]
+        else:
+            try:
+                del flac[key]
+            except KeyError:
+                pass
+
+    def _apply_ytmusic_flac_metadata(self, path, result, embed_cover=True):
+        flac = FLAC(str(path))
+        self._set_flac_tag(flac, "title", result.get("title"))
+        self._set_flac_tag(flac, "artist", result.get("artist"))
+        self._set_flac_tag(flac, "album", result.get("album"))
+        self._set_flac_tag(flac, "date", result.get("year"))
+        for key in ("albumartist", "album artist"):
+            try:
+                del flac[key]
+            except KeyError:
+                pass
+        if embed_cover:
+            cover_bytes = self._cover_bytes_from_result(result)
+            if cover_bytes:
+                picture = Picture()
+                picture.type = 3
+                picture.mime = "image/jpeg"
+                picture.desc = "Cover"
+                picture.data = cover_bytes
+                flac.clear_pictures()
+                flac.add_picture(picture)
+        flac.save()
+
+    @Slot(str)
+    def rewriteFolderMetadata(self, folder):
+        folder = str(folder or "").strip()
+
+        def work():
+            root = Path(folder)
+            if not root.is_dir():
+                raise NotADirectoryError("Choose a valid metadata folder.")
+            files = [p for p in root.rglob("*.flac") if p.is_file()]
+            if not files:
+                raise RuntimeError("No FLAC files were found in this folder.")
+            resolver = YTMResolver()
+            changed = failed = unmatched = 0
+            total = len(files)
+            for index, path in enumerate(files, 1):
+                self.progressChanged.emit((index - 1) * 100 / total, f"Metadata {index}/{total}: {path.name}")
+                try:
+                    flac = FLAC(str(path))
+                    artist = self._tag_text(flac, "artist")
+                    title = self._tag_text(flac, "title") or path.stem
+                    album = self._tag_text(flac, "album")
+                    if not artist and " - " in path.stem:
+                        artist, title_from_name = split_artist_title(path.stem)
+                        title = title_from_name or title
+                    result = resolver.search(artist, title, album)
+                    if not result:
+                        unmatched += 1
+                        self._log(f"No YouTube Music match for {path.name}; left unchanged.")
+                        continue
+                    self._apply_ytmusic_flac_metadata(path, result, embed_cover=True)
+                    changed += 1
+                    self._log(f"Updated tags and artwork: {path.name} → {result.get('title') or title}")
+                except Exception as exc:
+                    failed += 1
+                    self._log(f"Metadata rewrite failed for {path.name}: {exc}")
+            return {"_kind": "done", "ok": failed == 0,
+                    "message": f"Metadata rewrite finished: {changed} updated, {unmatched} unmatched, {failed} failed."}
+
+        self.statusChanged.emit("Preparing batch YouTube Music metadata rewrite…")
+        self._run_async("metadata-batch-rewrite", work)
+
+    @Slot(str)
+    def upgradeFolderCovers(self, folder):
+        folder = str(folder or "").strip()
+
+        def work():
+            root = Path(folder)
+            if not root.is_dir():
+                raise NotADirectoryError("Choose a valid cover-art folder.")
+            files = [p for p in root.rglob("*.flac") if p.is_file()]
+            if not files:
+                raise RuntimeError("No FLAC files were found in this folder.")
+            resolver = YTMResolver()
+            updated = failed = unmatched = 0
+            total = len(files)
+            for index, path in enumerate(files, 1):
+                self.progressChanged.emit((index - 1) * 100 / total, f"Cover art {index}/{total}: {path.name}")
+                try:
+                    flac = FLAC(str(path))
+                    artist = self._tag_text(flac, "artist")
+                    title = self._tag_text(flac, "title") or path.stem
+                    album = self._tag_text(flac, "album")
+                    if not artist and " - " in path.stem:
+                        artist, title_from_name = split_artist_title(path.stem)
+                        title = title_from_name or title
+                    result = resolver.search(artist, title, album)
+                    if not result:
+                        unmatched += 1
+                        self._log(f"No YouTube Music artwork match for {path.name}; left unchanged.")
+                        continue
+                    cover_bytes = self._cover_bytes_from_result(result)
+                    if not cover_bytes:
+                        failed += 1
+                        self._log(f"No usable artwork could be downloaded for {path.name}.")
+                        continue
+                    picture = Picture()
+                    picture.type = 3
+                    picture.mime = "image/jpeg"
+                    picture.desc = "Cover"
+                    picture.data = cover_bytes
+                    flac.clear_pictures()
+                    flac.add_picture(picture)
+                    flac.save()
+                    updated += 1
+                    self._log(f"Updated cover art: {path.name}")
+                except Exception as exc:
+                    failed += 1
+                    self._log(f"Cover upgrade failed for {path.name}: {exc}")
+            return {"_kind": "done", "ok": failed == 0,
+                    "message": f"Cover upgrade finished: {updated} updated, {unmatched} unmatched, {failed} failed."}
+
+        self.statusChanged.emit("Preparing batch YouTube Music cover upgrade…")
+        self._run_async("cover-batch-upgrade", work)
 
     @Slot(str)
     def inspectMediaFile(self, path):
