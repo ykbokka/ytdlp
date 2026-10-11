@@ -154,6 +154,9 @@ class ToolkitBackend(QObject):
         self.conflict_mode = self._valid_choice(self.config.get("conflict_mode"), {"rename", "skip", "replace"}, "rename")
         self.appearance_mode = self._valid_choice(self.config.get("appearance_mode"), {"dark", "light"}, "dark")
         self.queue_items: list[dict[str, Any]] = [dict(x) for x in self.config.get("queue_items", []) if isinstance(x, dict)]
+        for queued_item in self.queue_items:
+            if str(queued_item.get("status") or "").strip().lower() == "downloading":
+                queued_item["status"] = "Stopped"
         self.active_process = None
         self.process_lock = threading.RLock()
         self.cancel_event = threading.Event()
