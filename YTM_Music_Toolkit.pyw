@@ -10334,6 +10334,13 @@ def _v6_execute_through_temp(self, result, item_index=1, item_total=1, selected_
         # artifacts before another playlist item starts using the same workspace.
         _v6_clear_temp_contents(temp_root)
 
+        # A single download owns the whole workspace lifecycle; remove the
+        # folder immediately after its deliverables have been exported. During a
+        # playlist, keep the empty root available for the next item and remove it
+        # only when the playlist worker exits (including Stop/cancellation).
+        if not is_playlist_item:
+            shutil.rmtree(temp_root, ignore_errors=True)
+
         return final_output_path
     finally:
         self.paths["downloader"] = original_output_path
