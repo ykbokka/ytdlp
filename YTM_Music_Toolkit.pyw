@@ -197,31 +197,46 @@ def get_ytdlp_command():
     return exe or "yt-dlp"
 
 
-def get_ytdlp_runtime_args():
-    """Enable EJS/Deno and start media downloads with a larger adaptive buffer.
+def get_concurrent_fragment_count(performance_mode="aggressive"):
+    """Return native DASH/HLS concurrency for the selected speed preset."""
+    return {
+        "conservative": 4,
+        "balanced": 12,
+        "aggressive": 24,
+    }.get(str(performance_mode or "aggressive").strip().lower(), 24)
 
-    A 1 MiB starting buffer can reduce per-block overhead on fast connections.
-    Adaptive resizing remains enabled so yt-dlp can adjust it when appropriate.
-    """
+
+def get_ytdlp_runtime_args(performance_mode="aggressive"):
+    """Build yt-dlp's runtime options for the selected download-speed preset."""
+    mode = str(performance_mode or "aggressive").strip().lower()
+    profiles = {
+        "conservative": {"buffer": "1M", "connections": 4, "split": "4M", "http_chunk": "5M"},
+        "balanced": {"buffer": "2M", "connections": 8, "split": "2M", "http_chunk": "10M"},
+        "aggressive": {"buffer": "4M", "connections": 16, "split": "1M", "http_chunk": "16M"},
+    }
+    profile = profiles.get(mode, profiles["aggressive"])
+
     args = [
         "--remote-components", "ejs:github",
-        "--buffer-size", "1M",
+        "--buffer-size", profile["buffer"],
         "--resize-buffer",
     ]
 
-    # For direct HTTP media URLs, a bundled aria2c can split a single file
-    # across multiple HTTP connections. Keep DASH and HLS on yt-dlp's native
-    # downloader; this also avoids sending manifest fragment lists to aria2c.
+    # aria2 can split direct HTTP/HTTPS media URLs across multiple ranges.
+    # Tune its connection count per preset, avoid slow preallocation for large
+    # files on Windows, and keep DASH/HLS on yt-dlp's native fragment downloader.
     aria2 = find_executable("aria2c")
     if aria2:
+        connections = profile["connections"]
         args.extend([
             "--downloader", "aria2c",
             "--downloader", "dash,m3u8:native",
-            "--downloader-args", "aria2c:-x 16 -s 16 -k 1M",
+            "--downloader-args",
+            f"aria2c:-x {connections} -s {connections} -k {profile['split']} --file-allocation=none",
         ])
     else:
-        # Optional fallback for direct HTTP downloads when aria2c is absent.
-        args.extend(["--http-chunk-size", "10M"])
+        # Chunked native HTTP can help some servers that throttle long responses.
+        args.extend(["--http-chunk-size", profile["http_chunk"]])
 
     deno = find_executable("deno")
     if not deno:
@@ -1240,7 +1255,7 @@ def _run_ytdlp_info(url, strategy, timeout):
 def _run_ytdlp_info_once(url, strategy, cookie_args, timeout):
     command = [
         get_ytdlp_command(),
-        *get_ytdlp_runtime_args(),
+        *get_ytdlp_runtime_args(getattr(self, "performance_mode", "aggressive")),
         "--dump-single-json",
         "--skip-download",
         "--no-playlist",
@@ -1735,7 +1750,7 @@ class YTMResolver:
                 def _playlist_attempt(cookie_args):
                     return run_json([
                         get_ytdlp_command(),
-                        *get_ytdlp_runtime_args(),
+                        *get_ytdlp_runtime_args(getattr(self, "performance_mode", "aggressive")),
                         "--dump-single-json",
                         "--flat-playlist",
                         "--skip-download",
@@ -2258,7 +2273,7 @@ class YTMResolver:
             proc = subprocess.run(
                 [
                     get_ytdlp_command(),
-                    *get_ytdlp_runtime_args(),
+                    *get_ytdlp_runtime_args(getattr(self, "performance_mode", "aggressive")),
                     "--dump-single-json",
                     "--flat-playlist",
                     "--skip-download",
@@ -6199,11 +6214,11 @@ class YTMMusicToolkit(ctk.CTk):
 
         command = [
             get_ytdlp_command(),
-            *get_ytdlp_runtime_args(),
+            *get_ytdlp_runtime_args(getattr(self, "performance_mode", "aggressive")),
             "--newline",
             "--windows-filenames",
             "--concurrent-fragments",
-            str({"conservative": 2, "balanced": 8, "aggressive": 16}.get(getattr(self, "performance_mode", "balanced"), 8)),
+            str(get_concurrent_fragment_count(getattr(self, "performance_mode", "aggressive"))),
             "--embed-metadata",
             "--embed-thumbnail",
         ]
@@ -6452,11 +6467,11 @@ class YTMMusicToolkit(ctk.CTk):
 
                 video_command = [
                     get_ytdlp_command(),
-                    *get_ytdlp_runtime_args(),
+                    *get_ytdlp_runtime_args(getattr(self, "performance_mode", "aggressive")),
                     "--newline",
                     "--windows-filenames",
                     "--concurrent-fragments",
-                    str({"conservative": 2, "balanced": 8, "aggressive": 16}.get(getattr(self, "performance_mode", "balanced"), 8)),
+                    str(get_concurrent_fragment_count(getattr(self, "performance_mode", "aggressive"))),
                     "--no-playlist",
                     *youtube_extractor_args_list(
                         result.get("quality_extractor_arg")
@@ -6793,7 +6808,7 @@ class YTMMusicToolkit(ctk.CTk):
 
             command = [
                 get_ytdlp_command(),
-                *get_ytdlp_runtime_args(),
+                *get_ytdlp_runtime_args(getattr(self, "performance_mode", "aggressive")),
                 "--newline",
                 "--windows-filenames",
                 "--no-playlist",
@@ -9030,9 +9045,9 @@ def _v3_build_command(self, source_url, result, selected_format):
     title = sanitize_filename(result.get("output_filename") or result.get("title") or "track")
     command = [
         get_ytdlp_command(),
-        *get_ytdlp_runtime_args(),
+        *get_ytdlp_runtime_args(getattr(self, "performance_mode", "aggressive")),
         "--newline", "--windows-filenames",
-        "--concurrent-fragments", str({"conservative": 2, "balanced": 8, "aggressive": 16}.get(getattr(self, "performance_mode", "balanced"), 8)),
+        "--concurrent-fragments", str(get_concurrent_fragment_count(getattr(self, "performance_mode", "aggressive"))),
         "--retries", "10", "--fragment-retries", "10", "--retry-sleep", "exp=1:30",
         "--no-overwrites", "--format-sort", "res,fps,hdr:12,vcodec,channels,acodec,size,br,asr,proto,ext",
     ]
@@ -9469,7 +9484,7 @@ def _v3_build_command_final(self, source_url, result, selected_format):
 
     command = [
         get_ytdlp_command(),
-        *get_ytdlp_runtime_args(),
+        *get_ytdlp_runtime_args(getattr(self, "performance_mode", "aggressive")),
         "--newline",
         "--windows-filenames",
         "--part",
@@ -9478,7 +9493,7 @@ def _v3_build_command_final(self, source_url, result, selected_format):
         "--fragment-retries", "10",
         "--retry-sleep", "exp=1:30",
         "--socket-timeout", "20",
-        "--concurrent-fragments", str({"conservative": 2, "balanced": 8, "aggressive": 16}.get(getattr(self, "performance_mode", "balanced"), 8)),
+        "--concurrent-fragments", str(get_concurrent_fragment_count(getattr(self, "performance_mode", "aggressive"))),
         "--format-sort", "res,fps,hdr:12,vcodec,channels,acodec,size,br,asr,proto,ext",
     ]
 
@@ -9944,13 +9959,19 @@ _original_final_save = YTMMusicToolkit.save_config
 
 def _v3_load_config_final(self):
     _original_final_load(self)
-    self.config_version = 4
-    self.performance_mode = getattr(self, "performance_mode", "balanced") or "balanced"
+    self.config_version = 5
+    self.performance_mode = getattr(self, "performance_mode", "aggressive") or "aggressive"
     self.conflict_mode = getattr(self, "conflict_mode", "rename") or "rename"
     try:
         if os.path.exists(CONFIG_FILE):
             data = json.loads(Path(CONFIG_FILE).read_text(encoding="utf-8"))
-            self.performance_mode = str(data.get("performance_mode", self.performance_mode))
+            old_version = int(data.get("config_version", 0) or 0)
+            saved_mode = str(data.get("performance_mode", self.performance_mode)).strip().lower()
+            # Upgrade older installs that stored the former default "balanced"
+            # so the new faster preset is active after updating the EXE.
+            if old_version < 5 and saved_mode == "balanced":
+                saved_mode = "aggressive"
+            self.performance_mode = saved_mode
             self.conflict_mode = str(data.get("conflict_mode", self.conflict_mode))
     except Exception as exc:
         write_failure_log("v3_final_config_load", exc)
@@ -9964,7 +9985,7 @@ def _v3_save_config_final(self):
         else:
             data = {}
         data.update({
-            "config_version": 4,
+            "config_version": 5,
             "performance_mode": getattr(self, "performance_mode", "balanced"),
             "conflict_mode": getattr(self, "conflict_mode", "rename"),
         })
