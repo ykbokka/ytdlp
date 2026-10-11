@@ -31,6 +31,10 @@ ApplicationWindow {
     property string downloadDirectory: ""
     property string metadataFolderPath: ""
     property string coverFolderPath: ""
+    property string coverMediaPathValue: ""
+    property string coverSourcePath: ""
+    property string cropSourcePath: ""
+    property string cropPositionValue: "Center"
     property string cookiePath: ""
     property bool hasCookies: false
     property string performanceMode: "aggressive"
@@ -52,6 +56,11 @@ ApplicationWindow {
     property color accentSoftColor: darkMode ? "#233657" : "#E5EEFF"
     property color hoverColor: darkMode ? "#222A3A" : "#EDF1F8"
     property color successColor: darkMode ? "#52D6A0" : "#218653"
+
+    Behavior on textColor { ColorAnimation { duration: 240; easing.type: Easing.OutCubic } }
+    Behavior on mutedColor { ColorAnimation { duration: 240; easing.type: Easing.OutCubic } }
+    Behavior on accentColor { ColorAnimation { duration: 240; easing.type: Easing.OutCubic } }
+    Behavior on successColor { ColorAnimation { duration: 240; easing.type: Easing.OutCubic } }
     property var navItems: [
         {title:"Downloader", icon:"↓"},
         {title:"Queue", icon:"≡"},
@@ -343,26 +352,26 @@ ApplicationWindow {
         id: coverMediaDialog
         title: "Choose media file to update"
         nameFilters: ["Supported media (*.flac *.mp3 *.m4a *.mp4 *.mkv *.webm *.opus *.ogg *.wav *.aac)", "All files (*)"]
-        onAccepted: coverMediaPath.text = selectedFile.toLocalFile()
+        onAccepted: root.coverMediaPathValue = selectedFile.toLocalFile()
     }
     FileDialog {
         id: coverImageDialog
         title: "Choose cover image"
         nameFilters: ["Images (*.jpg *.jpeg *.png *.webp)", "All files (*)"]
-        onAccepted: coverSource.text = selectedFile.toLocalFile()
+        onAccepted: root.coverSourcePath = selectedFile.toLocalFile()
     }
     FileDialog {
         id: cropImageDialog
         title: "Choose source artwork"
         nameFilters: ["Images (*.jpg *.jpeg *.png *.webp *.bmp)", "All files (*)"]
-        onAccepted: cropSource.text = selectedFile.toLocalFile()
+        onAccepted: root.cropSourcePath = selectedFile.toLocalFile()
     }
     FileDialog {
         id: cropSaveDialog
         title: "Save square artwork"
         fileMode: FileDialog.SaveFile
         nameFilters: ["JPEG image (*.jpg)", "All files (*)"]
-        onAccepted: backend.cropArtwork(cropSource.text, selectedFile.toLocalFile(), cropPosition.currentText)
+        onAccepted: backend.cropArtwork(root.cropSourcePath, selectedFile.toLocalFile(), root.cropPositionValue)
     }
     FileDialog {
         id: cookieFileDialog
@@ -864,18 +873,25 @@ ApplicationWindow {
 
     Component {
         id: coverPage
-        ColumnLayout {
-            spacing: 12
+        Flickable {
+            contentWidth: width
+            contentHeight: coverContent.implicitHeight
+            clip: true
+            ScrollBar.vertical: ScrollBar {}
+            ColumnLayout {
+                id: coverContent
+                width: parent.width
+                spacing: 12
             Text { text: "Cover Art"; color: root.textColor; font.pixelSize: 24; font.bold: true }
             Text { text: "Embed a local image or image URL into audio or supported MKV files."; color: root.mutedColor; font.pixelSize: 11 }
             RowLayout {
                 Layout.fillWidth: true
-                TextField { id: coverMediaPath; Layout.fillWidth: true; placeholderText: "Media file path"; color: root.textColor; placeholderTextColor: root.mutedColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
+                TextField { id: coverMediaPath; Layout.fillWidth: true; text: root.coverMediaPathValue; onTextEdited: root.coverMediaPathValue = text; placeholderText: "Media file path"; color: root.textColor; placeholderTextColor: root.mutedColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
                 Button { text: "Browse media"; onClicked: coverMediaDialog.open(); background: Rectangle { radius: 10; color: root.elevatedColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
             }
             RowLayout {
                 Layout.fillWidth: true
-                TextField { id: coverSource; Layout.fillWidth: true; text: root.metadataThumbnail; placeholderText: "Image file path or https:// image URL"; color: root.textColor; placeholderTextColor: root.mutedColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
+                TextField { id: coverSource; Layout.fillWidth: true; text: root.coverSourcePath || root.metadataThumbnail; onTextEdited: root.coverSourcePath = text; placeholderText: "Image file path or https:// image URL"; color: root.textColor; placeholderTextColor: root.mutedColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
                 Button { text: "Browse image"; onClicked: coverImageDialog.open(); background: Rectangle { radius: 10; color: root.elevatedColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
             }
             Rectangle {
@@ -929,6 +945,7 @@ ApplicationWindow {
                     }
                 }
             }
+            }
         }
     }
 
@@ -940,13 +957,13 @@ ApplicationWindow {
             Text { text: "Create a clean square JPEG using a center or edge-biased crop."; color: root.mutedColor; font.pixelSize: 11 }
             RowLayout {
                 Layout.fillWidth: true
-                TextField { id: cropSource; Layout.fillWidth: true; placeholderText: "Source image path"; color: root.textColor; placeholderTextColor: root.mutedColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
+                TextField { id: cropSource; Layout.fillWidth: true; text: root.cropSourcePath; onTextEdited: root.cropSourcePath = text; placeholderText: "Source image path"; color: root.textColor; placeholderTextColor: root.mutedColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
                 Button { text: "Browse"; onClicked: cropImageDialog.open(); background: Rectangle { radius: 10; color: root.elevatedColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
             }
             RowLayout {
                 Layout.fillWidth: true
                 Text { text: "Crop position"; color: root.mutedColor; font.pixelSize: 11 }
-                ComboBox { id: cropPosition; model: ["Center", "Top", "Bottom", "Left", "Right"]; currentIndex: 0; Layout.preferredWidth: 150; contentItem: Text { leftPadding: 11; text: cropPosition.displayText; color: root.textColor; font.pixelSize: 11; verticalAlignment: Text.AlignVCenter }; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
+                ComboBox { id: cropPosition; model: ["Center", "Top", "Bottom", "Left", "Right"]; currentIndex: Math.max(0, model.indexOf(root.cropPositionValue)); onActivated: root.cropPositionValue = currentText; Layout.preferredWidth: 150; contentItem: Text { leftPadding: 11; text: cropPosition.displayText; color: root.textColor; font.pixelSize: 11; verticalAlignment: Text.AlignVCenter }; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
             }
             Rectangle {
                 Layout.fillWidth: true
