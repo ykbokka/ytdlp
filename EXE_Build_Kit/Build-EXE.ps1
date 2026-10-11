@@ -29,7 +29,9 @@ function Invoke-Checked {
     }
 
     if ($nativeExitCode -ne 0) { throw $Failure }
-}function Test-Tool {
+}
+
+function Test-Tool {
     param([string]$Program, [string[]]$Arguments)
     & $Program @Arguments *> $null
     if ($LASTEXITCODE -ne 0) {
