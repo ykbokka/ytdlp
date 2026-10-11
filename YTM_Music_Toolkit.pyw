@@ -2167,12 +2167,51 @@ class YTMResolver:
                 or "Looking for what you've liked" in error_text
                 or "Looking for what you’ve liked" in error_text
             ):
+                # Provide only safe authentication diagnostics. Never log cookie
+                # values or the Authorization hash; cookie names are sufficient
+                # to tell whether the export contains a plausible YouTube session.
+                auth_diagnostics = "unavailable"
+                try:
+                    headers = auth_client.base_headers
+                    cookie_header = str(headers.get("cookie") or "")
+                    cookie_names = sorted(set(
+                        name
+                        for name in re.findall(r"(?:^|;\\s*)([^=;\\s]+)=", cookie_header)
+                    ))
+                    auth_type = getattr(
+                        auth_client.auth_type,
+                        "name",
+                        str(auth_client.auth_type),
+                    )
+                    auth_user = str(headers.get("x-goog-authuser") or "<missing>")
+                    origin = str(
+                        headers.get("origin")
+                        or headers.get("x-origin")
+                        or "<missing>"
+                    )
+                    authorization = str(headers.get("authorization") or "")
+                    auth_scheme = authorization.split(" ", 1)[0] if authorization else "<missing>"
+                    auth_diagnostics = (
+                        f"auth_type={auth_type}; x-goog-authuser={auth_user}; "
+                        f"origin={origin}; authorization_scheme={auth_scheme}; "
+                        f"cookie_count={len(cookie_names)}; "
+                        f"cookie_names={','.join(cookie_names) or '<none>'}"
+                    )
+                except Exception as diagnostic_exc:
+                    auth_diagnostics = (
+                        "diagnostics_error="
+                        + type(diagnostic_exc).__name__
+                    )
+
                 raise RuntimeError(
                     "YouTube Music returned its signed-out Liked Music screen. "
-                    "The selected cookies.txt was readable, but it did not authenticate "
-                    "the Liked Music API request. Export a fresh cookies.txt while signed "
-                    "in at https://music.youtube.com, then select that file in the toolkit. "
-                    "No separate ytmusicapi_browser.json file is needed."
+                    "The selected cookies.txt was readable, but YouTube Music did not "
+                    "accept the resulting authenticated API request. The toolkit now "
+                    "builds the cookie header for the actual /youtubei/v1/browse API path. "
+                    "Do not send cookie values or Authorization hashes. "
+                    "Safe authentication diagnostics: "
+                    + auth_diagnostics
+                    + ". No separate ytmusicapi_browser.json file is needed."
                 ) from exc
             raise
 
