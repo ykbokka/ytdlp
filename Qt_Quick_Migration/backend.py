@@ -1400,9 +1400,13 @@ class ToolkitBackend(QObject):
         self._terminate_process_tree(proc)
         self.statusChanged.emit("Stopping current operation…")
 
-    @Slot(str)
-    def addQueueUrl(self, url):
+    @Slot(str, str, str, str, str)
+    def addQueueUrl(self, url, file_type, quality, audio_format, subtitles):
         url = str(url or "").strip()
+        file_type = str(file_type or self.file_type)
+        quality = str(quality or self.quality)
+        audio_format = str(audio_format or self.audio_format)
+        subtitles = str(subtitles or self.subtitle_mode)
         if not url:
             self.statusChanged.emit("Paste a URL to add it to the queue.")
             return
@@ -1414,6 +1418,10 @@ class ToolkitBackend(QObject):
                 for track in tracks:
                     rows.append({
                         "id": uuid.uuid4().hex[:10],
+                        "file_type": file_type,
+                        "quality": quality,
+                        "audio_format": audio_format,
+                        "subtitle_mode": subtitles,
                         "title": str(track.get("title") or track.get("video_id") or "Liked track"),
                         "url": str(track.get("source_url") or ""),
                         "video_id": str(track.get("video_id") or ""),
@@ -1451,6 +1459,10 @@ class ToolkitBackend(QObject):
                                 album_value = str(album_value.get("name") or "")
                             rows.append({
                                 "id": uuid.uuid4().hex[:10],
+                                "file_type": file_type,
+                                "quality": quality,
+                                "audio_format": audio_format,
+                                "subtitle_mode": subtitles,
                                 "title": str(entry.get("track") or entry.get("title") or vid or source),
                                 "url": source,
                                 "video_id": vid,
@@ -1471,6 +1483,10 @@ class ToolkitBackend(QObject):
                         album_value = str(album_value.get("name") or "")
                     rows.append({
                         "id": uuid.uuid4().hex[:10],
+                        "file_type": file_type,
+                        "quality": quality,
+                        "audio_format": audio_format,
+                        "subtitle_mode": subtitles,
                         "title": str(data.get("track") or data.get("title") or url),
                         "url": source,
                         "video_id": str(data.get("id") or ""),
@@ -1488,6 +1504,8 @@ class ToolkitBackend(QObject):
                     raise
                 return {"_kind": "queue", "items": self.queue_items + [{
                     "id": uuid.uuid4().hex[:10], "title": url, "url": url,
+                    "file_type": file_type, "quality": quality,
+                    "audio_format": audio_format, "subtitle_mode": subtitles,
                     "status": "Pending", "duration": "—"
                 }], "message": "Added URL to queue; details will be resolved when downloading."}
 
@@ -1561,7 +1579,13 @@ class ToolkitBackend(QObject):
                                         self._log(f"Rejected playlist YT Music metadata for {title}: video ID did not match.")
                                 except Exception as exc:
                                     self._log(f"Playlist YT Music metadata lookup failed for {title}: {exc}")
-                        self._download_one(actual_url, file_type, quality, audio_format, subtitles,
+                        item_file_type = str(item.get("file_type") or file_type)
+                        if item_file_type not in {"Video (MKV)", "Video (MP4)", "Audio only"}:
+                            item_file_type = file_type
+                        item_quality = str(item.get("quality") or quality)
+                        item_audio_format = str(item.get("audio_format") or audio_format)
+                        item_subtitles = str(item.get("subtitle_mode") or subtitles)
+                        self._download_one(actual_url, item_file_type, item_quality, item_audio_format, item_subtitles,
                                            preserve_temp=True, metadata_result=metadata_result)
                         item["status"] = "Completed"
                         completed += 1
