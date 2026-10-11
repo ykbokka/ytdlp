@@ -3458,6 +3458,21 @@ class YTMMusicToolkit(ctk.CTk):
         """Update a complete operation meter safely from worker threads."""
         value = max(0.0, min(100.0, float(percent)))
 
+        # While one playlist item is being processed, treat incoming download
+        # progress as that item's local 0–100% and map it to the entire playlist.
+        # This keeps nested download, audio-track, thumbnail, and mux stages from
+        # resetting the visible percentage back to the current item's percentage.
+        playlist_context = getattr(self, "_dl_playlist_progress_context", None)
+        if prefix == "dl" and playlist_context:
+            try:
+                item_index, item_total = playlist_context
+                item_total = max(1, int(item_total))
+                item_index = max(1, min(item_total, int(item_index)))
+                value = ((item_index - 1) + (value / 100.0)) / item_total * 100.0
+                value = max(0.0, min(100.0, value))
+            except Exception:
+                pass
+
         bar = getattr(self, f"{prefix}_progress", None)
         message_label = getattr(self, f"{prefix}_progress_message", None)
         percent_label = getattr(self, f"{prefix}_progress_percent", None)
@@ -5522,7 +5537,7 @@ class YTMMusicToolkit(ctk.CTk):
                 self.set_operation_progress(
                     "dl",
                     overall * 100.0,
-                    f"{stage_name.title()} — {percent:.0f}%",
+                    f"{stage_name.title()} — downloading...",
                     taskbar=True,
                 )
 
@@ -6334,15 +6349,14 @@ class YTMMusicToolkit(ctk.CTk):
         output_dir = self.paths["downloader"]
         os.makedirs(output_dir, exist_ok=True)
 
-        item_base = (item_index - 1) / max(1, item_total)
-        item_span = 1 / max(1, item_total)
-
         def report(local_fraction, message, taskbar=True):
+            # set_operation_progress maps this local item progress to playlist
+            # progress when a playlist context is active. For a single download,
+            # the same value naturally remains the whole-operation percentage.
             local = max(0.0, min(1.0, float(local_fraction)))
-            overall = (item_base + (item_span * local)) * 100.0
             self.set_operation_progress(
                 "dl",
-                overall,
+                local * 100.0,
                 message,
                 taskbar=taskbar,
             )
@@ -7439,12 +7453,17 @@ class YTMMusicToolkit(ctk.CTk):
                     download_result["output_filename"] = (
                         f"{index:04d} - {source_title[:140]} [{video_id}]"
                     )
-                    downloaded = self.execute_download_for_result(
-                        download_result,
-                        item_index=index,
-                        item_total=total,
-                        selected_format_override=item_spec_override or playlist_selected_format,
-                    )
+                    self._dl_playlist_progress_context = (index, total)
+                    try:
+                        downloaded = self.execute_download_for_result(
+                            download_result,
+                            item_index=index,
+                            item_total=total,
+                            selected_format_override=item_spec_override or playlist_selected_format,
+                        )
+                    finally:
+                        self._dl_playlist_progress_context = None
+
                     self.append_log(
                         self.dl_log,
                         f"[{index}/{total}] finalized: {downloaded.name}",
