@@ -306,7 +306,11 @@ class QtBackendCoreTests(unittest.TestCase):
         derived = backend.derive_title_from_filename(stem + ".mkv")
         self.assertNotIn("\\u2067", derived)
         self.assertNotIn("\\u2069", derived)
-        self.assertIn(title, derived, "The logical Arabic/Latin text must not be reversed.")
+        self.assertEqual(
+            derived,
+            "لا تصارخ ولا راح تموت🤫 Fears to Fathom #2 [5Bj2JKH1xEQ]",
+            "The logical Arabic/Latin text must stay in order after invisible RTL marks are stripped."
+        )
 
     def test_english_media_filename_remains_unchanged(self):
         self.assertEqual(
