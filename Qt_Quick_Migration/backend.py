@@ -361,7 +361,246 @@ class ToolkitBackend(QObject):
                     "--merge-output-format", "mp4"]
         return ["-f", f"bestvideo{ceiling}+bestaudio/best{ceiling}/best", "--merge-output-format", "mkv"]
 
+    def _run_stage(self, command, stage, progress_start=0.0, progress_span=100.0):
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                                encoding="utf-8", errors="replace", bufsize=1, **hidden_kwargs())
+        with self.process_lock:
+            self.active_process = proc
+            self.paused = False
+        tail = []
+        try:
+            assert proc.stdout is not None
+            for line in proc.stdout:
+                line = line.rstrip()
+                if not line:
+                    continue
+                tail.append(line)
+                tail = tail[-35:]
+                if line.startswith("__YT_PROGRESS__"):
+                    fields = line[len("__YT_PROGRESS__"):].split("|")
+                    try:
+                        part = float(fields[0].replace("%", "").strip())
+                    except (ValueError, IndexError):
+                        part = 0.0
+                    percent = progress_start + progress_span * max(0.0, min(100.0, part)) / 100.0
+                    detail = " • ".join(x.strip() for x in fields[1:] if x.strip())
+                    self.progressChanged.emit(percent, f"{stage}: {part:.1f}% {detail}".strip())
+                elif "Destination:" in line or "Merging formats" in line or "ERROR:" in line or "WARNING:" in line:
+                    self.logMessage.emit(line)
+                if self.cancel_event.is_set():
+                    self._terminate_process_tree(proc)
+                    break
+            code = proc.wait()
+            if self.cancel_event.is_set():
+                raise InterruptedError("Download cancelled.")
+            if code:
+                raise RuntimeError(f"{stage} failed:\n" + ("\n".join(tail[-14:]) or f"Process exited with code {code}"))
+            return tail
+        finally:
+            with self.process_lock:
+                if self.active_process is proc:
+                    self.active_process = None
+                self.paused = False
+            try:
+                if proc.poll() is None:
+                    proc.kill()
+            except OSError:
+                pass
+
+    @staticmethod
+    def _safe_name(value):
+        value = re.sub(r'[<>:"/\\\\|?*\\x00-\\x1f]+', "_", str(value or "Untitled"))
+        value = re.sub(r"\\s+", " ", value).strip(" .")
+        return (value[:150] or "Untitled")
+
+    @staticmethod
+    def _language_label(code):
+        value = str(code or "und").replace("_", "-").strip()
+        parts = value.split("-")
+        names = {"en": "English", "ar": "Arabic", "es": "Spanish", "fr": "French", "de": "German",
+                 "it": "Italian", "pt": "Portuguese", "ru": "Russian", "ja": "Japanese", "ko": "Korean",
+                 "zh": "Chinese", "hi": "Hindi", "tr": "Turkish", "id": "Indonesian", "th": "Thai",
+                 "vi": "Vietnamese", "pl": "Polish", "nl": "Dutch", "sv": "Swedish", "uk": "Ukrainian",
+                 "fa": "Persian", "ur": "Urdu", "bn": "Bengali", "ta": "Tamil", "te": "Telugu"}
+        base = parts[0].lower() if parts else "und"
+        return names.get(base, value if value and value != "und" else "Unknown language")
+
+    @staticmethod
+    def _language_iso639(code):
+        base = str(code or "").replace("_", "-").split("-")[0].lower()
+        mapping = {"en":"eng","ar":"ara","es":"spa","fr":"fra","de":"deu","it":"ita","pt":"por","ru":"rus",
+                   "ja":"jpn","ko":"kor","zh":"zho","hi":"hin","tr":"tur","id":"ind","th":"tha","vi":"vie",
+                   "pl":"pol","nl":"nld","sv":"swe","uk":"ukr","fa":"fas","ur":"urd","bn":"ben","ta":"tam","te":"tel"}
+        return mapping.get(base, "und")
+
+    def _download_mkv_with_flac_tracks(self, url, quality, subtitles):
+        output = Path(self.download_dir).expanduser()
+        output.mkdir(parents=True, exist_ok=True)
+        temp = output / "tempytm"
+        temp.mkdir(parents=True, exist_ok=True)
+        try:
+            info = self._extract(url, flat=False)
+            title = str(info.get("title") or info.get("id") or "Untitled")
+            video_id = str(info.get("id") or uuid.uuid4().hex[:8])
+            final_stem = self._safe_name(f"{title} [{video_id}]")
+            final_path = output / f"{final_stem}.mkv"
+            if self.conflict_mode == "rename":
+                suffix = 2
+                while final_path.exists():
+                    final_path = output / f"{final_stem} ({suffix}).mkv"
+                    suffix += 1
+            elif self.conflict_mode == "skip" and final_path.exists():
+                self._log(f"Skipping existing file: {final_path.name}")
+                return True
+
+            ffmpeg = find_tool("ffmpeg")
+            if not ffmpeg:
+                raise RuntimeError("FFmpeg is required for the MKV + FLAC audio-track workflow.")
+            formats = [fmt for fmt in (info.get("formats") or []) if isinstance(fmt, dict)]
+            available_video = [fmt for fmt in formats if fmt.get("vcodec") not in (None, "none")]
+            if not available_video:
+                raise RuntimeError("No video streams were reported by yt-dlp.")
+
+            match = re.search(r"(\\d{3,4})\\s*p", str(quality), re.I)
+            ceiling = int(match.group(1)) if match else 0
+            selector = f"bestvideo[height<={ceiling}]/bestvideo" if ceiling else "bestvideo"
+
+            audio_formats = []
+            for fmt in formats:
+                if fmt.get("acodec") in (None, "none") or fmt.get("vcodec") not in (None, "none"):
+                    continue
+                if fmt.get("has_drm") or not fmt.get("format_id"):
+                    continue
+                audio_formats.append(fmt)
+            # Select one highest-quality audio rendition for each language, not
+            # every bitrate/codec duplicate exposed by the extractor.
+            by_language = {}
+            for fmt in audio_formats:
+                language = str(fmt.get("language") or "und").strip().lower()
+                rank = (
+                    int(fmt.get("language_preference") or 0),
+                    float(fmt.get("abr") or 0),
+                    int(fmt.get("asr") or 0),
+                    int(fmt.get("audio_channels") or 0),
+                )
+                previous = by_language.get(language)
+                if previous is None or rank > previous[0]:
+                    by_language[language] = (rank, fmt)
+            tracks = [pair[1] for pair in by_language.values()]
+            tracks.sort(key=lambda fmt: (
+                0 if fmt.get("language_preference", 0) and float(fmt.get("language_preference") or 0) > 0 else 1,
+                str(fmt.get("language") or "und").lower(),
+            ))
+            tracks = tracks[:12]
+            if not tracks:
+                raise RuntimeError("No separate audio-only streams were available for the requested video.")
+
+            video_target = temp / "video.%(ext)s"
+            video_cmd = self._base_command(True) + [
+                "--no-playlist", "--no-embed-thumbnail", "--no-embed-metadata",
+                "--no-write-thumbnail", "--format", selector, "--remux-video", "mkv",
+                "--output", str(video_target), "--no-part",
+                "--progress-template", "download:__YT_PROGRESS__%(progress._percent_str)s|%(progress._speed_str)s|%(progress._eta_str)s",
+                url,
+            ]
+            self._log(f"Downloading video stream for {title}")
+            self._run_stage(video_cmd, "Video", 0, 45)
+            video_files = [p for p in temp.glob("video.*") if p.is_file() and p.suffix.lower() in {".mkv", ".mp4", ".webm", ".mov"}]
+            if not video_files:
+                raise RuntimeError("yt-dlp finished, but the video-only MKV staging file was not found.")
+            video_path = video_files[0]
+
+            audio_paths = []
+            track_labels = []
+            for index, fmt in enumerate(tracks, 1):
+                if self.cancel_event.is_set():
+                    raise InterruptedError("Download cancelled.")
+                language = str(fmt.get("language") or "und")
+                safe_language = re.sub(r"[^a-zA-Z0-9_-]+", "_", language)[:18] or f"track{index}"
+                audio_target = temp / f"audio_{safe_language}.%(ext)s"
+                audio_cmd = self._base_command(True) + [
+                    "--no-playlist", "--no-embed-thumbnail", "--no-embed-metadata",
+                    "--no-write-thumbnail", "--format", str(fmt["format_id"]),
+                    "--extract-audio", "--audio-format", "flac",
+                    "--output", str(audio_target), "--no-part",
+                    "--progress-template", "download:__YT_PROGRESS__%(progress._percent_str)s|%(progress._speed_str)s|%(progress._speed_str)s|%(progress._eta_str)s",
+                    url,
+                ]
+                start = 45 + (35 * (index - 1) / len(tracks))
+                span = 35 / len(tracks)
+                label = self._language_label(language)
+                self._log(f"Downloading {label} audio track ({index}/{len(tracks)})")
+                self._run_stage(audio_cmd, label, start, span)
+                matches = [p for p in temp.glob(f"audio_{safe_language}.*") if p.is_file() and p.suffix.lower() == ".flac"]
+                if not matches:
+                    raise RuntimeError(f"The {label} audio track did not produce a FLAC file.")
+                audio_paths.append(matches[0])
+                track_labels.append((label, self._language_iso639(language)))
+
+            cover_path = temp / "cover.jpg"
+            thumbnail_url = str(info.get("thumbnail") or "")
+            if thumbnail_url:
+                try:
+                    response = requests.get(thumbnail_url, timeout=25, headers={"User-Agent": "Mozilla/5.0"})
+                    response.raise_for_status()
+                    from io import BytesIO
+                    with Image.open(BytesIO(response.content)) as image:
+                        ImageOps.exif_transpose(image).convert("RGB").save(cover_path, "JPEG", quality=100, subsampling=0)
+                except Exception as exc:
+                    self._log(f"Thumbnail could not be prepared; continuing without cover attachment: {exc}")
+                    cover_path.unlink(missing_ok=True)
+
+            merge_cmd = [ffmpeg, "-hide_banner", "-loglevel", "warning", "-y", "-i", str(video_path)]
+            for audio_path in audio_paths:
+                merge_cmd.extend(["-i", str(audio_path)])
+            merge_cmd.extend(["-map", "0:v:0"])
+            for input_index in range(1, len(audio_paths) + 1):
+                merge_cmd.extend(["-map", f"{input_index}:a:0"])
+            merge_cmd.extend(["-c:v", "copy", "-c:a", "copy", "-metadata", f"title={title}"])
+            for track_index, (label, language_code) in enumerate(track_labels):
+                merge_cmd.extend([f"-metadata:s:a:{track_index}", f"title={label}"])
+                merge_cmd.extend([f"-metadata:s:a:{track_index}", f"language={language_code}"])
+            if cover_path.exists():
+                merge_cmd.extend(["-attach", str(cover_path), "-metadata:s:t", "mimetype=image/jpeg",
+                                  "-metadata:s:t", "filename=cover.jpg"])
+            if self.conflict_mode == "replace":
+                merge_cmd.append("-y")
+            merge_cmd.append(str(final_path))
+            self.statusChanged.emit("Muxing video and language-specific FLAC audio tracks…")
+            self._log(f"Merging {len(audio_paths)} FLAC audio track(s) into {final_path.name}")
+            self.progressChanged.emit(90, "Muxing audio tracks into MKV")
+            self._run_stage(merge_cmd, "Mux", 90, 10)
+
+            if subtitles in {"Auto subtitles", "Manual subtitles"}:
+                subtitle_cmd = self._base_command(True) + ["--no-playlist", "--skip-download",
+                    "--sub-langs", "all,-live_chat", "--output", str(temp / "subtitle.%(ext)s"),
+                    "--no-part"]
+                subtitle_cmd.extend(["--write-auto-subs"] if subtitles == "Auto subtitles" else ["--write-subs"])
+                subtitle_cmd.append(url)
+                try:
+                    self._run_stage(subtitle_cmd, "Subtitles", 98, 2)
+                    for subtitle in temp.glob("subtitle.*"):
+                        if subtitle.is_file() and subtitle.suffix.lower() in {".vtt", ".srt", ".ass", ".lrc"}:
+                            language_suffix = subtitle.name[len("subtitle"):]
+                            destination = output / f"{final_path.stem}{language_suffix}"
+                            shutil.move(str(subtitle), str(destination))
+                except Exception as exc:
+                    if isinstance(exc, InterruptedError):
+                        raise
+                    self._log(f"Subtitles were not added: {exc}")
+
+            self.progressChanged.emit(100, "Download complete")
+            self._log(f"Completed MKV with {len(audio_paths)} FLAC track(s): {final_path}")
+            return True
+        finally:
+            with self.process_lock:
+                self.active_process = None
+                self.paused = False
+            shutil.rmtree(temp, ignore_errors=True)
+
     def _download_one(self, url, file_type, quality, audio_format, subtitles):
+        if file_type == "Video (MKV)":
+            return self._download_mkv_with_flac_tracks(url, quality, subtitles)
         output = Path(self.download_dir).expanduser()
         output.mkdir(parents=True, exist_ok=True)
         temp = output / "tempytm"
