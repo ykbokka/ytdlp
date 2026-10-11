@@ -2349,10 +2349,55 @@ class YTMResolver:
                         "you already use for downloads in the toolkit."
                     )
 
+                # Last-resort fallback: enumerate Liked Music with yt-dlp itself.
+                # This can still work when ytmusicapi's browser-header emulation is
+                # rejected, and it reuses the configured cookies.txt without exposing
+                # cookie values or creating another credentials file.
+                try:
+                    data = ytdlp_retry_on_cookie_failure(playlist_url, _attempt)
+                    yt_entries = data.get("entries") or []
+                    yt_results = []
+
+                    for entry in yt_entries:
+                        if not isinstance(entry, dict):
+                            continue
+                        video_id = str(
+                            entry.get("id") or entry.get("videoId") or ""
+                        ).strip()
+                        if not video_id:
+                            continue
+
+                        exact_url = (
+                            entry.get("webpage_url")
+                            or entry.get("webpage_url_basename")
+                            or entry.get("url")
+                            or ""
+                        )
+                        if isinstance(exact_url, str) and exact_url.startswith("http"):
+                            source_url = exact_url
+                        else:
+                            source_url = f"https://www.youtube.com/watch?v={video_id}"
+
+                        playlist_item = dict(entry)
+                        playlist_item["video_id"] = video_id
+                        playlist_item["source_url"] = source_url
+                        yt_results.append(playlist_item)
+
+                    if yt_results:
+                        return yt_results
+
+                    auth_errors.append(
+                        "yt-dlp cookies fallback: Liked Music returned no usable entries"
+                    )
+                except Exception as exc:
+                    auth_errors.append(
+                        f"yt-dlp cookies fallback: {type(exc).__name__}: {exc}"
+                    )
+
                 raise RuntimeError(
-                    "Could not read YouTube Music Liked Music. The toolkit now tries an existing "
-                    "ytmusicapi auth file first and then automatically builds temporary API headers "
-                    "from your selected cookies.txt. "
+                    "Could not read YouTube Music Liked Music. The toolkit tried the existing "
+                    "ytmusicapi auth file, temporary headers built from cookies.txt, and a final "
+                    "yt-dlp playlist fallback. "
                     + " | ".join(auth_errors)
                 )
 
