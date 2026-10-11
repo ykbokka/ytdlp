@@ -11,6 +11,7 @@ import time
 import traceback
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Callable
 
@@ -130,11 +131,12 @@ class ToolkitBackend(QObject):
         self.performance_mode = self._valid_choice(self.config.get("performance_mode"), {"conservative", "balanced", "aggressive"}, "aggressive")
         self.conflict_mode = self._valid_choice(self.config.get("conflict_mode"), {"rename", "skip", "replace"}, "rename")
         self.appearance_mode = self._valid_choice(self.config.get("appearance_mode"), {"dark", "light"}, "dark")
-        self.queue_items: list[dict[str, Any]] = []
+        self.queue_items: list[dict[str, Any]] = [dict(x) for x in self.config.get("queue_items", []) if isinstance(x, dict)]
         self.active_process = None
         self.process_lock = threading.RLock()
         self.cancel_event = threading.Event()
         self.download_active = False
+        self.paused = False
         self.last_operation_id = ""
         self._log("Qt Quick backend ready.")
         if not get_ytdlp():
@@ -157,7 +159,7 @@ class ToolkitBackend(QObject):
     def _save_config(self):
         self.config.update({"config_version": 6, "download_dir": self.download_dir,
                             "cookie_file_path": self.cookie_path, "performance_mode": self.performance_mode,
-                            "conflict_mode": self.conflict_mode, "appearance_mode": self.appearance_mode})
+                            "conflict_mode": self.conflict_mode, "appearance_mode": self.appearance_mode, "queue_items": getattr(self, "queue_items", [])})
         try:
             CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
             tmp = CONFIG_FILE.with_suffix(".tmp")
@@ -200,6 +202,7 @@ class ToolkitBackend(QObject):
             self.libraryScanReady.emit(payload)
         elif marker == "queue":
             self.queue_items = payload.get("items", [])
+            self._save_config()
             self.queueChanged.emit(self.queue_items)
             self.statusChanged.emit(payload.get("message", "Queue updated."))
         elif marker == "done":
@@ -383,6 +386,7 @@ class ToolkitBackend(QObject):
                                    encoding="utf-8", errors="replace", bufsize=1, **hidden_kwargs())
         with self.process_lock:
             self.active_process = process
+            self.paused = False
         try:
             assert process.stdout is not None
             tail = []
@@ -416,6 +420,7 @@ class ToolkitBackend(QObject):
             with self.process_lock:
                 if self.active_process is process:
                     self.active_process = None
+                self.paused = False
             try:
                 if process.poll() is None:
                     process.kill()
@@ -443,16 +448,79 @@ class ToolkitBackend(QObject):
         self.statusChanged.emit("Download started.")
         self._log(f"Download requested: {url}")
 
+    @Slot(result=bool)
+    def togglePause(self):
+        with self.process_lock:
+            proc = self.active_process
+            currently_paused = self.paused
+        if not proc or proc.poll() is not None:
+            self.statusChanged.emit("There is no active download process to pause.")
+            return self.paused
+        try:
+            import psutil
+            parent = psutil.Process(proc.pid)
+            processes = parent.children(recursive=True) + [parent]
+            if currently_paused:
+                for process in reversed(processes):
+                    try:
+                        process.resume()
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        pass
+                with self.process_lock:
+                    self.paused = False
+                self.statusChanged.emit("Download resumed.")
+            else:
+                for process in processes:
+                    try:
+                        process.suspend()
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        pass
+                with self.process_lock:
+                    self.paused = True
+                self.statusChanged.emit("Download paused.")
+            return self.paused
+        except Exception as exc:
+            self._log(f"Pause/resume unavailable: {exc}")
+            self.statusChanged.emit("Pause/resume failed; see Activity.")
+            return self.paused
+
+    def _terminate_process_tree(self, proc):
+        if not proc or proc.poll() is not None:
+            return
+        try:
+            import psutil
+            parent = psutil.Process(proc.pid)
+            children = parent.children(recursive=True)
+            for child in reversed(children):
+                try:
+                    child.resume()
+                    child.terminate()
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+            try:
+                parent.resume()
+                parent.terminate()
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                pass
+            _, alive = psutil.wait_procs([parent] + children, timeout=2)
+            for process in alive:
+                try:
+                    process.kill()
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    pass
+        except Exception:
+            try:
+                proc.terminate()
+            except OSError:
+                pass
+
     @Slot()
     def stopDownload(self):
         self.cancel_event.set()
         with self.process_lock:
             proc = self.active_process
-        if proc and proc.poll() is None:
-            try:
-                proc.terminate()
-            except OSError:
-                pass
+            self.paused = False
+        self._terminate_process_tree(proc)
         self.statusChanged.emit("Stopping current operation…")
 
     @Slot(str)
@@ -490,6 +558,7 @@ class ToolkitBackend(QObject):
     @Slot(str)
     def removeQueueItem(self, item_id):
         self.queue_items = [x for x in self.queue_items if x.get("id") != item_id]
+        self._save_config()
         self.queueChanged.emit(self.queue_items)
 
     @Slot()
@@ -498,6 +567,7 @@ class ToolkitBackend(QObject):
             self.statusChanged.emit("Stop the active download before clearing the queue.")
             return
         self.queue_items = []
+        self._save_config()
         self.queueChanged.emit(self.queue_items)
         self.statusChanged.emit("Queue cleared.")
 
@@ -564,6 +634,67 @@ class ToolkitBackend(QObject):
                     "album": first("album"), "date": first("date") or first("year"),
                     "genre": first("genre"), "comment": first("comment") or first("description")}
         self._run_async("metadata-read", work)
+
+    @Slot(str, str, str, str)
+    def lookupYtMusicMetadata(self, path, artist, title, album):
+        path = str(path or "").strip()
+        artist = str(artist or "").strip()
+        title = str(title or "").strip()
+        album = str(album or "").strip()
+        if path and not title:
+            stem = Path(path).stem
+            if " - " in stem:
+                left, right = stem.split(" - ", 1)
+                artist = artist or left.strip()
+                title = right.strip()
+            else:
+                title = stem
+        if not title and not artist:
+            self.statusChanged.emit("Enter an artist/title or choose a media file first.")
+            return
+
+        def work():
+            from ytmusicapi import YTMusic
+            ytm = YTMusic()
+            query = " ".join(part for part in (artist, title, album) if part).strip()
+            results = [item for item in (ytm.search(query, filter="songs", limit=12) or []) if isinstance(item, dict)]
+            if not results:
+                results = [item for item in (ytm.search(query, filter="videos", limit=12) or []) if isinstance(item, dict)]
+            if not results:
+                raise RuntimeError("YouTube Music returned no matching songs or videos.")
+
+            def norm(value):
+                return re.sub(r"[^a-z0-9]+", "", str(value or "").casefold())
+
+            wanted_artist, wanted_title, wanted_album = norm(artist), norm(title), norm(album)
+            best_item, best_score = None, -1.0
+            for item in results:
+                names = [str(x.get("name") or "") for x in (item.get("artists") or []) if isinstance(x, dict)]
+                exact_artist = bool(wanted_artist and any(norm(name) == wanted_artist for name in names))
+                result_title = str(item.get("title") or "")
+                title_score = SequenceMatcher(None, wanted_title, norm(result_title)).ratio() if wanted_title else 0.3
+                album_data = item.get("album") or {}
+                result_album = str(album_data.get("name") or "") if isinstance(album_data, dict) else str(album_data)
+                album_score = 0.1 if wanted_album and norm(result_album) == wanted_album else 0.0
+                score = title_score * 0.78 + (0.20 if exact_artist else 0.0) + album_score
+                if score > best_score:
+                    best_item, best_score = item, score
+            if best_item is None:
+                raise RuntimeError("No suitable YouTube Music result was found.")
+            album_data = best_item.get("album") or {}
+            result_album = str(album_data.get("name") or "") if isinstance(album_data, dict) else str(album_data)
+            thumbs = best_item.get("thumbnails") or []
+            thumb = str(thumbs[-1].get("url") or "") if thumbs and isinstance(thumbs[-1], dict) else ""
+            artists = ", ".join(str(x.get("name") or "") for x in (best_item.get("artists") or []) if isinstance(x, dict))
+            path_value = str(Path(path).resolve()) if path else ""
+            self._log(f"YT Music match selected: {best_item.get('title', 'Untitled')} (score {best_score:.2f})")
+            return {"_kind": "metadata", "path": path_value,
+                    "title": str(best_item.get("title") or title),
+                    "artist": artists or artist, "album": result_album or album,
+                    "date": str(best_item.get("year") or ""), "genre": "", "comment": "", "thumbnail": thumb}
+
+        self.statusChanged.emit("Searching YouTube Music for matching metadata…")
+        self._run_async("ytmusic-lookup", work)
 
     @Slot(str, "QVariantMap")
     def saveMetadata(self, path, values):
