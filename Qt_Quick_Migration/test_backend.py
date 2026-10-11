@@ -117,10 +117,67 @@ class QtBackendCoreTests(unittest.TestCase):
         app = self.make_backend()
         args = app._format_args("Video (MP4)", "1080p", "FLAC")
         self.assertIn("bestvideo[height<=1080][ext=mp4]", args[1])
+        self.assertTrue(args[1].endswith("/best[height<=1080]"), "MP4 format fallback must not exceed the selected quality ceiling.")
         self.assertIn("--merge-output-format", args)
         audio = app._format_args("Audio only", "Best available", "FLAC")
         self.assertIn("--audio-format", audio)
         self.assertEqual(audio[audio.index("--audio-format") + 1], "flac")
+
+    def test_native_fallback_removes_only_aria2_routing_arguments(self):
+        command = [
+            "yt-dlp", "--downloader", "aria2c",
+            "--downloader", "dash,m3u8:native",
+            "--downloader-args", "aria2c:-x 8 -s 8 -k 2M",
+            "--format", "bestvideo+bestaudio", "https://example.invalid/video",
+        ]
+        fallback = backend.build_native_ytdlp_fallback_command(command)
+        self.assertIsNotNone(fallback)
+        self.assertNotIn("--downloader", fallback)
+        self.assertNotIn("--downloader-args", fallback)
+        self.assertIn("--format", fallback)
+        self.assertEqual(fallback[-2:], ["bestvideo+bestaudio", "https://example.invalid/video"])
+        self.assertIsNone(backend.build_native_ytdlp_fallback_command(["yt-dlp", "--format", "best"]))
+
+    def test_stage_retries_aria2_failure_once_with_native_downloader(self):
+        app = self.make_backend()
+        commands = []
+
+        class FakeStageProcess:
+            def __init__(self, command, **_kwargs):
+                self.command = list(command)
+                commands.append(self.command)
+                if len(commands) == 1:
+                    self.stdout = io.StringIO("ERROR: aria2c download failed\\n")
+                    self.code = 1
+                else:
+                    self.stdout = io.StringIO("__YT_PROGRESS__100%|3MiB/s|00:00\\n")
+                    self.code = 0
+
+            def poll(self):
+                return self.code
+
+            def wait(self, timeout=None):
+                return self.code
+
+            def kill(self):
+                self.code = -9
+
+            def terminate(self):
+                self.code = -15
+
+        command = [
+            "yt-dlp", "--downloader", "aria2c",
+            "--downloader", "dash,m3u8:native",
+            "--downloader-args", "aria2c:-x 8 -s 8 -k 2M",
+            "--progress-template", "download:__YT_PROGRESS__%(progress._percent_str)s",
+        ]
+        with patch("backend.subprocess.Popen", FakeStageProcess):
+            result = app._run_stage(command, "Video")
+        self.assertEqual(len(commands), 2)
+        self.assertIn("--downloader", commands[0])
+        self.assertNotIn("--downloader", commands[1])
+        self.assertNotIn("--downloader-args", commands[1])
+        self.assertTrue(any("__YT_PROGRESS__" in line for line in result))
 
     def test_ytmusic_enrichment_rejects_different_video_ids(self):
         app = self.make_backend()
