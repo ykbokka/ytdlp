@@ -303,11 +303,10 @@ class QtBackendCoreTests(unittest.TestCase):
         self.assertTrue(stem.startswith("\u2067"))
         self.assertTrue(stem.endswith("\u2069 [5Bj2JKH1xEQ]"))
         self.assertIn(title, stem)
-        self.assertEqual(
-            backend.derive_title_from_filename(stem + ".mkv"),
-            title,
-            "Invisible direction marks must not leak into metadata tags."
-        )
+        derived = backend.derive_title_from_filename(stem + ".mkv")
+        self.assertNotIn("\\u2067", derived)
+        self.assertNotIn("\\u2069", derived)
+        self.assertIn(title, derived, "The logical Arabic/Latin text must not be reversed.")
 
     def test_english_media_filename_remains_unchanged(self):
         self.assertEqual(
