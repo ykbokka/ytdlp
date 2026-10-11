@@ -42,7 +42,7 @@ The official yt-dlp standalone executable includes its EJS challenge-solver scri
 
 ### Download-speed strategy
 
-The downloader's **Performance** selector now tunes the whole transfer strategy rather than only the fragment count. Conservative uses 4 aria2 connections / 4 native fragments, Balanced uses 8 / 12, and Aggressive uses 16 / 24. Aggressive is the default for new installs, and older installs that still have the former default Balanced setting are migrated to Aggressive once; a manually chosen Conservative or Balanced setting is preserved.
+The downloader's **Performance** selector now tunes the whole transfer strategy rather than only the fragment count. Conservative uses 4 aria2 connections / 4 native fragments, Balanced uses 8 / 12, and Aggressive uses 16 / 24. Aggressive is the default for new installs, and older installs whose saved setting is Balanced are migrated to Aggressive once. After this update, any manually selected preset is saved and preserved.
 
 When aria2c is present, direct HTTP/HTTPS media downloads use the bundled executable with the selected connection count, split into byte ranges (1 MiB pieces in Aggressive mode), and skip slow file preallocation on Windows. The yt-dlp adaptive read buffer also scales from 1 MiB to 4 MiB. If aria2c is absent when running the source directly, the app falls back to yt-dlp's chunked HTTP option (5 MiB / 10 MiB / 16 MiB by preset).
 
