@@ -92,7 +92,7 @@ try {
     Write-Host "BUILD COMPLETED." -ForegroundColor Green
     Write-Host "EXE: $exePath"
     Write-Host "This one-file build bundles Python, app dependencies, yt-dlp, Deno, FFmpeg and FFprobe."
-    Write-Host "The EXE still needs internet for YouTube services and yt-dlp's EJS challenge components."
+    Write-Host "The EXE still needs internet for YouTube Music and other online services. Account-specific features may require the user to authenticate again."
     Write-Host "Build size may be large. Test the EXE on your PC before sharing it."
 }
 catch {
