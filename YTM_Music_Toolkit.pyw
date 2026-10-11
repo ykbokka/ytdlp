@@ -8007,6 +8007,57 @@ class YTMMusicToolkit(ctk.CTk):
 
             else:
                 result, error = payload
+                queue_item = getattr(self, "_queue_active_item", None)
+                queued_meta = (
+                    queue_item.get("playlist_metadata")
+                    if queue_run and isinstance(queue_item, dict)
+                    else None
+                )
+                if isinstance(queued_meta, dict):
+                    resolver = self.ensure_resolver()
+                    queued_result = resolver.direct_result_from_metadata(queued_meta)
+                    expected_video_id = str(
+                        (queue_item or {}).get("video_id")
+                        or (queued_result or {}).get("video_id")
+                        or ""
+                    ).strip()
+                    queued_video_id = str((queued_result or {}).get("video_id") or "").strip()
+
+                    if queued_result and expected_video_id and queued_video_id == expected_video_id:
+                        result = queued_result
+                        error = None
+
+                        if queue_item.get("ytmusic_liked_entry"):
+                            result["source"] = "YouTube Music Liked Music (authenticated library)"
+                            result["ytm_matched"] = True
+                            result["ytmusic_liked_entry"] = True
+                            result["quality_extractor_arg"] = LIKED_MUSIC_EXTRACTOR_ARG
+                        elif queue_item.get("playlist_uses_ytm"):
+                            try:
+                                ytm_result = resolver.search(
+                                    str(queued_meta.get("artist") or ""),
+                                    str(queued_meta.get("title") or ""),
+                                    str(queued_meta.get("album") or ""),
+                                )
+                            except Exception as match_exc:
+                                ytm_result = None
+                                write_failure_log(
+                                    "queue_playlist_ytm_match",
+                                    match_exc,
+                                    details=f"Playlist track: {queue_item.get('title') or user_input}",
+                                )
+
+                            match_id = str((ytm_result or {}).get("video_id") or "").strip()
+                            if ytm_result and match_id == expected_video_id:
+                                result = dict(ytm_result)
+                                result["video_id"] = expected_video_id
+                                result["source_url"] = queued_meta.get("source_url") or user_input
+                                result["requested_artist"] = queued_meta.get("artist") or ""
+                                result["requested_title"] = queued_meta.get("title") or ""
+                                result["playlist_source_locked"] = True
+                            else:
+                                result = queued_result
+
                 used_ytm_matching = bool(result and result.get("ytm_matched"))
 
                 if self.stop_requested:
@@ -8019,10 +8070,20 @@ class YTMMusicToolkit(ctk.CTk):
 
                 current_source = user_input.strip()
                 single_mode = self.downloader_quality_mode_for_source(current_source)
+                queue_item = getattr(self, "_queue_active_item", None)
+                queued_quality_is_locked = (
+                    queue_run
+                    and isinstance(queue_item, dict)
+                    and isinstance(self._selected_download_format, dict)
+                    and self._selected_download_format.get("kind") in {"video", "audio"}
+                )
                 quality_source_matches = (
-                    single_mode == "single"
-                    and self._dl_preview_quality_source == current_source
-                    and self._dl_preview_mode == "single"
+                    queued_quality_is_locked
+                    or (
+                        single_mode == "single"
+                        and self._dl_preview_quality_source == current_source
+                        and self._dl_preview_mode == "single"
+                    )
                 )
 
                 selected_spec = self.selected_quality_spec(self._selected_download_format)
@@ -9881,7 +9942,7 @@ def _v3_video_quality_options_final(formats, file_type, mode="single"):
         )]
         # Playlist ceilings are generic during preview; each video's real
         # formats are inspected immediately before its own download begins.
-        playlist_heights = heights or sorted(VIDEO_QUALITY_LABELS, reverse=True)
+        playlist_heights = sorted(VIDEO_QUALITY_LABELS, reverse=True)
         for height in playlist_heights:
             label = VIDEO_QUALITY_LABELS.get(height, f"{height}P")
             options.append((label, {
@@ -11033,7 +11094,7 @@ def _queue_render_queue(self):
 
         ctk.CTkLabel(
             row,
-            text=f"{index:02d}   {type_label}",
+            text=f"{index:02d}   {item.get('title') or type_label}",
             font=(APP_FONT, 12, "bold"),
             text_color=palette["text"],
             anchor="w",
@@ -11076,7 +11137,7 @@ def _queue_render_queue(self):
 
         ctk.CTkLabel(
             row,
-            text=f"{quality}    ·    {subtitles}",
+            text=f"{type_label}    ·    {quality}    ·    {subtitles}",
             font=(APP_FONT, 10),
             text_color=palette["muted"],
             anchor="w",
@@ -11446,6 +11507,7 @@ def _queue_worker(self, items):
             self._queue_refresh_ui()
 
             try:
+                self._queue_v8_prepare_item_download(item)
                 self.run_download_worker(item["url"])
             except DownloadCancelled:
                 self._last_download_outcome = "cancelled"
@@ -11492,6 +11554,7 @@ def _queue_worker(self, items):
         self._v3_queue_stop_requested = False
         self._v3_queue_completed = completed
         self._v3_queue_failed = failed
+        self._queue_active_item = None
         self.after(
             0,
             lambda c=completed, f=failed, t=total, stop=stopped: self._queue_finish_controls(c, f, t, stop),
@@ -11807,6 +11870,514 @@ YTMMusicToolkit.hide_downloader_running_controls = _queue_hide_downloader_runnin
 YTMMusicToolkit.toggle_pause = _queue_toggle_pause
 YTMMusicToolkit.stop_active_process = _queue_stop_active_process
 YTMMusicToolkit.set_operation_progress = _queue_set_operation_progress
+
+
+
+# ============================================================
+# PLAYLISTS BECOME INDIVIDUAL QUEUE ITEMS (V8)
+# ============================================================
+
+
+def _queue_v8_capture_quality_policy(self):
+    file_type = _v3_file_type_id_final(
+        self.dl_file_type.get() if getattr(self, "dl_file_type", None) else "auto"
+    )
+    current_label = ""
+    try:
+        current_label = str(self.dl_format.get() or "").strip()
+    except Exception:
+        pass
+
+    if file_type in AUDIO_FILE_TYPES_V3:
+        options = _v3_audio_quality_options_final(file_type)
+        for label, spec in options:
+            if str(label).strip() == current_label:
+                chosen = dict(spec)
+                chosen["file_type"] = file_type
+                return str(label).strip(), chosen
+        if options:
+            label, spec = options[0]
+            chosen = dict(spec)
+            chosen["file_type"] = file_type
+            return str(label).strip(), chosen
+
+    for label, spec in list(getattr(self, "_dl_preview_quality_options", []) or []):
+        if str(label).strip() == current_label and isinstance(spec, dict) and spec.get("kind") == "video":
+            chosen = dict(spec)
+            chosen["file_type"] = file_type
+            clean_label = str(label).strip()
+            if chosen.get("best_per_item"):
+                clean_label = "Best Option Separate"
+            return clean_label, chosen
+
+    if current_label.lower() == "best option separate":
+        return "Best Option Separate", {"kind": "video", "best_per_item": True, "file_type": file_type}
+
+    match = re.search(r"\b(4320|2160|1440|1080|720|576|480|360)\s*[pP]\b", current_label)
+    if match:
+        height = int(match.group(1))
+        return current_label, {
+            "kind": "video", "height": height, "best": False,
+            "playlist_ceiling": True, "file_type": file_type,
+        }
+
+    return "Best Option Separate", {"kind": "video", "best_per_item": True, "file_type": file_type}
+
+
+def _queue_v8_add_playlist_to_queue(self):
+    source_url = str(self.dl_input.get() or "").strip()
+    if not source_url or not is_playlist_url(source_url):
+        messagebox.showerror("Playlist Queue", "Enter a YouTube or YouTube Music playlist URL first.")
+        self._queue_v8_update_main_action_button()
+        return
+
+    if getattr(self, "_v3_queue_active", False) or getattr(self, "download_running", False):
+        messagebox.showinfo("Playlist Queue", "Wait for the current download or queue to finish before adding another playlist.")
+        return
+    if getattr(self, "_queue_playlist_loading", False):
+        return
+
+    quality_label, quality_spec = self._queue_v8_capture_quality_policy()
+    file_type = str(quality_spec.get("file_type") or getattr(self, "_v3_selected_file_type", "auto") or "auto").lower()
+    snapshot = {
+        "file_type": file_type,
+        "quality": quality_label,
+        "quality_spec": dict(quality_spec),
+        "subtitles": bool(self.dl_subs.get()) if hasattr(self, "dl_subs") else False,
+        "playlist_uses_ytm": is_youtube_music_url(source_url),
+    }
+
+    self._queue_playlist_loading = True
+    self._queue_set_status("Reading playlist tracks…")
+    try:
+        self.dl_start.configure(state="disabled", text=" Reading Playlist…")
+    except Exception:
+        pass
+
+    threading.Thread(
+        target=self._queue_v8_resolve_playlist_worker,
+        args=(source_url, snapshot),
+        daemon=True,
+    ).start()
+
+
+def _queue_v8_resolve_playlist_worker(self, source_url, snapshot):
+    try:
+        resolver = self.ensure_resolver()
+        entries = resolver.resolve_playlist_urls(source_url)
+        if not entries:
+            raise RuntimeError("The playlist returned no readable video entries.")
+
+        prepared = []
+        total = len(entries)
+        for index, entry in enumerate(entries, 1):
+            if not isinstance(entry, dict):
+                continue
+
+            video_id = str(
+                entry.get("video_id") or entry.get("id") or entry.get("videoId") or ""
+            ).strip()
+            candidate = str(
+                entry.get("source_url") or entry.get("webpage_url") or entry.get("url") or ""
+            ).strip()
+            if not video_id:
+                video_id = str(extract_youtube_video_id(candidate) or "").strip()
+            if not video_id:
+                continue
+
+            track_url = f"https://www.youtube.com/watch?v={video_id}"
+            try:
+                metadata = resolver.metadata_from_playlist_entry(entry, track_url)
+            except Exception as metadata_exc:
+                metadata = None
+                write_failure_log(
+                    "queue_playlist_track_metadata",
+                    metadata_exc,
+                    details=f"Track {index}/{total}: {track_url}",
+                )
+
+            title = str(
+                (metadata or {}).get("title")
+                or entry.get("track")
+                or entry.get("title")
+                or entry.get("fulltitle")
+                or f"Track {index}"
+            ).strip()
+
+            prepared.append({
+                "url": track_url,
+                "video_id": video_id,
+                "title": title,
+                "playlist_metadata": metadata,
+                "playlist_uses_ytm": bool(snapshot.get("playlist_uses_ytm")),
+                "ytmusic_liked_entry": bool(entry.get("ytmusic_liked_entry")),
+                "playlist_index": index,
+                "playlist_total": total,
+                "playlist_title": str(entry.get("playlist_title") or entry.get("playlist") or ""),
+            })
+
+        if not prepared:
+            raise RuntimeError("No playlist tracks had usable YouTube video IDs.")
+
+        self.after(
+            0,
+            lambda rows=prepared, url=source_url, settings=dict(snapshot): self._queue_v8_finish_playlist_add(
+                url, settings, rows, None
+            ),
+        )
+    except Exception as exc:
+        log_path = write_failure_log("queue_playlist_resolve", exc, details=f"Playlist: {source_url}")
+        message = str(exc)
+        if log_path:
+            message += f"\nFailure log: {log_path}"
+        self.after(
+            0,
+            lambda err=message, url=source_url, settings=dict(snapshot): self._queue_v8_finish_playlist_add(
+                url, settings, [], err
+            ),
+        )
+
+
+def _queue_v8_finish_playlist_add(self, source_url, snapshot, rows, error=None):
+    self._queue_playlist_loading = False
+    if error:
+        self._queue_set_status("Could not read playlist.")
+        self._queue_v8_update_main_action_button()
+        messagebox.showerror("Playlist Queue", error)
+        return
+
+    self._v3_queue = getattr(self, "_v3_queue", [])
+    existing = {
+        (str(item.get("url") or ""), str(item.get("file_type") or "auto"), str(item.get("quality") or ""))
+        for item in self._v3_queue
+        if isinstance(item, dict)
+    }
+
+    added = 0
+    skipped = 0
+    total = len(rows)
+    for row in rows:
+        item_url = str(row.get("url") or "").strip()
+        if not item_url:
+            continue
+
+        file_type = str(snapshot.get("file_type") or "auto").lower()
+        quality_label = str(snapshot.get("quality") or "Best Option Separate")
+        key = (item_url, file_type, quality_label)
+        if key in existing:
+            skipped += 1
+            continue
+
+        quality_spec = dict(snapshot.get("quality_spec") or {})
+        if quality_spec:
+            quality_spec["file_type"] = file_type
+
+        self._v3_queue.append({
+            "queue_id": str(time.time_ns()),
+            "url": item_url,
+            "video_id": row.get("video_id") or extract_youtube_video_id(item_url),
+            "title": row.get("title") or item_url,
+            "file_type": file_type,
+            "quality": quality_label,
+            "quality_spec": quality_spec,
+            "subtitles": bool(snapshot.get("subtitles")),
+            "status": "Queued",
+            "playlist_title": row.get("playlist_title") or "",
+            "playlist_index": row.get("playlist_index"),
+            "playlist_total": row.get("playlist_total") or total,
+            "playlist_metadata": row.get("playlist_metadata"),
+            "playlist_uses_ytm": bool(row.get("playlist_uses_ytm")),
+            "ytmusic_liked_entry": bool(row.get("ytmusic_liked_entry")),
+        })
+        existing.add(key)
+        added += 1
+
+    if added:
+        message = f"Added {added} playlist track(s) to the queue."
+        if skipped:
+            message += f" Skipped {skipped} duplicate item(s)."
+        self._queue_set_status(message)
+        self._queue_refresh_ui()
+        try:
+            self.tabs.set("Queue")
+        except Exception:
+            pass
+    else:
+        self._queue_set_status("All tracks from this playlist are already in the queue.")
+        self._queue_refresh_ui()
+
+    self._queue_v8_update_main_action_button()
+
+
+def _queue_v8_queue_current(self):
+    current_url = str(self.dl_input.get() or "").strip()
+    if is_playlist_url(current_url):
+        return self.add_playlist_to_queue()
+    if not current_url or not is_youtube_url(current_url):
+        messagebox.showerror("Queue", "Enter a valid YouTube or YouTube Music URL first.")
+        return
+
+    quality_label, quality_spec = self._queue_v8_capture_quality_policy()
+    file_type = str(quality_spec.get("file_type") or getattr(self, "_v3_selected_file_type", "auto") or "auto").lower()
+    quality_spec = dict(quality_spec)
+    quality_spec["file_type"] = file_type
+
+    self._v3_queue = getattr(self, "_v3_queue", [])
+    duplicate = any(
+        isinstance(item, dict)
+        and str(item.get("url") or "") == current_url
+        and str(item.get("file_type") or "auto") == file_type
+        and str(item.get("quality") or "") == quality_label
+        for item in self._v3_queue
+    )
+    if duplicate:
+        self._queue_set_status("That link and format are already in the queue.")
+        return
+
+    title = ""
+    try:
+        if str(getattr(self, "_dl_preview_source", "") or "").strip() == current_url:
+            candidate = str(self.dl_title.cget("text") or "").strip()
+            if candidate and not candidate.lower().startswith(("waiting", "resolving", "reading")):
+                title = candidate
+    except Exception:
+        pass
+
+    self._v3_queue.append({
+        "queue_id": str(time.time_ns()),
+        "url": current_url,
+        "video_id": extract_youtube_video_id(current_url) or "",
+        "title": title,
+        "file_type": file_type,
+        "quality": quality_label,
+        "quality_spec": quality_spec,
+        "subtitles": bool(self.dl_subs.get()) if hasattr(self, "dl_subs") else False,
+        "status": "Queued",
+    })
+    self._queue_set_status("Added to queue.")
+    self._queue_refresh_ui()
+
+
+def _queue_v8_prepare_item_download(self, item):
+    """Resolve this item's requested ceiling against its actual formats."""
+    source_url = str(item.get("url") or "").strip()
+    if not source_url or is_playlist_url(source_url):
+        raise RuntimeError("Queue items must be individual video URLs, not playlist URLs.")
+
+    file_type = str(item.get("file_type") or "auto").lower()
+    requested = dict(item.get("quality_spec") or {})
+    requested["file_type"] = file_type
+    extractor_arg = LIKED_MUSIC_EXTRACTOR_ARG if item.get("ytmusic_liked_entry") else None
+
+    if requested.get("kind") == "audio" or file_type in AUDIO_FILE_TYPES_V3:
+        if requested.get("kind") != "audio":
+            options = _v3_audio_quality_options_final(file_type)
+            wanted = str(item.get("quality") or "")
+            requested = next(
+                (dict(spec) for label, spec in options if str(label).strip() == wanted.strip()),
+                dict(options[0][1]) if options else {},
+            )
+        resolved_spec = dict(requested)
+        resolved_spec["file_type"] = file_type
+    else:
+        try:
+            maximum_height = int(requested.get("height") or 0)
+        except (TypeError, ValueError):
+            maximum_height = 0
+        best_per_item = bool(requested.get("best_per_item")) or maximum_height <= 0
+
+        formats, actual_extractor_arg = inspect_youtube_formats(
+            source_url,
+            timeout=45,
+            preferred_strategy=extractor_arg,
+        )
+        extractor_arg = actual_extractor_arg
+        options = _v3_quality_options_final(formats, file_type, "single")
+        resolved_spec = select_best_video_quality_spec(
+            options,
+            maximum_height=None if best_per_item else maximum_height,
+        )
+        if not resolved_spec:
+            ceiling = "" if best_per_item else f" at or below {maximum_height}p"
+            raise RuntimeError(f"No usable video format{ceiling} was found for this queue item.")
+        resolved_spec = dict(resolved_spec)
+        resolved_spec["file_type"] = file_type
+
+    quality_label = str(item.get("quality") or "Best available")
+    self._queue_active_item = item
+    self._v5_pending_spec = None
+    self._v3_selected_file_type = file_type
+    self._v3_selected_file_quality = quality_label
+    self._selected_file_type = file_type
+    self._selected_file_quality = quality_label
+    self._selected_download_format = dict(resolved_spec)
+    self._selected_download_subtitles = bool(item.get("subtitles"))
+    self._dl_preview_quality_options = [(quality_label, dict(resolved_spec))]
+    self._dl_preview_quality_source = source_url
+    self._dl_preview_mode = "single"
+    self._dl_preview_quality_mode = "single"
+    self._dl_preview_is_playlist = False
+    self._dl_youtube_extractor_arg = extractor_arg
+    self._last_quality_extractor_arg = extractor_arg
+
+
+def _queue_v8_set_playlist_quality_options(self):
+    source_url = str(self.dl_input.get() or "").strip()
+    if not source_url or not is_playlist_url(source_url):
+        return
+
+    file_type = _v3_file_type_id_final(
+        self.dl_file_type.get() if getattr(self, "dl_file_type", None) else "auto"
+    )
+    self._v3_selected_file_type = file_type
+    self._dl_preview_quality_source = source_url
+    self._dl_preview_mode = "playlist"
+    self._dl_preview_quality_mode = "playlist"
+    self._dl_preview_is_playlist = True
+
+    if file_type in AUDIO_FILE_TYPES_V3:
+        try:
+            self._v3_file_type_changed(self.dl_file_type.get())
+        except Exception:
+            pass
+        return
+
+    selected = ""
+    try:
+        selected = str(self.dl_format.get() or "").strip()
+    except Exception:
+        pass
+
+    options = _v3_video_quality_options_final(
+        getattr(self, "_v3_preview_formats", []) or [],
+        file_type,
+        "playlist",
+    )
+    labels = [label for label, _ in options]
+    normalized = {str(label).strip(): label for label in labels}
+    chosen = normalized.get(
+        selected,
+        next((label for label in labels if str(label).strip() == "Best Option Separate"), labels[0] if labels else ""),
+    )
+
+    self._dl_preview_quality_options = options
+    self._dl_quality_visible = bool(options)
+    try:
+        self.dl_quality_label.configure(text=" File Quality")
+        self.dl_quality_label.grid(row=0, column=1, sticky="w", padx=22, pady=(14, 4))
+        self.dl_format.grid(row=1, column=1, sticky="ew", padx=22, pady=(0, 8))
+        self.dl_format.configure(values=labels)
+        if chosen:
+            self.dl_format.set(chosen)
+            self._v3_selected_file_quality = str(chosen).strip()
+    except Exception:
+        pass
+
+
+def _queue_v8_update_main_action_button(self):
+    try:
+        if getattr(self, "_v3_queue_active", False) or getattr(self, "download_running", False):
+            return
+        if getattr(self, "_queue_playlist_loading", False):
+            self.dl_start.configure(state="disabled", text=" Reading Playlist…")
+            return
+
+        current_url = str(self.dl_input.get() or "").strip()
+        if current_url and is_playlist_url(current_url):
+            self.dl_start.configure(
+                state="normal",
+                text=" Add Playlist to Queue",
+                command=self.add_playlist_to_queue,
+            )
+        else:
+            self.dl_start.configure(
+                state="normal",
+                text=" Start Download",
+                command=self.start_download,
+            )
+    except Exception:
+        pass
+
+
+def _queue_v8_target_changed(self, *args):
+    _QUEUE_V8_ORIGINAL_TARGET_CHANGED(self, *args)
+    self._queue_v8_set_playlist_quality_options()
+    self._queue_v8_update_main_action_button()
+
+
+def _queue_v8_install_preview_button(self):
+    _QUEUE_V8_ORIGINAL_INSTALL_PREVIEW(self)
+    self._queue_v8_set_playlist_quality_options()
+    self._queue_v8_update_main_action_button()
+
+
+def _queue_v8_show_quality_selector(self, quality_options=None, animated=True, source_value="", source_mode=None):
+    source = str(source_value or self._dl_preview_quality_source or self.dl_input.get()).strip()
+    if self.downloader_quality_mode_for_source(source) != "playlist":
+        return _QUEUE_V8_ORIGINAL_SHOW_QUALITY_SELECTOR(
+            self,
+            quality_options=quality_options,
+            animated=animated,
+            source_value=source,
+            source_mode=source_mode,
+        )
+
+    previous = ""
+    try:
+        previous = str(self.dl_format.get() or "").strip()
+    except Exception:
+        pass
+
+    result = _QUEUE_V8_ORIGINAL_SHOW_QUALITY_SELECTOR(
+        self,
+        quality_options=quality_options,
+        animated=animated,
+        source_value=source,
+        source_mode=source_mode,
+    )
+    try:
+        labels = [str(label).strip() for label, _ in (self._dl_preview_quality_options or [])]
+        if previous and previous in labels:
+            actual = next(label for label in self.dl_format.cget("values") if str(label).strip() == previous)
+            self.dl_format.set(actual)
+            self._v3_selected_file_quality = previous
+    except Exception:
+        pass
+    return result
+
+
+def _queue_v8_start_download(self):
+    current_url = str(self.dl_input.get() or "").strip()
+    if current_url and is_playlist_url(current_url):
+        return self.add_playlist_to_queue()
+    return _QUEUE_V8_ORIGINAL_START_DOWNLOAD(self)
+
+
+def _queue_v8_finish_controls(self, completed, failed, total, stopped):
+    _QUEUE_V8_ORIGINAL_FINISH_CONTROLS(self, completed, failed, total, stopped)
+    self._queue_v8_update_main_action_button()
+
+
+_QUEUE_V8_ORIGINAL_TARGET_CHANGED = YTMMusicToolkit.on_downloader_target_changed
+_QUEUE_V8_ORIGINAL_INSTALL_PREVIEW = YTMMusicToolkit._v4_install_preview_menu
+_QUEUE_V8_ORIGINAL_START_DOWNLOAD = YTMMusicToolkit.start_download
+_QUEUE_V8_ORIGINAL_FINISH_CONTROLS = YTMMusicToolkit._queue_finish_controls
+_QUEUE_V8_ORIGINAL_SHOW_QUALITY_SELECTOR = YTMMusicToolkit.show_download_quality_selector
+
+YTMMusicToolkit.add_playlist_to_queue = _queue_v8_add_playlist_to_queue
+YTMMusicToolkit._queue_v8_capture_quality_policy = _queue_v8_capture_quality_policy
+YTMMusicToolkit._queue_v8_resolve_playlist_worker = _queue_v8_resolve_playlist_worker
+YTMMusicToolkit._queue_v8_finish_playlist_add = _queue_v8_finish_playlist_add
+YTMMusicToolkit._queue_v8_prepare_item_download = _queue_v8_prepare_item_download
+YTMMusicToolkit._queue_v8_set_playlist_quality_options = _queue_v8_set_playlist_quality_options
+YTMMusicToolkit._queue_v8_update_main_action_button = _queue_v8_update_main_action_button
+YTMMusicToolkit._queue_current_final = _queue_v8_queue_current
+YTMMusicToolkit._v3_queue_current = _queue_v8_queue_current
+YTMMusicToolkit.on_downloader_target_changed = _queue_v8_target_changed
+YTMMusicToolkit._v4_install_preview_menu = _queue_v8_install_preview_button
+YTMMusicToolkit.show_download_quality_selector = _queue_v8_show_quality_selector
+YTMMusicToolkit.start_download = _queue_v8_start_download
+YTMMusicToolkit._queue_finish_controls = _queue_v8_finish_controls
 
 
 # ============================================================
