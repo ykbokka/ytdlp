@@ -57,7 +57,26 @@ except ImportError:
 
 
 APP_NAME = "YTM Music Toolkit v3"
-APP_FONT = "Cairo"
+APP_FONT = "SF Pro Text"
+
+# Apple-inspired dark appearance: graphite surfaces, quiet separators,
+# high-contrast text, and restrained system accent colors.
+APPLE_WINDOW_BG = "#1C1C1E"
+APPLE_ROOT_BG = "#0B0B0C"
+APPLE_SURFACE = "#2C2C2E"
+APPLE_SURFACE_ELEVATED = "#3A3A3C"
+APPLE_INPUT_BG = "#232325"
+APPLE_CONSOLE_BG = "#171719"
+APPLE_SEPARATOR = "#3D3D40"
+APPLE_SEPARATOR_HOVER = "#5B5B60"
+APPLE_TEXT = "#F5F5F7"
+APPLE_MUTED = "#98989D"
+APPLE_BLUE = "#0A84FF"
+APPLE_BLUE_HOVER = "#409CFF"
+APPLE_BLUE_PRESSED = "#0066CC"
+APPLE_GREEN = "#30D158"
+APPLE_ORANGE = "#FF9F0A"
+APPLE_RED = "#FF453A"
 CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".ytm_music_toolkit.json")
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
 REQUEST_TIMEOUT = 20
@@ -2752,7 +2771,7 @@ def crop_flac_cover(file_path):
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 try:
-    ctk.set_widget_scaling(0.90)
+    ctk.set_widget_scaling(0.95)
 except Exception:
     pass
 
@@ -2766,9 +2785,9 @@ class YTMMusicToolkit(ctk.CTk):
         super().__init__()
 
         self.title(APP_NAME)
-        self.geometry("780x820")
-        self.minsize(700, 740)
-        self.configure(fg_color="#000000")
+        self.geometry("1080x920")
+        self.minsize(860, 760)
+        self.configure(fg_color=APPLE_ROOT_BG)
 
         icon_path = os.path.join(RESOURCE_DIR, "app.ico")
 
@@ -2823,33 +2842,19 @@ class YTMMusicToolkit(ctk.CTk):
 
         self.taskbar_progress = WindowsTaskbarProgress(self)
 
-        # Full background gradient.
-        self.bg_gradient = GradientFrame(
-            self,
-            bg="#000000",
-        )
-        self.bg_gradient.place(
-            x=0,
-            y=0,
-            relwidth=1,
-            relheight=1,
-        )
-        Misc.lower(self.bg_gradient)
-
-        # Rounded black main panel so the gradient remains visible
-        # around the outer corners.
+        # A restrained native dark window with a single rounded application surface.
         self.main_container = ctk.CTkFrame(
             self,
-            fg_color="#000000",
-            corner_radius=32,
+            fg_color=APPLE_WINDOW_BG,
+            corner_radius=26,
             border_width=1,
-            border_color="#111827",
+            border_color=APPLE_SEPARATOR,
         )
         self.main_container.pack(
             fill="both",
             expand=True,
-            padx=8,
-            pady=8,
+            padx=12,
+            pady=12,
         )
 
         self._animation_jobs = {}
@@ -2924,23 +2929,25 @@ class YTMMusicToolkit(ctk.CTk):
     def build_header(self):
         header = ctk.CTkFrame(
             self.main_container,
-            fg_color="#020406",
-            corner_radius=24,
+            fg_color=APPLE_SURFACE,
+            corner_radius=20,
             border_width=1,
-            border_color="#172033",
+            border_color=APPLE_SEPARATOR,
         )
+        self.header_card = header
         header.pack(
             fill="x",
             padx=8,
-            pady=(5, 8),
+            pady=(8, 10),
         )
 
         accent = ctk.CTkFrame(
             header,
             height=3,
-            fg_color="#0ea5e9",
+            fg_color=APPLE_BLUE,
             corner_radius=3,
         )
+        self.brand_accent = accent
         accent.pack(
             fill="x",
             padx=20,
@@ -2969,13 +2976,14 @@ class YTMMusicToolkit(ctk.CTk):
 
         brand_badge = ctk.CTkFrame(
             brand,
-            width=46,
-            height=46,
-            fg_color="#07111d",
+            width=48,
+            height=48,
+            fg_color="#223956",
             corner_radius=15,
             border_width=1,
-            border_color="#1f4b6f",
+            border_color="#365B86",
         )
+        self.brand_badge = brand_badge
         brand_badge.pack(
             side="left",
             padx=(0, 12),
@@ -2984,9 +2992,9 @@ class YTMMusicToolkit(ctk.CTk):
 
         ctk.CTkLabel(
             brand_badge,
-            text="YT",
-            font=(APP_FONT, 15, "bold"),
-            text_color="#7dd3fc",
+            text="♫",
+            font=(APP_FONT, 24, "bold"),
+            text_color=APPLE_TEXT,
         ).pack(
             expand=True,
         )
@@ -3013,9 +3021,9 @@ class YTMMusicToolkit(ctk.CTk):
 
         ctk.CTkLabel(
             title_stack,
-            text="YouTube  ➜  Artist Match  ➜  Artwork  ➜  Library",
-            font=(APP_FONT, 11),
-            text_color="#7f8ea3",
+            text="Music downloads, metadata & artwork — in one place",
+            font=(APP_FONT, 12),
+            text_color=APPLE_MUTED,
             anchor="w",
         ).pack(
             anchor="w",
@@ -3058,10 +3066,12 @@ class YTMMusicToolkit(ctk.CTk):
             width=78,
             height=28,
             font=(APP_FONT, 10, "bold"),
-            fg_color="#050505",
-            hover_color="#1e293b",
-            text_color="#ffffff",
-            corner_radius=8,
+            fg_color=APPLE_SURFACE_ELEVATED,
+            hover_color=APPLE_SEPARATOR_HOVER,
+            text_color=APPLE_TEXT,
+            border_width=1,
+            border_color=APPLE_SEPARATOR,
+            corner_radius=10,
             command=self.browse_cookie_file,
         )
         self.cookie_browse_button.pack(
@@ -3075,12 +3085,12 @@ class YTMMusicToolkit(ctk.CTk):
                     if label:
                         self.cookie_status.configure(
                             text=f" Cookies: {label}",
-                            text_color="#67e8f9",
+                            text_color=APPLE_GREEN,
                         )
                     else:
                         self.cookie_status.configure(
                             text=" Missing cookies.txt",
-                            text_color="#f87171",
+                            text_color=APPLE_RED,
                         )
                 except Exception:
                     pass
@@ -3138,16 +3148,16 @@ class YTMMusicToolkit(ctk.CTk):
     def build_tabs(self):
         self.tabs = ctk.CTkTabview(
             self.main_container,
-            fg_color="#020304",
-            segmented_button_fg_color="#05080c",
-            segmented_button_selected_color="#0b1e33",
-            segmented_button_selected_hover_color="#12304d",
-            segmented_button_unselected_color="#05080c",
-            segmented_button_unselected_hover_color="#0b1420",
-            text_color="#f8fafc",
-            corner_radius=22,
+            fg_color=APPLE_WINDOW_BG,
+            segmented_button_fg_color=APPLE_SURFACE,
+            segmented_button_selected_color=APPLE_BLUE,
+            segmented_button_selected_hover_color=APPLE_BLUE_HOVER,
+            segmented_button_unselected_color=APPLE_SURFACE,
+            segmented_button_unselected_hover_color=APPLE_SURFACE_ELEVATED,
+            text_color=APPLE_TEXT,
+            corner_radius=20,
             border_width=1,
-            border_color="#111827",
+            border_color=APPLE_SEPARATOR,
         )
         self.tabs.pack(
             fill="both",
@@ -3161,6 +3171,13 @@ class YTMMusicToolkit(ctk.CTk):
         tab_cover = self.tabs.add("Cover Art")
         tab_crop = self.tabs.add("Crop Art")
         tab_pipeline = self.tabs.add("Library Overhaul")
+        self._apple_tab_pages = [
+            tab_downloader,
+            tab_metadata,
+            tab_cover,
+            tab_crop,
+            tab_pipeline,
+        ]
 
         self.build_downloader_tab(tab_downloader)
         self.build_metadata_tab(tab_metadata)
@@ -3172,9 +3189,9 @@ class YTMMusicToolkit(ctk.CTk):
             seg = self.tabs._segmented_button
             seg.configure(
                 corner_radius=13,
-                border_width=1,
-                border_color="#111827",
-                font=(APP_FONT, 11, "bold"),
+                border_width=0,
+                border_color=APPLE_SEPARATOR,
+                font=(APP_FONT, 12, "bold"),
             )
         except Exception:
             pass
@@ -3192,9 +3209,9 @@ class YTMMusicToolkit(ctk.CTk):
 
         ctk.CTkLabel(
             footer,
-            text="LOCAL ENGINE  •  YT MUSIC MATCHING  •  FLAC ARTWORK  •  ZERO-REENCODE VIDEO MUX",
+            text="YOUTUBE MUSIC  ·  LOSSLESS AUDIO  ·  ARTWORK  ·  LIBRARY",
             font=(APP_FONT, 9, "bold"),
-            text_color="#334155",
+            text_color=APPLE_MUTED,
         ).pack(
             anchor="center",
         )
@@ -3649,7 +3666,7 @@ class YTMMusicToolkit(ctk.CTk):
                 self.animate_text_change(
                     self.header_status,
                     text,
-                    final_color="#38bdf8" if not busy else "#fbbf24",
+                    final_color=APPLE_GREEN if not busy else APPLE_ORANGE,
                     key="header-status-text",
                 )
             except Exception:
@@ -3667,9 +3684,9 @@ class YTMMusicToolkit(ctk.CTk):
 
             busy = self._header_pulse_on
             if busy:
-                colors = ("#fbbf24", "#fde68a")
+                colors = (APPLE_ORANGE, "#FFD080")
             else:
-                colors = ("#38bdf8", "#67e8f9")
+                colors = (APPLE_GREEN, "#69E889")
 
             current = self.header_status.cget("text_color")
             next_color = colors[1] if current == colors[0] else colors[0]
@@ -3804,37 +3821,36 @@ class YTMMusicToolkit(ctk.CTk):
             normal = button.cget("fg_color")
             hover = button.cget("hover_color")
             base_visual = self._animation_color(normal)
-            hover_visual = self._animation_color(hover, "#1e293b")
+            hover_visual = self._animation_color(hover, APPLE_SURFACE_ELEVATED)
+            pressed_visual = self._blend_colors(base_visual, hover_visual, 0.72)
 
-            # Disable CustomTkinter's instant hover background so our
-            # own interpolation controls the transition.
+            # Keep controls responsive with soft transitions and no neon glow.
             button.configure(hover=False)
-
             button.bind(
                 "<Enter>",
                 lambda _e, b=button, h=hover_visual: self.animate_widget_color(
-                    b, "fg_color", b.cget("fg_color"), h, 135
+                    b, "fg_color", b.cget("fg_color"), h, 125
                 ),
                 add="+",
             )
             button.bind(
                 "<Leave>",
                 lambda _e, b=button, n=base_visual, original=normal: self.animate_widget_color(
-                    b, "fg_color", b.cget("fg_color"), n, 170, original
+                    b, "fg_color", b.cget("fg_color"), n, 150, original
                 ),
                 add="+",
             )
             button.bind(
                 "<ButtonPress-1>",
-                lambda _e, b=button: self.animate_widget_color(
-                    b, "fg_color", b.cget("fg_color"), "#334155", 70
+                lambda _e, b=button, p=pressed_visual: self.animate_widget_color(
+                    b, "fg_color", b.cget("fg_color"), p, 65
                 ),
                 add="+",
             )
             button.bind(
                 "<ButtonRelease-1>",
                 lambda _e, b=button, h=hover_visual: self.animate_widget_color(
-                    b, "fg_color", b.cget("fg_color"), h, 100
+                    b, "fg_color", b.cget("fg_color"), h, 90
                 ),
                 add="+",
             )
@@ -3847,7 +3863,7 @@ class YTMMusicToolkit(ctk.CTk):
                 return
 
             normal = card.cget("border_color")
-            glow = "#1e3a5f"
+            glow = APPLE_SEPARATOR_HOVER
 
             card.bind(
                 "<Enter>",
@@ -3871,7 +3887,7 @@ class YTMMusicToolkit(ctk.CTk):
             normal = widget.cget("border_color")
             if normal is None:
                 normal = "#111827"
-            focus = "#2563eb"
+            focus = APPLE_BLUE
 
             widget.bind(
                 "<FocusIn>",
@@ -4092,15 +4108,277 @@ class YTMMusicToolkit(ctk.CTk):
             except Exception:
                 pass
 
+    @staticmethod
+    def _apple_text_tone(color):
+        """Map legacy widget colors to the Apple dark-mode semantic palette."""
+        if isinstance(color, (tuple, list)):
+            color = color[-1] if color else APPLE_TEXT
+        value = str(color or "").strip().lower()
+        if not value.startswith("#"):
+            return APPLE_TEXT
+
+        value = value[1:]
+        if len(value) == 3:
+            value = "".join(character * 2 for character in value)
+        if len(value) != 6:
+            return APPLE_TEXT
+
+        try:
+            red = int(value[0:2], 16)
+            green = int(value[2:4], 16)
+            blue = int(value[4:6], 16)
+        except ValueError:
+            return APPLE_TEXT
+
+        high = max(red, green, blue)
+        low = min(red, green, blue)
+        average = (red + green + blue) / 3.0
+        if high - low < 48:
+            return APPLE_TEXT if average >= 175 else APPLE_MUTED
+        if red > green * 1.28 and red > blue * 1.28:
+            return APPLE_RED
+        if red > 145 and green > 85 and blue < 135 and red > blue * 1.35:
+            return APPLE_ORANGE
+        if green > red * 1.18 and green > blue * 1.08:
+            return APPLE_GREEN
+        if blue > red * 1.10 and blue >= green * 0.94:
+            return APPLE_BLUE
+        return APPLE_MUTED
+
+    def apply_apple_dark_theme(self):
+        """Apply one consistent native-inspired dark theme across every tab."""
+        self.configure(fg_color=APPLE_ROOT_BG)
+        pages = {id(page) for page in getattr(self, "_apple_tab_pages", [])}
+
+        def walk(widget):
+            yield widget
+            try:
+                children = widget.winfo_children()
+            except Exception:
+                return
+            for child in children:
+                yield from walk(child)
+
+        for widget in walk(self):
+            try:
+                if isinstance(widget, ctk.CTkTabview):
+                    widget.configure(
+                        fg_color=APPLE_WINDOW_BG,
+                        segmented_button_fg_color=APPLE_SURFACE,
+                        segmented_button_selected_color=APPLE_BLUE,
+                        segmented_button_selected_hover_color=APPLE_BLUE_HOVER,
+                        segmented_button_unselected_color=APPLE_SURFACE,
+                        segmented_button_unselected_hover_color=APPLE_SURFACE_ELEVATED,
+                        text_color=APPLE_TEXT,
+                        corner_radius=20,
+                        border_width=1,
+                        border_color=APPLE_SEPARATOR,
+                    )
+                    continue
+
+                if isinstance(widget, ctk.CTkFrame):
+                    current_fg = widget.cget("fg_color")
+                    if widget is self.main_container:
+                        widget.configure(
+                            fg_color=APPLE_WINDOW_BG,
+                            corner_radius=26,
+                            border_width=1,
+                            border_color=APPLE_SEPARATOR,
+                        )
+                    elif id(widget) in pages:
+                        widget.configure(fg_color=APPLE_WINDOW_BG, corner_radius=0, border_width=0)
+                    elif widget is getattr(self, "header_card", None):
+                        widget.configure(
+                            fg_color=APPLE_SURFACE,
+                            corner_radius=20,
+                            border_width=1,
+                            border_color=APPLE_SEPARATOR,
+                        )
+                    elif widget is getattr(self, "brand_badge", None):
+                        widget.configure(
+                            fg_color="#223956",
+                            corner_radius=15,
+                            border_width=1,
+                            border_color="#365B86",
+                        )
+                    elif widget is getattr(self, "brand_accent", None):
+                        widget.configure(fg_color=APPLE_BLUE, corner_radius=3)
+                    elif str(current_fg).lower() == "transparent":
+                        pass
+                    else:
+                        try:
+                            radius = int(widget.cget("corner_radius"))
+                        except Exception:
+                            radius = 16
+                        widget.configure(
+                            fg_color=APPLE_SURFACE,
+                            corner_radius=16 if radius > 8 else radius,
+                        )
+
+                    try:
+                        if int(widget.cget("border_width")) > 0:
+                            widget.configure(border_color=APPLE_SEPARATOR)
+                    except Exception:
+                        pass
+
+                elif isinstance(widget, ctk.CTkButton):
+                    label = str(widget.cget("text") or "").strip().lower()
+                    is_destructive = any(word in label for word in ("stop", "cancel", "delete", "remove"))
+                    is_primary = any(word in label for word in (
+                        "start", "download", "rewrite", "upgrade", "overhaul",
+                        "crop", "apply", "save changes",
+                    ))
+
+                    if is_destructive:
+                        widget.configure(
+                            fg_color=APPLE_RED,
+                            hover_color="#FF6961",
+                            text_color="#FFFFFF",
+                            border_width=0,
+                            corner_radius=12,
+                        )
+                    elif is_primary:
+                        widget.configure(
+                            fg_color=APPLE_BLUE,
+                            hover_color=APPLE_BLUE_HOVER,
+                            text_color="#FFFFFF",
+                            border_width=0,
+                            corner_radius=12,
+                        )
+                    else:
+                        widget.configure(
+                            fg_color=APPLE_SURFACE_ELEVATED,
+                            hover_color=APPLE_SEPARATOR_HOVER,
+                            text_color=APPLE_TEXT,
+                            border_width=1,
+                            border_color=APPLE_SEPARATOR,
+                            corner_radius=12,
+                        )
+
+                elif isinstance(widget, ctk.CTkEntry):
+                    widget.configure(
+                        fg_color=APPLE_INPUT_BG,
+                        text_color=APPLE_TEXT,
+                        placeholder_text_color=APPLE_MUTED,
+                        border_width=1,
+                        border_color=APPLE_SEPARATOR,
+                        corner_radius=12,
+                    )
+
+                elif isinstance(widget, ctk.CTkComboBox):
+                    widget.configure(
+                        fg_color=APPLE_INPUT_BG,
+                        text_color=APPLE_TEXT,
+                        button_color=APPLE_SURFACE_ELEVATED,
+                        button_hover_color=APPLE_SEPARATOR_HOVER,
+                        dropdown_fg_color=APPLE_SURFACE,
+                        dropdown_text_color=APPLE_TEXT,
+                        border_width=1,
+                        border_color=APPLE_SEPARATOR,
+                        corner_radius=12,
+                    )
+
+                elif isinstance(widget, ctk.CTkTextbox):
+                    widget.configure(
+                        fg_color=APPLE_CONSOLE_BG,
+                        text_color=APPLE_TEXT,
+                        border_width=1,
+                        border_color=APPLE_SEPARATOR,
+                        corner_radius=14,
+                    )
+
+                elif isinstance(widget, ctk.CTkProgressBar):
+                    widget.configure(
+                        fg_color=APPLE_SURFACE_ELEVATED,
+                        progress_color=APPLE_BLUE,
+                        corner_radius=5,
+                        height=8,
+                    )
+
+                elif isinstance(widget, ctk.CTkCheckBox):
+                    widget.configure(
+                        text_color=APPLE_TEXT,
+                        fg_color=APPLE_BLUE,
+                        hover_color=APPLE_BLUE_HOVER,
+                        border_color=APPLE_SEPARATOR_HOVER,
+                        checkmark_color="#FFFFFF",
+                        corner_radius=5,
+                    )
+
+                elif isinstance(widget, ctk.CTkRadioButton):
+                    widget.configure(
+                        text_color=APPLE_TEXT,
+                        fg_color=APPLE_BLUE,
+                        hover_color=APPLE_BLUE_HOVER,
+                        border_color=APPLE_SEPARATOR_HOVER,
+                    )
+
+                elif isinstance(widget, ctk.CTkSwitch):
+                    widget.configure(
+                        text_color=APPLE_TEXT,
+                        progress_color=APPLE_BLUE,
+                        button_color=APPLE_TEXT,
+                        button_hover_color="#FFFFFF",
+                    )
+
+                elif isinstance(widget, ctk.CTkSlider):
+                    widget.configure(
+                        fg_color=APPLE_SURFACE_ELEVATED,
+                        progress_color=APPLE_BLUE,
+                        button_color=APPLE_TEXT,
+                        button_hover_color="#FFFFFF",
+                    )
+
+                elif isinstance(widget, ctk.CTkOptionMenu):
+                    widget.configure(
+                        fg_color=APPLE_SURFACE_ELEVATED,
+                        button_color=APPLE_SEPARATOR_HOVER,
+                        button_hover_color="#6E6E73",
+                        text_color=APPLE_TEXT,
+                        dropdown_fg_color=APPLE_SURFACE,
+                        dropdown_text_color=APPLE_TEXT,
+                    )
+
+                elif isinstance(widget, ctk.CTkLabel):
+                    try:
+                        widget.configure(text_color=self._apple_text_tone(widget.cget("text_color")))
+                    except Exception:
+                        pass
+                    try:
+                        fg = widget.cget("fg_color")
+                        if str(fg).lower() != "transparent":
+                            widget.configure(fg_color=APPLE_SURFACE_ELEVATED)
+                    except Exception:
+                        pass
+            except Exception:
+                # Styling should never prevent the downloader from starting.
+                pass
+
+        try:
+            segmented = self.tabs._segmented_button
+            segmented.configure(
+                fg_color=APPLE_SURFACE,
+                selected_color=APPLE_BLUE,
+                selected_hover_color=APPLE_BLUE_HOVER,
+                unselected_color=APPLE_SURFACE,
+                unselected_hover_color=APPLE_SURFACE_ELEVATED,
+                text_color=APPLE_TEXT,
+                corner_radius=13,
+                border_width=0,
+                font=(APP_FONT, 12, "bold"),
+            )
+        except Exception:
+            pass
+
     def install_transitions(self):
         self.install_tab_transitions()
+        self.apply_apple_dark_theme()
 
         def walk(widget):
             try:
                 children = widget.winfo_children()
             except Exception:
                 return
-
             for child in children:
                 yield child
                 yield from walk(child)
@@ -4108,65 +4386,12 @@ class YTMMusicToolkit(ctk.CTk):
         for widget in walk(self):
             try:
                 if isinstance(widget, ctk.CTkButton):
-                    # Give every button a layered, premium surface while
-                    # preserving the existing command and dimensions.
-                    current_text = str(widget.cget("text") or "")
-                    is_primary = any(
-                        token in current_text
-                        for token in (
-                            "Start",
-                            "Download",
-                            "Rewrite",
-                            "Upgrade",
-                            "Overhaul",
-                            "Crop",
-                        )
-                    )
-
-                    widget.configure(
-                        fg_color="#0a1724" if is_primary else "#060a0f",
-                        hover_color="#12395b" if is_primary else "#111c2a",
-                        border_width=1,
-                        border_color="#1e4f73" if is_primary else "#172234",
-                        corner_radius=12,
-                    )
                     self.bind_smooth_button(widget)
-
                 elif isinstance(widget, ctk.CTkFrame):
-                    try:
-                        bw = int(widget.cget("border_width"))
-                    except Exception:
-                        bw = 0
-                    if bw > 0 and widget not in {self.main_container}:
-                        widget.configure(
-                            border_color=widget.cget("border_color") or "#111827"
-                        )
                     self.bind_card_glow(widget)
 
-                if isinstance(widget, ctk.CTkEntry):
-                    widget.configure(
-                        border_width=1,
-                        border_color="#172033",
-                        corner_radius=11,
-                    )
+                if isinstance(widget, (ctk.CTkEntry, ctk.CTkComboBox, ctk.CTkTextbox)):
                     self.bind_focus_glow(widget)
-
-                elif isinstance(widget, ctk.CTkComboBox):
-                    widget.configure(
-                        border_width=1,
-                        border_color="#172033",
-                        corner_radius=11,
-                    )
-                    self.bind_focus_glow(widget)
-
-                elif isinstance(widget, ctk.CTkTextbox):
-                    widget.configure(
-                        border_width=1,
-                        border_color="#101826",
-                        corner_radius=13,
-                    )
-                    self.bind_focus_glow(widget)
-
             except Exception:
                 pass
 
