@@ -20,6 +20,8 @@ ApplicationWindow {
     property string logText: ""
     property real downloadPercent: 0
     property string progressText: "Ready"
+    property bool isPaused: false
+    property string metadataThumbnail: ""
     property var previewData: ({})
     property var metadataValues: ({title:"", artist:"", album:"", date:"", genre:"", comment:"", path:""})
     property var queueItems: []
@@ -402,11 +404,12 @@ ApplicationWindow {
         }
         function onQueueChanged(items) { root.queueItems = items }
         function onOperationFinished(id, ok, message) {
+            root.isPaused = false
             root.appendLog((ok ? "SUCCESS: " : "FAILED: ") + message)
             if (ok && root.downloadPercent < 100)
                 root.downloadPercent = 100
         }
-        function onMetadataLoaded(data) { root.metadataValues = data }
+        function onMetadataLoaded(data) { root.metadataValues = data; if (data.thumbnail) root.metadataThumbnail = data.thumbnail }
         function onLibraryScanReady(data) {
             root.libraryFolder = data.folder || root.libraryFolder
             root.libraryRows = data.rows || []
@@ -649,10 +652,18 @@ ApplicationWindow {
                         Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
                     }
                     Button {
+                        id: pauseButton
+                        text: root.isPaused ? "Resume" : "Pause"
+                        Layout.preferredHeight: 43
+                        onClicked: root.isPaused = backend.togglePause()
+                        background: Rectangle { radius: 12; color: pauseButton.hovered ? root.hoverColor : root.elevatedColor; border.width: 1; border.color: root.borderColor }
+                        contentItem: Text { text: pauseButton.text; color: root.textColor; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    }
+                    Button {
                         id: stopButton
                         text: "Stop"
                         Layout.preferredHeight: 43
-                        onClicked: backend.stopDownload()
+                        onClicked: { root.isPaused = false; backend.stopDownload() }
                         background: Rectangle { radius: 12; color: stopButton.hovered ? (root.darkMode ? "#42242A" : "#FBE7E8") : root.elevatedColor; border.width: 1; border.color: root.borderColor }
                         contentItem: Text { text: stopButton.text; color: root.darkMode ? "#FF8D99" : "#B42332"; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
                     }
@@ -671,7 +682,9 @@ ApplicationWindow {
             Text { text: "Add a single URL or expand a playlist, then process items sequentially."; color: root.mutedColor; font.pixelSize: 11 }
             RowLayout {
                 Layout.fillWidth: true
-                Button { text: "Start Pending"; onClicked: root.runQueue(); background: Rectangle { radius: 11; color: "#3475EE" }; contentItem: Text { text: parent.text; color: "white"; font.bold: true; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                Button { text: "Start Pending"; onClicked: { root.downloadPercent = 0; backend.startQueue(root.fileType, root.quality, root.audioFormat, root.subtitleMode) }; background: Rectangle { radius: 11; color: "#3475EE" }; contentItem: Text { text: parent.text; color: "white"; font.bold: true; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                Button { text: root.isPaused ? "Resume" : "Pause"; onClicked: root.isPaused = backend.togglePause(); background: Rectangle { radius: 11; color: root.elevatedColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                Button { text: "Stop"; onClicked: { root.isPaused = false; backend.stopDownload() }; background: Rectangle { radius: 11; color: root.darkMode ? "#42242A" : "#FBE7E8"; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.darkMode ? "#FF8D99" : "#B42332"; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
                 Button { text: "Clear Queue"; onClicked: backend.clearQueue(); background: Rectangle { radius: 11; color: root.elevatedColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
                 Item { Layout.fillWidth: true }
                 Text { text: root.queueItems.length + " item(s)"; color: root.mutedColor; font.pixelSize: 10 }
@@ -770,6 +783,12 @@ ApplicationWindow {
                 }
                 RowLayout {
                     Layout.fillWidth: true
+                    Button {
+                        text: "Lookup on YouTube Music"
+                        onClicked: backend.lookupYtMusicMetadata(metadataPath.text, metaArtist.text, metaTitle.text, metaAlbum.text)
+                        background: Rectangle { radius: 11; color: root.accentSoftColor }
+                        contentItem: Text { text: parent.text; color: root.accentColor; font.pixelSize: 10; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    }
                     Button { text: "Read Tags"; onClicked: backend.inspectMediaFile(metadataPath.text); background: Rectangle { radius: 11; color: root.elevatedColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
                     Button {
                         text: "Save Metadata"
@@ -810,7 +829,7 @@ ApplicationWindow {
             }
             RowLayout {
                 Layout.fillWidth: true
-                TextField { id: coverSource; Layout.fillWidth: true; placeholderText: "Image file path or https:// image URL"; color: root.textColor; placeholderTextColor: root.mutedColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
+                TextField { id: coverSource; Layout.fillWidth: true; text: root.metadataThumbnail; placeholderText: "Image file path or https:// image URL"; color: root.textColor; placeholderTextColor: root.mutedColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
                 Button { text: "Browse image"; onClicked: coverImageDialog.open(); background: Rectangle { radius: 10; color: root.elevatedColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
             }
             Rectangle {
