@@ -1127,7 +1127,15 @@ def _create_temporary_ytmusic_auth_from_cookie_file(cookie_path):
             f"Could not read the selected cookies.txt file: {type(exc).__name__}: {exc}"
         ) from exc
 
-    request = urllib.request.Request("https://music.youtube.com/browse")
+    # Build the Cookie header for the actual InnerTube API request path,
+    # not the public /browse webpage. Netscape cookies can be path-scoped; using
+    # the wrong path can silently omit cookies that the API endpoint should get.
+    request = urllib.request.Request(
+        "https://music.youtube.com/youtubei/v1/browse",
+        data=b"{}",
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
     jar.add_cookie_header(request)
     cookie_header = request.get_header("Cookie") or ""
     if not cookie_header:
