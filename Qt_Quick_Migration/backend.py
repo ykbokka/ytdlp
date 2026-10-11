@@ -10,6 +10,7 @@ import threading
 import time
 import traceback
 import uuid
+import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
 from difflib import SequenceMatcher
 from pathlib import Path
@@ -22,6 +23,7 @@ from mutagen import File as MutagenFile
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import ID3, APIC
 from mutagen.mp4 import MP4, MP4Cover
+from ytmusic_resolver import YTMResolver, split_artist_title
 
 CONFIG_FILE = Path.home() / ".ytm_music_toolkit.json"
 COOKIE_ENV = "YTM_MUSIC_TOOLKIT_COOKIES"
@@ -138,6 +140,7 @@ class ToolkitBackend(QObject):
         self.download_active = False
         self.paused = False
         self.last_operation_id = ""
+        self._workers: dict[str, OperationWorker] = {}
         self._log("Qt Quick backend ready.")
         if not get_ytdlp():
             self._log("WARNING: yt-dlp executable was not found. Prepare the EXE build-kit assets or install yt-dlp.")
@@ -188,6 +191,7 @@ class ToolkitBackend(QObject):
         worker.signals.result.connect(self._worker_result)
         worker.signals.error.connect(self._worker_error)
         worker.signals.finished.connect(self._worker_finished)
+        self._workers[key] = worker
         self.pool.start(worker)
         return key
 
@@ -225,6 +229,7 @@ class ToolkitBackend(QObject):
 
     @Slot(str)
     def _worker_finished(self, key):
+        self._workers.pop(key, None)
         if key == self.last_operation_id:
             self.last_operation_id = ""
 
@@ -312,9 +317,12 @@ class ToolkitBackend(QObject):
         if proc.returncode:
             raise RuntimeError((proc.stderr or proc.stdout or "Metadata extraction failed")[-1600:])
         try:
-            return json.loads(proc.stdout)
+            payload = json.loads(proc.stdout)
         except json.JSONDecodeError as exc:
             raise RuntimeError("yt-dlp returned invalid JSON metadata.") from exc
+        if not isinstance(payload, dict):
+            raise RuntimeError("yt-dlp returned no usable metadata object. For account-bound playlists, use Add to Queue and ensure cookies.txt is configured.")
+        return payload
 
     @staticmethod
     def _duration(value):
@@ -880,58 +888,33 @@ class ToolkitBackend(QObject):
         title = str(title or "").strip()
         album = str(album or "").strip()
         if path and not title:
-            stem = Path(path).stem
-            if " - " in stem:
-                left, right = stem.split(" - ", 1)
-                artist = artist or left.strip()
-                title = right.strip()
-            else:
-                title = stem
-        if not title and not artist:
+            artist_from_name, title_from_name = split_artist_title(Path(path).stem)
+            artist = artist or artist_from_name
+            title = title or title_from_name
+        if not artist and not title:
             self.statusChanged.emit("Enter an artist/title or choose a media file first.")
             return
 
         def work():
-            from ytmusicapi import YTMusic
-            ytm = YTMusic()
-            query = " ".join(part for part in (artist, title, album) if part).strip()
-            results = [item for item in (ytm.search(query, filter="songs", limit=12) or []) if isinstance(item, dict)]
-            if not results:
-                results = [item for item in (ytm.search(query, filter="videos", limit=12) or []) if isinstance(item, dict)]
-            if not results:
+            result = YTMResolver().search(artist, title, album)
+            if not result:
                 raise RuntimeError("YouTube Music returned no matching songs or videos.")
-
-            def norm(value):
-                return re.sub(r"[^a-z0-9]+", "", str(value or "").casefold())
-
-            wanted_artist, wanted_title, wanted_album = norm(artist), norm(title), norm(album)
-            best_item, best_score = None, -1.0
-            for item in results:
-                names = [str(x.get("name") or "") for x in (item.get("artists") or []) if isinstance(x, dict)]
-                exact_artist = bool(wanted_artist and any(norm(name) == wanted_artist for name in names))
-                result_title = str(item.get("title") or "")
-                title_score = SequenceMatcher(None, wanted_title, norm(result_title)).ratio() if wanted_title else 0.3
-                album_data = item.get("album") or {}
-                result_album = str(album_data.get("name") or "") if isinstance(album_data, dict) else str(album_data)
-                album_score = 0.1 if wanted_album and norm(result_album) == wanted_album else 0.0
-                score = title_score * 0.78 + (0.20 if exact_artist else 0.0) + album_score
-                if score > best_score:
-                    best_item, best_score = item, score
-            if best_item is None:
-                raise RuntimeError("No suitable YouTube Music result was found.")
-            album_data = best_item.get("album") or {}
-            result_album = str(album_data.get("name") or "") if isinstance(album_data, dict) else str(album_data)
-            thumbs = best_item.get("thumbnails") or []
-            thumb = str(thumbs[-1].get("url") or "") if thumbs and isinstance(thumbs[-1], dict) else ""
-            artists = ", ".join(str(x.get("name") or "") for x in (best_item.get("artists") or []) if isinstance(x, dict))
             path_value = str(Path(path).resolve()) if path else ""
-            self._log(f"YT Music match selected: {best_item.get('title', 'Untitled')} (score {best_score:.2f})")
-            return {"_kind": "metadata", "path": path_value,
-                    "title": str(best_item.get("title") or title),
-                    "artist": artists or artist, "album": result_album or album,
-                    "date": str(best_item.get("year") or ""), "genre": "", "comment": "", "thumbnail": thumb}
+            return {
+                "_kind": "metadata",
+                "path": path_value,
+                "title": result.get("title") or title,
+                "artist": result.get("artist") or artist,
+                "album": result.get("album") or album,
+                "date": result.get("year") or "",
+                "genre": "",
+                "comment": "",
+                "thumbnail": result.get("cover_url") or "",
+                "video_id": result.get("video_id") or "",
+                "source": result.get("source") or "",
+            }
 
-        self.statusChanged.emit("Searching YouTube Music for matching metadata…")
+        self.statusChanged.emit("Searching YouTube Music (exact contributing-artist match first)…")
         self._run_async("ytmusic-lookup", work)
 
     @Slot(str, "QVariantMap")
