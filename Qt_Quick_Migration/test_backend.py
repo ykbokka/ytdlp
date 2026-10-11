@@ -149,6 +149,17 @@ class QtBackendCoreTests(unittest.TestCase):
         self.assertIn("--audio-format", audio)
         self.assertEqual(audio[audio.index("--audio-format") + 1], "flac")
 
+    def test_aggressive_mode_uses_high_throughput_download_tuning(self):
+        app = self.make_backend({"performance_mode": "aggressive"})
+        with patch.object(backend, "get_ytdlp", return_value=["yt-dlp"]), \
+             patch.object(backend, "find_tool", return_value=""):
+            command = app._base_command(download=True)
+
+        self.assertEqual(command[command.index("--concurrent-fragments") + 1], "32")
+        self.assertEqual(command[command.index("--http-chunk-size") + 1], "10M")
+        self.assertEqual(command[command.index("--buffer-size") + 1], "16K")
+        self.assertNotIn("--limit-rate", command)
+
     def test_native_fallback_removes_only_aria2_routing_arguments(self):
         command = [
             "yt-dlp", "--downloader", "aria2c",
