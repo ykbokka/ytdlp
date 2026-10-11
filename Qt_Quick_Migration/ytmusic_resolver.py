@@ -266,6 +266,13 @@ class YTMResolver:
             candidates.append(Path(environment_auth).expanduser())
         documents = Path.home() / "Documents" / "YTDLP"
         candidates.extend([documents / "ytmusicapi_browser.json", documents / "browser.json"])
+        if getattr(sys, "_MEIPASS", None):
+            candidates.append(Path(sys._MEIPASS) / "ytmusicapi_browser.json")
+        if getattr(sys, "frozen", False):
+            app_dir = Path(sys.executable).resolve().parent
+        else:
+            app_dir = Path(__file__).resolve().parent
+        candidates.append(app_dir / "ytmusicapi_browser.json")
         auth_candidate = next((p for p in candidates if p.is_file()), None)
 
         last_errors = []
