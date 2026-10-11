@@ -14,14 +14,22 @@ $ExePath = Join-Path $DistRoot "YTM Music Toolkit.exe"
 function Invoke-Checked {
     param([string]$Program, [string[]]$Arguments, [string]$Failure)
 
-    # Merge native stderr into stdout before displaying it. This avoids
-    # Windows PowerShell 5.1 treating harmless native warnings as terminating
-    # PowerShell errors when ErrorActionPreference is Stop.
-    & $Program @Arguments 2>&1 | ForEach-Object { Write-Host $_ }
+    # Windows PowerShell 5.1 can treat native stderr output as a terminating
+    # error when ErrorActionPreference is Stop. Temporarily relax that behavior,
+    # merge the streams, and rely on the process exit code instead.
+    $oldPreference = $ErrorActionPreference
+    $nativeExitCode = 0
+    try {
+        $ErrorActionPreference = "Continue"
+        & $Program @Arguments 2>&1 | ForEach-Object { Write-Host $_ }
+        $nativeExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $oldPreference
+    }
 
-    if ($LASTEXITCODE -ne 0) { throw $Failure }
-}
-function Test-Tool {
+    if ($nativeExitCode -ne 0) { throw $Failure }
+}function Test-Tool {
     param([string]$Program, [string[]]$Arguments)
     & $Program @Arguments *> $null
     if ($LASTEXITCODE -ne 0) {
