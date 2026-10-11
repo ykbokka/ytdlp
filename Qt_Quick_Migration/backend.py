@@ -528,13 +528,30 @@ class ToolkitBackend(QObject):
             return
 
         def work():
+            default_heights = [2160, 1440, 1080, 720, 480, 360]
             if self._is_liked_music_url(requested):
-                tracks = YTMResolver().liked_songs(cookie_path=self.cookie_path)
                 return {"_kind": "preview", "title": "YouTube Music Liked Music",
                         "id": "LM", "uploader": "Your library", "album": "",
                         "duration": "—", "webpageUrl": requested, "thumbnail": "",
-                        "isPlaylist": True, "playlistCount": len(tracks), "heights": [],
-                        "formatCount": 0, "description": "Account-bound playlist; tracks are loaded into Queue."}
+                        "isPlaylist": True, "playlistCount": 0, "heights": default_heights,
+                        "formatCount": 0, "description": "Account-bound playlist; tracks are resolved when added to Queue."}
+            if self._is_playlist_url(requested):
+                data = self._extract(requested, flat=True)
+                entries = data.get("entries") or []
+                count = sum(1 for item in entries if isinstance(item, dict) and (item.get("id") or item.get("video_id") or item.get("videoId")))
+                if not count:
+                    raise RuntimeError("The playlist returned no usable video entries.")
+                thumbnail = str(data.get("thumbnail") or "")
+                if not thumbnail:
+                    candidates = [item for item in (data.get("thumbnails") or []) if isinstance(item, dict) and item.get("url")]
+                    candidates.sort(key=lambda item: int(item.get("width") or 0) * int(item.get("height") or 0), reverse=True)
+                    thumbnail = str(candidates[0].get("url") or "") if candidates else ""
+                return {"_kind": "preview", "title": str(data.get("title") or "YouTube Playlist"),
+                        "id": str(data.get("id") or ""), "uploader": str(data.get("uploader") or data.get("channel") or ""),
+                        "album": "", "duration": f"{count} videos", "webpageUrl": requested,
+                        "thumbnail": thumbnail, "isPlaylist": True, "playlistCount": count,
+                        "heights": default_heights, "formatCount": 0,
+                        "description": "Per-video formats are checked as each queue item starts."}
             resolved_match = None
             source_url = requested
             if not self._is_http_url(requested):
