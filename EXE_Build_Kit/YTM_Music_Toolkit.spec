@@ -23,7 +23,7 @@ if not os.path.isfile(SOURCE):
         + "\nRun EXE_Build_Kit\\Download-Requirements.bat first."
     )
 
-required_binaries = ["yt-dlp.exe", "deno.exe", "ffmpeg.exe", "ffprobe.exe"]
+required_binaries = ["yt-dlp.exe", "deno.exe", "ffmpeg.exe", "ffprobe.exe", "aria2c.exe"]
 app_binaries = []
 
 for filename in required_binaries:
@@ -63,6 +63,15 @@ packages_to_collect = [
 app_datas = []
 app_binaries_from_packages = []
 app_hiddenimports = ["typing_extensions"]
+
+# Preserve the bundled aria2 license inside the EXE payload for redistribution.
+ARIA2_LICENSE = os.path.join(ASSETS, "aria2-LICENSE.txt")
+if not os.path.isfile(ARIA2_LICENSE):
+    raise FileNotFoundError(
+        "aria2 license text is missing: " + ARIA2_LICENSE
+        + "\nRun EXE_Build_Kit\\Download-Requirements.bat first."
+    )
+app_datas.append((ARIA2_LICENSE, "licenses"))
 
 for package_name in packages_to_collect:
     package_datas, package_binaries, package_hiddenimports = collect_all(package_name)
