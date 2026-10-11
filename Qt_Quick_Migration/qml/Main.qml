@@ -506,10 +506,13 @@ font.bold: true }
         }
         function onQueueChanged(items) { root.queueItems = items }
         function onOperationFinished(id, ok, message) {
-            root.isPaused = false
+            var isDownloadOperation = id.indexOf("download-") === 0 || id.indexOf("queue-run-") === 0
             root.appendLog((ok ? "SUCCESS: " : "FAILED: ") + message)
-            if (ok && root.downloadPercent < 100)
-                root.downloadPercent = 100
+            if (isDownloadOperation) {
+                root.isPaused = false
+                if (ok)
+                    root.downloadPercent = 100
+            }
         }
         function onMetadataLoaded(data) { root.metadataValues = data
 if (data.thumbnail) root.metadataThumbnail = data.thumbnail }
