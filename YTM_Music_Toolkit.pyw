@@ -4365,8 +4365,21 @@ class YTMMusicToolkit(ctk.CTk):
 
                 self._current_tab_name = target_tab
 
+                # CTkTabview schedules its old-page cleanup 100 ms later. Hide
+                # every non-current page immediately so the outgoing tab cannot
+                # remain layered underneath the new one for a frame.
+                try:
+                    self.tabs._grid_forget_all_tabs(exclude_name=target_tab)
+                except Exception:
+                    for page_name, page in getattr(self.tabs, "_tab_dict", {}).items():
+                        if page_name != target_tab:
+                            try:
+                                page.grid_forget()
+                            except Exception:
+                                pass
+
                 # Flush Tk's geometry/drawing queue between hiding the old page
-                # and starting the new page's entrance; this removes the stale-frame flash.
+                # and starting the new page's entrance; this prevents stale-frame bleed.
                 self.tabs.update_idletasks()
                 self.update_idletasks()
                 self.animate_tab_in(target_tab)
