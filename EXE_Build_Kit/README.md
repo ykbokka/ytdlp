@@ -1,39 +1,57 @@
 # YTM Music Toolkit — One-File EXE Build Kit
 
-This kit builds a **single Windows GUI executable** from the released `YTM_Music_Toolkit.pyw`. The output is `dist\YTM Music Toolkit.exe`.
+This kit builds a **single-file Windows GUI executable** at `dist\\YTM Music Toolkit.exe`. The intended end-user machine does not need Python, pip, Deno, yt-dlp, FFmpeg, or FFprobe installed separately.
 
-## What the build bundles
+## What the EXE bundles
 
-- Python runtime and Python package dependencies via PyInstaller.
-- `yt-dlp.exe`.
-- Deno, used by yt-dlp for YouTube JavaScript challenge solving.
-- FFmpeg and FFprobe, used for media merging and processing.
+- The Python interpreter/runtime and the application source.
+- The Python standard-library modules required by the application.
+- Third-party packages, their collected package data, native extensions, and hidden imports.
+- Explicit `ytmusicapi` locale files required by gettext translations.
+- `yt-dlp.exe`, including the EJS scripts shipped in the official standalone build.
+- Deno, the JavaScript runtime used by yt-dlp.
+- FFmpeg and FFprobe for media processing.
 
-The resulting EXE is designed not to require the end user to separately install Python, Deno, yt-dlp, or FFmpeg. It still requires internet access for online services and may need the user's own cookies for account-specific features. Cookies and personal media are never downloaded or embedded by this builder.
+The spec intentionally fails the build if required helper executables or the expected `ytmusicapi` locale directory are missing.
 
 ## Build
 
 1. Download the repository ZIP and extract it.
-2. Keep the `EXE_Build_Kit` folder together.
-3. Run `Build.bat`.
-4. Let the builder download the app source and required external binaries, then install build dependencies.
-5. Find the result at `EXE_Build_Kit\dist\YTM Music Toolkit.exe`.
+2. Run `EXE_Build_Kit\\Build.bat`.
+3. Wait for the builder to download its build-time assets and create the isolated build environment.
+4. Find the result at `EXE_Build_Kit\\dist\\YTM Music Toolkit.exe`.
 
-The build machine needs a supported Python 3.10–3.14 installation and internet access. The script prefers an existing Python runtime; it does not silently install Python.
+The **build machine** needs a supported Python 3.10–3.14 installation and internet access. That is only for compiling the EXE; the **end-user machine** does not need Python installed.
 
-## Important
+## What "standalone" means — and what it cannot mean
 
-- This is a **one-file** PyInstaller build. On launch, bundled files are extracted to a temporary runtime directory; that is normal.
-- The EXE may be large because it contains the media tools and JavaScript runtime.
-- YouTube's EJS challenge components may still be fetched by yt-dlp at runtime, so internet access is still required.
-- Windows Defender or other antivirus software may scrutinize unsigned PyInstaller executables. Do not distribute the build until you have tested it.
-- This script has not been validated by a completed Windows build yet. Run it, test downloads, playlist handling, metadata, cover art, and media merging before releasing the EXE.
-- The FFmpeg package is sourced from Gyan's Windows builds. Review the applicable FFmpeg/build licensing terms before redistributing a compiled EXE.
-- Your config file (`%USERPROFILE%\.ytm_music_toolkit.json`), failure logs (`%USERPROFILE%\Documents\YTDLP\`), cookies, and downloaded media are outside the EXE and are not removed by the build.
+The application is packaged to run on a fresh, supported Windows 11 installation without separately installing its software dependencies. The EXE still needs:
+
+- Internet access for YouTube / YouTube Music and other online services.
+- A valid user session or authentication when a feature accesses account-specific content such as Liked Music. A Windows reset removes browser sessions and local authentication files; the EXE cannot recreate or preserve those credentials.
+- Normal Windows facilities and permissions, including access to a writable temporary directory and a destination for downloads.
+
+User-specific settings, authentication files, downloads, and failure logs are intentionally kept outside the EXE. They are created or supplied at runtime and are not build dependencies. Do not embed personal cookies or account credentials in a distributable EXE.
+
+## One-file behavior
+
+PyInstaller extracts bundled files into a temporary runtime directory when the EXE starts. That is normal and does not mean the user needs to install those components. The EXE may be large because it contains the Python runtime, libraries, and media tools.
+
+## Validation before release
+
+A successful build alone does not prove portability. Test the resulting EXE on a clean Windows 11 VM or another Windows installation without Python, Deno, yt-dlp, or FFmpeg installed. Verify launch, YouTube Music Liked Music access after authentication, a download, metadata, cover art, and media merging. Also check that no dependency is accidentally being loaded from the build folder or system PATH.
+
+The script has not itself run a clean-machine validation. Do not call the build fully verified until that test passes.
+
+## Licensing and security
+
+- The FFmpeg package is sourced from Gyan's Windows builds. Review applicable licensing terms before redistribution.
+- yt-dlp, Deno, Python, and bundled libraries have their own licensing terms.
+- Windows Defender or other antivirus software may scrutinize unsigned PyInstaller executables. Test the output before distributing it.
 
 ## Files
 
 - `Build.bat` — double-click entry point.
-- `Build-EXE.ps1` — downloads build assets and invokes PyInstaller using the spec file.
-- `YTM_Music_Toolkit.spec` — defines the one-file EXE, collected Python packages, and bundled media executables.
-- `requirements-build.txt` — Python build dependencies.
+- `Build-EXE.ps1` — downloads build assets and invokes PyInstaller.
+- `YTM_Music_Toolkit.spec` — defines the one-file executable and collected resources.
+- `requirements-build.txt` — dependencies used only to build the EXE.
