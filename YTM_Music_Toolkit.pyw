@@ -9997,7 +9997,7 @@ def _v3_save_config_final(self):
             data = {}
         data.update({
             "config_version": 5,
-            "performance_mode": getattr(self, "performance_mode", "balanced"),
+            "performance_mode": getattr(self, "performance_mode", "aggressive"),
             "conflict_mode": getattr(self, "conflict_mode", "rename"),
         })
         Path(CONFIG_FILE).write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
