@@ -4,3 +4,4 @@ requests>=2.31
 mutagen>=1.47
 yt-dlp
 ytmusicapi
+psutil
