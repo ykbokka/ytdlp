@@ -45,7 +45,7 @@ jobs:
         working-directory: Qt_Quick_Migration
         env:
           QT_QPA_PLATFORM: offscreen
-        run: python -m unittest test_backend.py -v
+        run: python -m unittest test_backend.py test_ytmusic_resolver.py -v
 
       - name: Load QML in offscreen Qt Quick
         working-directory: Qt_Quick_Migration
