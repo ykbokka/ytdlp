@@ -1,6 +1,10 @@
 @echo off
 setlocal
-title YTM Music Toolkit — One-File EXE Builder
+title YTM Music Toolkit - Assemble EXE Only
+echo This step only assembles the EXE from prepared build files.
+echo It does not download requirements or install packages.
+echo If this is the first build, run Download-Requirements.bat first.
+echo.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0Build-EXE.ps1"
 set "RESULT=%ERRORLEVEL%"
 echo.
