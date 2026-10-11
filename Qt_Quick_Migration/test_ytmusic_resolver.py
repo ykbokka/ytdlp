@@ -90,11 +90,11 @@ class YTMResolverTests(unittest.TestCase):
     def test_artist_match_is_based_on_contributing_artists(self):
         self.assertTrue(ytmusic_resolver.exact_artist_name_match(
             "Artist A & Artist B",
-            [{"name": "Artist A"}, {"name": "Artist B"}],
+            ["Artist A", "Artist B"],
         ))
         self.assertFalse(ytmusic_resolver.exact_artist_name_match(
             "Artist A",
-            [{"name": "Album Artist"}],
+            ["Album Artist"],
         ))
         self.assertEqual(
             ytmusic_resolver.canonicalize_thumbnail_url("https://img.example/cover=w544-h544-l90-rj"),
