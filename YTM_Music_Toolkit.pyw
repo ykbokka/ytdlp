@@ -250,9 +250,15 @@ def get_ytdlp_runtime_args(performance_mode="aggressive"):
     return args
 
 
-def build_native_ytdlp_fallback_command(command):
+def build_native_ytdlp_fallback_command(command, performance_mode="aggressive"):
     """Remove aria2c routing and fall back to yt-dlp's native HTTP downloader."""
     source = list(command or [])
+    mode = str(performance_mode or "aggressive").strip().lower()
+    chunk_size = {
+        "conservative": "5M",
+        "balanced": "10M",
+        "aggressive": "16M",
+    }.get(mode, "16M")
     fallback = []
     i = 0
 
@@ -280,7 +286,7 @@ def build_native_ytdlp_fallback_command(command):
     # This fallback is used only after an aria2c-specific failure. Chunked HTTP
     # is experimental, but gives the native downloader a different strategy.
     if "--http-chunk-size" not in fallback:
-        fallback[1:1] = ["--http-chunk-size", "10M"]
+        fallback[1:1] = ["--http-chunk-size", chunk_size]
 
     return fallback
 
@@ -5565,7 +5571,10 @@ class YTMMusicToolkit(ctk.CTk):
         if return_code != 0:
             aria2_failed = any("aria2c" in line.lower() for line in output_lines)
             fallback_command = (
-                build_native_ytdlp_fallback_command(command)
+                build_native_ytdlp_fallback_command(
+                    command,
+                    getattr(self, "performance_mode", "aggressive"),
+                )
                 if aria2_failed
                 else None
             )
