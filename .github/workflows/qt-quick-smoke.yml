@@ -85,3 +85,16 @@ jobs:
         env:
           QT_QPA_PLATFORM: offscreen
         run: python smoke_test.py
+
+      - name: Parse PowerShell installer and bundler
+        shell: powershell
+        run: |
+          $files = @(
+            "Qt_Quick_Migration/Install-Dependencies.ps1",
+            "Qt_Quick_Migration/Build-Prototype-EXE.ps1"
+          )
+          foreach ($file in $files) {
+            $source = [System.IO.File]::ReadAllText((Resolve-Path $file))
+            [void][scriptblock]::Create($source)
+            Write-Host "PowerShell syntax passed: $file"
+          }
