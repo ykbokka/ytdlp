@@ -498,6 +498,9 @@ font.bold: true }
                 for (var i = 0; i < data.heights.length; ++i)
                     choices.push(String(data.heights[i]) + "p")
             }
+            var previousQuality = root.quality
+            if (previousQuality && previousQuality !== "Best available" && choices.indexOf(previousQuality) < 0)
+                choices.push(previousQuality)
             root.qualityOptions = choices
             if (choices.indexOf(root.quality) < 0)
                 root.quality = choices[0]
