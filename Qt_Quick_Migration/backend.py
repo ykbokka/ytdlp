@@ -80,6 +80,36 @@ def cookie_is_valid(path: str | Path) -> bool:
         return False
 
 
+def write_failure_log(context: str, exc: Any, details: str = "") -> str:
+    """Write detailed diagnostics without serializing cookies or auth headers."""
+    directory = Path.home() / "Documents" / "YTDLP"
+    safe_context = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(context or "failure")).strip("._") or "failure"
+    stamp = time.strftime("%Y%m%d_%H%M%S")
+    unique = time.time_ns() % 1_000_000_000
+    log_path = directory / f"FAILURE_{stamp}_{unique:09d}_{safe_context}.log"
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        if isinstance(exc, BaseException):
+            exception_text = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+        else:
+            exception_text = str(exc or "Unknown failure")
+        lines = [
+            "YOUTUBE TOOLKIT FAILURE LOG",
+            "=" * 72,
+            f"Time: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+            f"Context: {safe_context}",
+            "",
+            "Exception / traceback:",
+            exception_text,
+        ]
+        if details:
+            lines.extend(["", "Additional details:", str(details)])
+        log_path.write_text("\\n".join(lines) + "\\n", encoding="utf-8")
+        return str(log_path)
+    except OSError:
+        return ""
+
+
 def get_ytdlp() -> list[str]:
     exe = find_tool("yt-dlp")
     if exe:
@@ -322,8 +352,9 @@ class ToolkitBackend(QObject):
             self.operationFinished.emit(key, False, message)
             self._record_history(key.split("-", 1)[0], False, message)
             return
-        self._log(f"{key} failed: {last}")
-        self.statusChanged.emit(f"Operation failed: {last}")
+        log_path = write_failure_log(key.split("-", 1)[0], trace, details=f"Operation id: {key}")
+        self._log(f"{key} failed: {last}" + (f" | Diagnostic log: {log_path}" if log_path else ""))
+        self.statusChanged.emit(f"Operation failed: {last}" + (f" · Log: {log_path}" if log_path else ""))
         self.operationFinished.emit(key, False, last)
         self._record_history(key.split("-", 1)[0], False, last)
 
