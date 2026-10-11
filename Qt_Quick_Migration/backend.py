@@ -334,24 +334,85 @@ class ToolkitBackend(QObject):
         except (TypeError, ValueError):
             return "—"
 
+    @staticmethod
+    def _is_http_url(value):
+        return str(value or "").strip().lower().startswith(("http://", "https://"))
+
+    @staticmethod
+    def _is_playlist_url(value):
+        value = str(value or "").strip()
+        try:
+            parsed = urllib.parse.urlparse(value)
+            query = urllib.parse.parse_qs(parsed.query)
+            return bool(query.get("list")) or "/playlist" in parsed.path.lower()
+        except Exception:
+            return False
+
+    @staticmethod
+    def _is_liked_music_url(value):
+        value = str(value or "").strip()
+        try:
+            parsed = urllib.parse.urlparse(value)
+            query = urllib.parse.parse_qs(parsed.query)
+            return str((query.get("list") or [""])[0]).upper() == "LM"
+        except Exception:
+            return "list=LM" in value.upper()
+
+    def _resolve_user_input(self, value):
+        value = str(value or "").strip()
+        if self._is_http_url(value):
+            return value
+        artist, title = split_artist_title(value)
+        match = YTMResolver().search(artist, title, "")
+        if not match:
+            raise RuntimeError("No exact contributing-artist YouTube Music match was found. Try 'Artist - Title' or paste a direct URL.")
+        video_id = str(match.get("video_id") or "").strip()
+        if not video_id:
+            raise RuntimeError("The YouTube Music result did not include a usable video ID.")
+        self._log(f"Search resolved to {match.get('artist') or 'Unknown artist'} — {match.get('title') or video_id} ({match.get('source') or 'YT Music'})")
+        return f"https://www.youtube.com/watch?v={video_id}"
+
     @Slot(str)
     def preview(self, url):
-        url = str(url or "").strip()
-        if not url:
-            self.statusChanged.emit("Paste a YouTube URL first.")
+        requested = str(url or "").strip()
+        if not requested:
+            self.statusChanged.emit("Paste a YouTube URL or enter Artist - Title.")
             return
+
         def work():
-            data = self._extract(url)
+            if self._is_liked_music_url(requested):
+                tracks = YTMResolver().liked_songs(cookie_path=self.cookie_path)
+                return {"_kind": "preview", "title": "YouTube Music Liked Music",
+                        "id": "LM", "uploader": "Your library", "album": "",
+                        "duration": "—", "webpageUrl": requested, "thumbnail": "",
+                        "isPlaylist": True, "playlistCount": len(tracks), "heights": [],
+                        "formatCount": 0, "description": "Account-bound playlist; tracks are loaded into Queue."}
+            resolved_match = None
+            source_url = requested
+            if not self._is_http_url(requested):
+                artist, title = split_artist_title(requested)
+                resolved_match = YTMResolver().search(artist, title, "")
+                if not resolved_match or not resolved_match.get("video_id"):
+                    raise RuntimeError("No matching YouTube Music song was found. Use 'Artist - Title' or paste a URL.")
+                source_url = f"https://www.youtube.com/watch?v={resolved_match['video_id']}"
+            data = self._extract(source_url)
             formats = data.get("formats") or []
             heights = sorted({int(x["height"]) for x in formats if x.get("height") and x.get("vcodec") != "none"}, reverse=True)
-            return {"_kind": "preview", "title": data.get("title") or data.get("id") or "Untitled",
-                    "id": str(data.get("id") or ""), "uploader": str(data.get("artist") or data.get("creator") or data.get("uploader") or data.get("channel") or ""),
-                    "album": str(data.get("album") or ""), "duration": self._duration(data.get("duration")),
-                    "thumbnail": str(data.get("thumbnail") or ""), "webpageUrl": str(data.get("webpage_url") or url),
-                    "heights": heights, "formatCount": len(formats), "uploadDate": str(data.get("upload_date") or ""),
-                    "description": str(data.get("description") or "")[:1000]}
-        self.statusChanged.emit("Inspecting source…")
-        self._log(f"Inspecting: {url}")
+            title = (resolved_match or {}).get("title") or data.get("title") or data.get("id") or "Untitled"
+            artist = (resolved_match or {}).get("artist") or data.get("artist") or data.get("creator") or data.get("uploader") or data.get("channel") or ""
+            album = (resolved_match or {}).get("album") or data.get("album") or ""
+            thumb = (resolved_match or {}).get("cover_url") or data.get("thumbnail") or ""
+            result = {"_kind": "preview", "title": str(title), "id": str(data.get("id") or ""),
+                      "uploader": str(artist), "album": str(album), "duration": self._duration(data.get("duration")),
+                      "thumbnail": str(thumb), "webpageUrl": str(data.get("webpage_url") or source_url),
+                      "heights": heights, "formatCount": len(formats), "uploadDate": str(data.get("upload_date") or ""),
+                      "description": str(data.get("description") or "")[:1000], "resolvedUrl": source_url}
+            if resolved_match:
+                result["source"] = resolved_match.get("source") or ""
+            return result
+
+        self.statusChanged.emit("Inspecting URL or resolving YouTube Music search…")
+        self._log(f"Preview requested: {requested}")
         self._run_async("preview", work)
 
     def _format_args(self, file_type, quality, audio_format):
@@ -676,23 +737,31 @@ class ToolkitBackend(QObject):
 
     @Slot(str, str, str, str, str)
     def startDownload(self, url, file_type, quality, audio_format, subtitles):
+        requested = str(url or "").strip()
         if self.download_active:
             self.statusChanged.emit("A download is already active.")
             return
-        if not str(url or "").strip():
-            self.statusChanged.emit("Paste a URL first.")
+        if not requested:
+            self.statusChanged.emit("Paste a URL or enter Artist - Title first.")
+            return
+        if self._is_playlist_url(requested):
+            self.addQueueUrl(requested)
             return
         self.cancel_event.clear()
         self.download_active = True
         def work():
             try:
-                self._download_one(url, file_type, quality, audio_format, subtitles)
+                actual_url = self._resolve_user_input(requested)
+                if actual_url != requested:
+                    self.statusChanged.emit("YouTube Music match resolved; starting exact video download…")
+                self.download_percent = 0
+                self._download_one(actual_url, file_type, quality, audio_format, subtitles)
                 return {"_kind": "download", "ok": True, "message": "Download finished successfully."}
             finally:
                 self.download_active = False
         self.last_operation_id = self._run_async("download", work)
         self.statusChanged.emit("Download started.")
-        self._log(f"Download requested: {url}")
+        self._log(f"Download requested: {requested}")
 
     @Slot(result=bool)
     def togglePause(self):
@@ -775,30 +844,59 @@ class ToolkitBackend(QObject):
         if not url:
             self.statusChanged.emit("Paste a URL to add it to the queue.")
             return
+
         def work():
+            if self._is_liked_music_url(url):
+                tracks = YTMResolver().liked_songs(cookie_path=self.cookie_path)
+                rows = []
+                for track in tracks:
+                    rows.append({
+                        "id": uuid.uuid4().hex[:10],
+                        "title": str(track.get("title") or track.get("video_id") or "Liked track"),
+                        "url": str(track.get("source_url") or ""),
+                        "status": "Pending",
+                        "duration": str(track.get("duration") or "—"),
+                    })
+                if not rows:
+                    raise RuntimeError("Liked Music did not return any usable tracks.")
+                return {"_kind": "queue", "items": self.queue_items + rows,
+                        "message": f"Added {len(rows)} Liked Music tracks to the queue."}
             try:
                 data = self._extract(url, flat=True)
                 entries = data.get("entries")
                 rows = []
                 if isinstance(entries, list) and entries:
+                    seen = set()
                     for entry in entries:
-                        if not entry:
+                        if not isinstance(entry, dict):
                             continue
-                        vid = str(entry.get("id") or "")
-                        source = str(entry.get("webpage_url") or entry.get("url") or "")
+                        vid = str(entry.get("id") or entry.get("video_id") or entry.get("videoId") or "").strip()
+                        source = str(entry.get("webpage_url") or entry.get("url") or "").strip()
                         if vid and not source.startswith(("http://", "https://")):
                             source = f"https://www.youtube.com/watch?v={vid}"
-                        if source:
-                            rows.append({"id": uuid.uuid4().hex[:10], "title": str(entry.get("title") or vid or source),
-                                         "url": source, "status": "Pending", "duration": self._duration(entry.get("duration"))})
+                        if source and source not in seen:
+                            seen.add(source)
+                            rows.append({"id": uuid.uuid4().hex[:10],
+                                         "title": str(entry.get("title") or vid or source),
+                                         "url": source, "status": "Pending",
+                                         "duration": self._duration(entry.get("duration"))})
                 if not rows:
-                    rows.append({"id": uuid.uuid4().hex[:10], "title": str(data.get("title") or url),
-                                 "url": str(data.get("webpage_url") or url), "status": "Pending", "duration": self._duration(data.get("duration"))})
-                return {"_kind": "queue", "items": self.queue_items + rows, "message": f"Added {len(rows)} item(s) to queue."}
+                    source = str(data.get("webpage_url") or url)
+                    rows.append({"id": uuid.uuid4().hex[:10],
+                                 "title": str(data.get("title") or url),
+                                 "url": source, "status": "Pending",
+                                 "duration": self._duration(data.get("duration"))})
+                return {"_kind": "queue", "items": self.queue_items + rows,
+                        "message": f"Added {len(rows)} item(s) to queue."}
             except Exception:
-                return {"_kind": "queue", "items": self.queue_items + [{"id": uuid.uuid4().hex[:10], "title": url, "url": url, "status": "Pending", "duration": "—"}],
-                        "message": "Added URL to queue; it will be inspected when downloading."}
-        self.statusChanged.emit("Resolving playlist for queue…")
+                if self._is_playlist_url(url):
+                    raise
+                return {"_kind": "queue", "items": self.queue_items + [{
+                    "id": uuid.uuid4().hex[:10], "title": url, "url": url,
+                    "status": "Pending", "duration": "—"
+                }], "message": "Added URL to queue; details will be resolved when downloading."}
+
+        self.statusChanged.emit("Resolving URL / playlist for queue…")
         self._run_async("queue-add", work)
 
     @Slot(str)
