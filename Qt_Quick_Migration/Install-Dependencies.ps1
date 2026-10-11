@@ -166,7 +166,7 @@ try {
     # Bundle third-party notices with the app where upstream license texts are available.
     $NoticeSources = @(
         @{ Url = "https://raw.githubusercontent.com/yt-dlp/yt-dlp/master/LICENSE"; Path = (Join-Path $Licenses "yt-dlp-LICENSE") },
-        @{ Url = "https://raw.githubusercontent.com/denoland/deno/main/LICENSE"; Path = (Join-Path $Licenses "Deno-LICENSE") },
+        @{ Url = "https://raw.githubusercontent.com/denoland/deno/main/LICENSE.md"; Path = (Join-Path $Licenses "Deno-LICENSE") },
         @{ Url = "https://raw.githubusercontent.com/aria2/aria2/release-1.37.0/COPYING"; Path = (Join-Path $Licenses "aria2-COPYING") }
     )
     foreach ($Notice in $NoticeSources) {
@@ -181,7 +181,9 @@ try {
     Invoke-Native $Python @("-m", "pip", "install", "--disable-pip-version-check", "--progress-bar", "off", "--prefer-binary", "-r", $Requirements) "Python dependency installation failed"
     Invoke-Native $Python @("-m", "pip", "check") "Python package checks found dependency conflicts"
     $ImportCheck = "import PySide6, requests, PIL, mutagen, yt_dlp, ytmusicapi, psutil, PyInstaller, certifi; from PySide6.QtQml import QQmlApplicationEngine; import ytmusic_resolver; print('Python imports passed.')"
-    Invoke-Native $Python @("-c", $ImportCheck) "Required Python packages failed their import check"
+    Push-Location $Root
+    try { Invoke-Native $Python @("-c", $ImportCheck) "Required Python packages failed their import check" }
+    finally { Pop-Location }
 
     Write-Host ""
     Write-Host "DEPENDENCIES READY." -ForegroundColor Green
