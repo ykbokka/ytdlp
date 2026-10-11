@@ -1753,8 +1753,8 @@ class YTMResolver:
                     "first_video_url": "",
                 }
 
-            # Playlist preview: fetch all item IDs, then inspect every distinct
-            # video separately so the menu reflects real playlist formats.
+            # Playlist preview: fetch the playlist title and item IDs only. Actual
+            # format inspection is delayed until each item is about to download.
             if is_playlist_url(url):
                 def _playlist_attempt(cookie_args):
                     return run_json([
