@@ -634,11 +634,15 @@ class ToolkitBackend(QObject):
                                   "-metadata:s:t", "filename=cover.jpg"])
             if self.conflict_mode == "replace":
                 merge_cmd.append("-y")
-            merge_cmd.append(str(final_path))
+            staged_final = temp / final_path.name
+            merge_cmd.append(str(staged_final))
             self.statusChanged.emit("Muxing video and language-specific FLAC audio tracks…")
             self._log(f"Merging {len(audio_paths)} FLAC audio track(s) into {final_path.name}")
             self.progressChanged.emit(90, "Muxing audio tracks into MKV")
             self._run_stage(merge_cmd, "Mux", 90, 10)
+            if not staged_final.is_file() or staged_final.stat().st_size <= 0:
+                raise RuntimeError("FFmpeg finished without producing the staged MKV output.")
+            os.replace(staged_final, final_path)
 
             if subtitles in {"Auto subtitles", "Manual subtitles"}:
                 subtitle_cmd = self._base_command(True) + ["--no-playlist", "--skip-download",
