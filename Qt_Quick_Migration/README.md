@@ -8,16 +8,16 @@ Qt Quick provides built-in declarative transitions and animations. The UI can an
 
 ## Run the prototype
 
-Use Python 3.12+ in a fresh virtual environment and install the dependency:
+Create a fresh virtual environment with your installed Python and install the one prototype dependency:
 
 ```powershell
-py -3.12 -m venv .venv
+py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install --upgrade pip
 .\.venv\Scripts\python.exe -m pip install -r Qt_Quick_Migration\requirements.txt
 .\.venv\Scripts\python.exe Qt_Quick_Migration\main.py
 ```
 
-If your existing source environment uses a different Python version, use a version supported by the PySide6 wheel available for that interpreter. Keep this prototype's environment separate from the current app while we validate compatibility.
+If `pip` cannot find a PySide6 wheel for that interpreter, use a Python version supported by the current PySide6 release. Keep this prototype's environment separate from the current app while we validate compatibility.
 
 ## Current scope
 
