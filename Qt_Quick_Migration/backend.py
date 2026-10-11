@@ -825,15 +825,14 @@ class ToolkitBackend(QObject):
         return (value[:150] or "Untitled")
 
     @staticmethod
-    def _media_stem(title, video_id):
-        """Build a predictable filename while isolating RTL titles from the LTR ID suffix."""
+    def _media_stem(title):
+        """Build a clean title-only filename and keep mixed Arabic/Latin text readable."""
         safe_title = ToolkitBackend._safe_name(title)
-        # RLI/PDI are invisible Unicode bidi controls. They preserve the stored
-        # Arabic text exactly; they guide Explorer and other file managers to
-        # render the title as an RTL run without reversing its characters.
+        # RLI/PDI preserve the logical Arabic text and help file managers display
+        # mixed Arabic/Latin titles in the correct visual order.
         if re.search(r"[\u0590-\u08ff\ufb1d-\ufdfd\ufe70-\ufefc]", safe_title):
             safe_title = "\u2067" + safe_title + "\u2069"
-        return ToolkitBackend._safe_name(f"{safe_title} [{video_id}]")
+        return safe_title
 
     @staticmethod
     def _language_label(code):
@@ -946,7 +945,7 @@ class ToolkitBackend(QObject):
             metadata = self._metadata_for_source(info, url, metadata_result)
             title = str(metadata.get("title") or info.get("track") or info.get("title") or info.get("id") or "Untitled")
             video_id = str(info.get("id") or uuid.uuid4().hex[:8])
-            final_stem = self._media_stem(title, video_id)
+            final_stem = self._media_stem(title)
             final_path = output / f"{final_stem}.mkv"
             if self.conflict_mode == "rename":
                 suffix = 2
@@ -1167,7 +1166,7 @@ class ToolkitBackend(QObject):
             metadata = self._metadata_for_source(info, url, metadata_result)
             title = str(metadata.get("title") or info.get("track") or info.get("title") or info.get("id") or "Untitled")
             video_id = str(info.get("id") or metadata.get("video_id") or uuid.uuid4().hex[:8])
-            guessed_stem = self._media_stem(title, video_id)
+            guessed_stem = self._media_stem(title)
             expected_extension = {
                 "FLAC": ".flac", "MP3": ".mp3", "M4A": ".m4a", "Opus": ".opus"
             }.get(audio_format, ".flac") if file_type == "Audio only" else (
@@ -1277,7 +1276,7 @@ class ToolkitBackend(QObject):
             source_stem = media_source.stem
             self._apply_download_metadata(media_source, metadata)
 
-            desired_stem = self._media_stem(metadata.get("title") or source_stem, metadata.get("video_id") or video_id)
+            desired_stem = self._media_stem(metadata.get("title") or source_stem)
             desired_name = desired_stem + media_source.suffix.lower()
             media_target = output / desired_name
             if self.conflict_mode == "skip":
