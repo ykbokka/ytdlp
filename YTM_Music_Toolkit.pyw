@@ -232,7 +232,9 @@ def get_ytdlp_runtime_args(performance_mode="aggressive"):
             "--downloader", "aria2c",
             "--downloader", "dash,m3u8:native",
             "--downloader-args",
-            f"aria2c:-x {connections} -s {connections} -k {profile['split']} --file-allocation=none",
+            f"aria2c:-x {connections} -s {connections} -k {profile['split']} "
+            "--file-allocation=none --no-conf=true "
+            "--max-download-limit=0 --max-overall-download-limit=0",
         ])
     else:
         # Chunked native HTTP can help some servers that throttle long responses.
