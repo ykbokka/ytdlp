@@ -7,7 +7,7 @@ from pathlib import Path
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
 from PySide6.QtCore import QUrl
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QFont, QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
 from backend import ToolkitBackend, write_failure_log
@@ -15,6 +15,7 @@ from backend import ToolkitBackend, write_failure_log
 
 def main() -> int:
     app = QGuiApplication(sys.argv)
+    app.setFont(QFont("Dubai"))
     app.setApplicationName("YouTube Toolkit")
     app.setOrganizationName("YouTube Toolkit")
 
