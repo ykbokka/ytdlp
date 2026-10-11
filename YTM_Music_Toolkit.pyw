@@ -20,8 +20,8 @@ from io import BytesIO
 
 import requests
 import customtkinter as ctk
-from tkinter import filedialog, messagebox, Misc, StringVar
-from PIL import Image, ImageOps
+from tkinter import filedialog, messagebox, Misc, StringVar, Canvas, Toplevel
+from PIL import Image, ImageDraw, ImageGrab, ImageOps, ImageTk
 
 from mutagen.flac import FLAC, Picture, StreamInfo
 from mutagen.id3 import ID3, TIT2, TPE1, TALB, TDRC, APIC
@@ -2838,6 +2838,15 @@ class YTMMusicToolkit(ctk.CTk):
         self.minsize(860, 760)
         self.configure(fg_color=APPLE_ROOT_BG)
 
+        self._startup_alpha_enabled = False
+        self._window_restore_pending = False
+        self._window_intro_started = False
+        try:
+            self.attributes("-alpha", 0.0)
+            self._startup_alpha_enabled = True
+        except Exception:
+            pass
+
         icon_path = os.path.join(RESOURCE_DIR, "app.ico")
 
         if os.path.exists(icon_path):
@@ -2914,10 +2923,9 @@ class YTMMusicToolkit(ctk.CTk):
         self.build_header()
         self.build_tabs()
 
-        # Subtle UI motion: window fade-in, smooth hover/focus effects,
-        # card border glow, and soft tab entrance transitions.
-        self.after(80, self.install_transitions)
-        self.after(30, self.animate_window_in)
+        # Prepare the final theme and interaction bindings before the first
+        # visible frame, then run one clean entrance animation.
+        self.after_idle(self.finish_ui_startup)
 
         if pyi_splash and pyi_splash.is_alive():
             try:
@@ -3873,19 +3881,88 @@ class YTMMusicToolkit(ctk.CTk):
 
         tick()
 
-    def animate_window_in(self):
+    def finish_ui_startup(self):
         try:
-            self.attributes("-alpha", 0.0)
+            self.install_transitions()
+            self.update_idletasks()
+        except Exception as exc:
+            write_failure_log("ui_startup_prepare", exc)
+        self.animate_window_in()
+
+
+    def animate_window_in(self):
+        if getattr(self, "_window_intro_started", False):
+            return
+        self._window_intro_started = True
+
+        try:
+            if not getattr(self, "_startup_alpha_enabled", False):
+                self.attributes("-alpha", 0.0)
+            self.update_idletasks()
         except Exception:
             return
 
         def update(amount):
             try:
-                self.attributes("-alpha", 0.15 + (0.85 * amount))
+                self.attributes("-alpha", amount)
             except Exception:
                 pass
 
-        self._animate("window_alpha", 280, update)
+        def done():
+            try:
+                self.attributes("-alpha", 1.0)
+            except Exception:
+                pass
+
+        self._animate("window_alpha", 360, update, done)
+
+
+    def remember_window_minimize(self, event=None):
+        if event is not None and getattr(event, "widget", self) is not self:
+            return
+
+        def check_state():
+            try:
+                if str(self.state()).lower() == "iconic":
+                    self._window_restore_pending = True
+            except Exception:
+                pass
+
+        try:
+            self.after_idle(check_state)
+        except Exception:
+            check_state()
+
+
+    def animate_window_restore(self, event=None):
+        if event is not None and getattr(event, "widget", self) is not self:
+            return
+        if not getattr(self, "_window_restore_pending", False):
+            return
+
+        self._window_restore_pending = False
+
+        try:
+            if str(self.state()).lower() == "iconic":
+                self._window_restore_pending = True
+                return
+            self.attributes("-alpha", 0.86)
+        except Exception:
+            return
+
+        def update(amount):
+            try:
+                self.attributes("-alpha", 0.86 + (0.14 * amount))
+            except Exception:
+                pass
+
+        def done():
+            try:
+                self.attributes("-alpha", 1.0)
+            except Exception:
+                pass
+
+        self._animate("window_restore", 190, update, done)
 
     def animate_widget_color(
         self,
@@ -4043,60 +4120,161 @@ class YTMMusicToolkit(ctk.CTk):
         widget.bind("<FocusOut>", on_focus_out, add="+")
 
 
+    @staticmethod
+    def _tab_grid_pady_pair(widget):
+        info = widget.grid_info()
+        if not info:
+            return None
+
+        raw = info.get("pady", 0)
+        if isinstance(raw, str):
+            parts = raw.split()
+            if len(parts) >= 2:
+                return int(float(parts[0])), int(float(parts[1]))
+            if len(parts) == 1:
+                value = int(float(parts[0]))
+                return value, value
+            return 0, 0
+        if isinstance(raw, (tuple, list)):
+            if len(raw) >= 2:
+                return int(raw[0]), int(raw[1])
+            value = int(raw[0]) if raw else 0
+            return value, value
+        value = int(raw or 0)
+        return value, value
+
+
     def animate_tab_in(self, tab_name):
+        """Stagger visible panels into place so tabs feel like one coherent interface."""
         try:
             tab = self.tabs.tab(tab_name)
             children = list(tab.winfo_children())
         except Exception:
             return
 
+        records = []
         for index, widget in enumerate(children):
             try:
-                info = widget.grid_info()
-                if not info:
+                pair = self._tab_grid_pady_pair(widget)
+                if pair is None:
                     continue
-
-                raw_pady = info.get("pady", 0)
-                if isinstance(raw_pady, str):
-                    parts = raw_pady.split()
-                    if len(parts) == 2:
-                        final_top = int(float(parts[0]))
-                        final_bottom = int(float(parts[1]))
-                    elif parts:
-                        final_top = final_bottom = int(float(parts[0]))
-                    else:
-                        final_top = final_bottom = 0
-                elif isinstance(raw_pady, (tuple, list)):
-                    if len(raw_pady) == 2:
-                        final_top, final_bottom = map(int, raw_pady)
-                    else:
-                        final_top = final_bottom = int(raw_pady[0]) if raw_pady else 0
-                else:
-                    final_top = final_bottom = int(raw_pady or 0)
-
-                start_top = final_top + 10 + (index * 3)
+                final_top, final_bottom = pair
+                start_top = final_top + 13 + min(index, 4) * 3
                 start_bottom = final_bottom + 4
-
-                widget.grid_configure(
-                    pady=(start_top, start_bottom)
-                )
-
-                key = f"tab:{tab_name}:{id(widget)}"
-
-                def make_update(w=widget, st=start_top, sb=start_bottom, ft=final_top, fb=final_bottom):
-                    def update(amount):
-                        top = round(st + (ft - st) * amount)
-                        bottom = round(sb + (fb - sb) * amount)
-                        w.grid_configure(pady=(top, bottom))
-                    return update
-
-                self._animate(
-                    key,
-                    240 + index * 45,
-                    make_update(),
-                )
+                widget.grid_configure(pady=(start_top, start_bottom))
+                records.append((
+                    widget, index, start_top, start_bottom,
+                    final_top, final_bottom,
+                ))
             except Exception:
                 pass
+
+        if not records:
+            return
+
+        def update(amount):
+            for widget, index, start_top, start_bottom, final_top, final_bottom in records:
+                try:
+                    delay = min(0.28, index * 0.075)
+                    local = max(0.0, min(1.0, (amount - delay) / (1.0 - delay)))
+                    local = 1.0 - ((1.0 - local) ** 3)
+                    top = round(start_top + (final_top - start_top) * local)
+                    bottom = round(start_bottom + (final_bottom - start_bottom) * local)
+                    widget.grid_configure(pady=(top, bottom))
+                except Exception:
+                    pass
+
+        self._animate(f"tab_in:{tab_name}", 300, update)
+
+
+    def animate_tab_out(self, tab_name, on_done=None):
+        """Nudge the current panels out before the next page is mapped."""
+        try:
+            tab = self.tabs.tab(tab_name)
+            children = list(tab.winfo_children())
+        except Exception:
+            if on_done:
+                on_done()
+            return
+
+        records = []
+        for index, widget in enumerate(children):
+            try:
+                pair = self._tab_grid_pady_pair(widget)
+                if pair is None:
+                    continue
+                start_top, start_bottom = pair
+                end_top = max(0, start_top - 8 - min(index, 4) * 2)
+                end_bottom = max(0, start_bottom - 3)
+                records.append((widget, index, start_top, start_bottom, end_top, end_bottom))
+            except Exception:
+                pass
+
+        if not records:
+            if on_done:
+                on_done()
+            return
+
+        def update(amount):
+            for widget, index, start_top, start_bottom, end_top, end_bottom in records:
+                try:
+                    delay = min(0.18, index * 0.045)
+                    local = max(0.0, min(1.0, (amount - delay) / (1.0 - delay)))
+                    local = 1.0 - ((1.0 - local) ** 2)
+                    top = round(start_top + (end_top - start_top) * local)
+                    bottom = round(start_bottom + (end_bottom - start_bottom) * local)
+                    widget.grid_configure(pady=(top, bottom))
+                except Exception:
+                    pass
+
+        self._animate(f"tab_out:{tab_name}", 145, update, on_done)
+
+
+    def animate_tab_indicator(self, source_tab, target_tab):
+        """Move the selected pill through adjacent segment colors instead of snapping."""
+        try:
+            seg = self.tabs._segmented_button
+            buttons = getattr(seg, "_buttons_dict", {})
+            names = list(buttons.keys())
+            start_index = names.index(source_tab)
+            end_index = names.index(target_tab)
+        except Exception:
+            return
+
+        palette = (
+            getattr(self, "_apple_theme_transition_palette", None)
+            or APPLE_THEME_PALETTES.get(
+                getattr(self, "appearance_mode", "dark"),
+                APPLE_THEME_PALETTES["dark"],
+            )
+        )
+        base_color = palette["surface"]
+        selected_color = palette["blue"]
+        source_position = float(start_index)
+        target_position = float(end_index)
+
+        def update(amount):
+            position = source_position + (target_position - source_position) * amount
+            for index, name in enumerate(names):
+                try:
+                    distance = abs(float(index) - position)
+                    strength = max(0.0, 1.0 - (distance / 1.25))
+                    fill = self._blend_colors(base_color, selected_color, strength)
+                    buttons[name].configure(
+                        fg_color=fill,
+                        hover_color=palette["surface_elevated"],
+                    )
+                except Exception:
+                    pass
+
+        def done():
+            try:
+                seg.set(target_tab)
+            except Exception:
+                pass
+
+        self._animate("tab_indicator_move", 285, update, done)
+
 
     def on_tab_changed(self, tab_name):
         # Fallback callback for programmatic/custom tab changes.
@@ -4144,102 +4322,85 @@ class YTMMusicToolkit(ctk.CTk):
         target_tab = str(target_tab)
 
         try:
-            current_tab = self._current_tab_name
+            current_tab = str(self._current_tab_name)
         except AttributeError:
             current_tab = self.tabs.get()
             self._current_tab_name = current_tab
 
-        if target_tab == current_tab:
+        names = list(self.tabs._tab_dict.keys())
+        if target_tab not in names or target_tab == current_tab:
             return
 
         if getattr(self, "_tab_transition_running", False):
+            self._queued_tab_target = target_tab
             return
 
         self._tab_transition_running = True
-        transition_id = getattr(self, "_tab_transition_id", 0) + 1
-        self._tab_transition_id = transition_id
+        self._queued_tab_target = None
+        self.animate_tab_indicator(current_tab, target_tab)
 
-        overlay = self._create_tab_fade_overlay(current_tab)
-        self._tab_transition_overlay = overlay
-
-        if overlay is None:
+        def finish_transition():
             try:
-                self.tabs.set(target_tab)
+                original_set = getattr(self, "_tab_transition_original_set", None)
+                if original_set:
+                    original_set(target_tab)
+                else:
+                    self.tabs.set(target_tab)
+
                 self._current_tab_name = target_tab
+
+                # Flush Tk's geometry/drawing queue between hiding the old page
+                # and starting the new page's entrance; this removes the stale-frame flash.
+                self.tabs.update_idletasks()
+                self.update_idletasks()
                 self.animate_tab_in(target_tab)
-            finally:
+            except Exception as exc:
+                write_failure_log("tab_transition_switch", exc)
+
+            def unlock():
                 self._tab_transition_running = False
-            return
+                pending = getattr(self, "_queued_tab_target", None)
+                self._queued_tab_target = None
+                if pending and pending != self._current_tab_name:
+                    self._request_tab_transition(pending)
 
-        def fade_out(amount):
-            try:
-                overlay.attributes("-alpha", 0.84 * amount)
-            except Exception:
-                pass
+            self._animate("tab_transition_unlock", 300, lambda _amount: None, unlock)
 
-        def switch_tab():
-            if transition_id != self._tab_transition_id:
-                self._destroy_tab_fade_overlay(overlay)
-                return
+        self.animate_tab_out(current_tab, finish_transition)
 
-            try:
-                self.tabs.set(target_tab)
-                self._current_tab_name = target_tab
-                self.tabs.tab(target_tab).update_idletasks()
-                x, y, width, height = self._tab_content_geometry(target_tab)
-                overlay.geometry(f"{width}x{height}+{x}+{y}")
-                self.animate_tab_in(target_tab)
-            except Exception:
-                self._destroy_tab_fade_overlay(overlay)
-                self._tab_transition_overlay = None
-                self._tab_transition_running = False
-                return
-
-            def fade_in(amount):
-                try:
-                    overlay.attributes("-alpha", 0.84 * (1.0 - amount))
-                except Exception:
-                    pass
-
-            def finish():
-                self._destroy_tab_fade_overlay(overlay)
-                self._tab_transition_overlay = None
-                self._tab_transition_running = False
-
-            self._animate(
-                f"tab_fade_in:{transition_id}",
-                210,
-                fade_in,
-                finish,
-            )
-
-        # Old tab fades to black first, then the new tab fades back in.
-        self._animate(
-            f"tab_fade_out:{transition_id}",
-            150,
-            fade_out,
-            switch_tab,
-        )
 
     def install_tab_transitions(self):
-        """Replace segmented-button tab commands with an animated tab switch."""
+        """Install a routed tab setter and smooth, moving segmented selection."""
         try:
             self._current_tab_name = self.tabs.get()
             self._tab_transition_running = False
             self._tab_transition_id = 0
             self._tab_transition_overlay = None
+            self._queued_tab_target = None
 
             seg = self.tabs._segmented_button
             buttons = getattr(seg, "_buttons_dict", {})
-
             if not buttons:
                 raise RuntimeError("Segmented button internals unavailable")
 
+            if not hasattr(self, "_tab_transition_original_set"):
+                self._tab_transition_original_set = self.tabs.set
+
+            def routed_set(name):
+                if not getattr(self, "_tab_transitions_ready", False):
+                    return self._tab_transition_original_set(name)
+                self._request_tab_transition(name)
+
+            self.tabs.set = routed_set
+
             for name, button in buttons.items():
                 button.configure(
-                    command=lambda tab_name=name: self._request_tab_transition(tab_name)
+                    command=lambda _value=None, tab_name=name: self._request_tab_transition(tab_name)
                 )
-        except Exception:
+
+            self._tab_transitions_ready = True
+        except Exception as exc:
+            write_failure_log("tab_transition_install", exc)
             try:
                 self.tabs.configure(command=self.on_tab_changed)
             except Exception:
@@ -4314,7 +4475,146 @@ class YTMMusicToolkit(ctk.CTk):
         except Exception as exc:
             write_failure_log("appearance_mode_save", exc)
 
-        self.animate_apple_theme_transition(current, target)
+        if not self.start_theme_circle_reveal(current, target):
+            self.appearance_mode = target
+            self.animate_apple_theme_transition(current, target)
+
+
+    def start_theme_circle_reveal(self, start_mode, target_mode):
+        """Reveal a screenshot of the new palette in a circle expanding from the theme button."""
+        overlay = None
+
+        try:
+            self.update_idletasks()
+            origin_x = int(self.winfo_rootx())
+            origin_y = int(self.winfo_rooty())
+            window_width = max(1, int(self.winfo_width()))
+            window_height = max(1, int(self.winfo_height()))
+            old_image = ImageGrab.grab(
+                bbox=(
+                    origin_x,
+                    origin_y,
+                    origin_x + window_width,
+                    origin_y + window_height,
+                )
+            ).convert("RGB")
+
+            # Keep a still frame above the live window before changing the theme.
+            # This prevents the underlying theme swap from flashing on screen.
+            overlay = Toplevel(self)
+            overlay.overrideredirect(True)
+            overlay.geometry(
+                f"{old_image.width}x{old_image.height}+{origin_x}+{origin_y}"
+            )
+            overlay.attributes("-topmost", True)
+            canvas = Canvas(
+                overlay,
+                width=old_image.width,
+                height=old_image.height,
+                highlightthickness=0,
+                bd=0,
+                relief="flat",
+            )
+            canvas.pack(fill="both", expand=True)
+            old_photo = ImageTk.PhotoImage(old_image)
+            image_item = canvas.create_image(0, 0, anchor="nw", image=old_photo)
+            canvas._theme_reveal_photo = old_photo
+            overlay._theme_reveal_canvas = canvas
+            overlay.lift()
+            overlay.update_idletasks()
+
+            self._apple_theme_transition_palette = None
+            self.appearance_mode = target_mode
+            self.apply_apple_dark_theme()
+            self.update_idletasks()
+
+            # The window-specific capture reads the app beneath our still-frame overlay.
+            # Pillow versions without this Windows capture API fall back to the color tween.
+            target_image = ImageGrab.grab(window=int(self.winfo_id())).convert("RGB")
+            if target_image.size != old_image.size:
+                target_image = target_image.resize(
+                    old_image.size,
+                    Image.Resampling.LANCZOS,
+                )
+
+            if target_image.getpixel((1, 1)) == old_image.getpixel((1, 1)):
+                # A capture of the overlay instead of the real window is not usable.
+                raise RuntimeError("Could not capture the updated window independently of the overlay.")
+
+            button = getattr(self, "theme_toggle_button", None)
+            if button is not None:
+                center_x = (
+                    float(button.winfo_rootx())
+                    + float(button.winfo_width()) / 2.0
+                    - origin_x
+                )
+                center_y = (
+                    float(button.winfo_rooty())
+                    + float(button.winfo_height()) / 2.0
+                    - origin_y
+                )
+            else:
+                center_x, center_y = old_image.width * 0.5, 24.0
+
+            width, height = old_image.size
+            max_radius = max(
+                (center_x ** 2 + center_y ** 2) ** 0.5,
+                ((width - center_x) ** 2 + center_y ** 2) ** 0.5,
+                (center_x ** 2 + (height - center_y) ** 2) ** 0.5,
+                ((width - center_x) ** 2 + (height - center_y) ** 2) ** 0.5,
+            )
+
+            def render_circle(amount):
+                radius = max(1.0, max_radius * amount)
+                scale = 2
+                mask_hi = Image.new("L", (width * scale, height * scale), 0)
+                draw = ImageDraw.Draw(mask_hi)
+                draw.ellipse(
+                    (
+                        round((center_x - radius) * scale),
+                        round((center_y - radius) * scale),
+                        round((center_x + radius) * scale),
+                        round((center_y + radius) * scale),
+                    ),
+                    fill=255,
+                )
+                mask = mask_hi.resize(
+                    (width, height),
+                    Image.Resampling.LANCZOS,
+                )
+                frame = old_image.copy()
+                frame.paste(target_image, (0, 0), mask)
+                photo = ImageTk.PhotoImage(frame)
+                canvas.itemconfigure(image_item, image=photo)
+                canvas._theme_reveal_photo = photo
+
+            def done():
+                try:
+                    overlay.destroy()
+                except Exception:
+                    pass
+                if getattr(self, "_theme_reveal_overlay", None) is overlay:
+                    self._theme_reveal_overlay = None
+
+            self._theme_reveal_overlay = overlay
+            self._animate("theme_circle_reveal", 1000, render_circle, done)
+            return True
+
+        except Exception as exc:
+            if overlay is not None:
+                try:
+                    overlay.destroy()
+                except Exception:
+                    pass
+            self._theme_reveal_overlay = None
+            self.appearance_mode = start_mode
+            self._apple_theme_transition_palette = None
+            try:
+                self.apply_apple_dark_theme()
+            except Exception:
+                pass
+            write_failure_log("theme_circle_reveal_fallback", exc)
+            return False
 
 
     def animate_apple_theme_transition(self, start_mode, target_mode):
@@ -4344,7 +4644,7 @@ class YTMMusicToolkit(ctk.CTk):
             self._apple_theme_transition_palette = None
             self.apply_apple_dark_theme()
 
-        self._animate("apple_theme_transition", 420, update, done)
+        self._animate("apple_theme_transition", 1000, update, done)
 
 
     def apply_apple_dark_theme(self):
@@ -4677,8 +4977,11 @@ class YTMMusicToolkit(ctk.CTk):
             except Exception:
                 pass
 
+        # The first launch uses the window entrance animation. Tab content
+        # motion begins only when the user actually changes tabs.
         try:
-            self.animate_tab_in(self.tabs.get())
+            self.bind("<Unmap>", self.remember_window_minimize, add="+")
+            self.bind("<Map>", self.animate_window_restore, add="+")
         except Exception:
             pass
 
