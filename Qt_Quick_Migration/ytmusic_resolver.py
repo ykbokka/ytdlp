@@ -304,6 +304,20 @@ class YTMResolver:
                 continue
             seen.add(video_id)
             artists = YTMResolver.artist_names(item)
+            thumbnail_candidates = YTMResolver.thumbnail_candidates(item)
+            album_value = item.get("album") or ""
+            album_name = str(album_value.get("name") or "") if isinstance(album_value, dict) else str(album_value)
+            metadata = {
+                "video_id": video_id,
+                "title": title,
+                "artist": ", ".join(artists),
+                "album": album_name,
+                "year": str(item.get("year") or ""),
+                "cover_url": thumbnail_candidates[0] if thumbnail_candidates else "",
+                "thumbnail_candidates": thumbnail_candidates,
+                "source": "YouTube Music Liked Music",
+                "is_fallback": False,
+            }
             results.append({
                 "id": video_id,
                 "video_id": video_id,
@@ -311,8 +325,10 @@ class YTMResolver:
                 "track": title,
                 "artist": ", ".join(artists),
                 "artists": item.get("artists") or [],
-                "album": item.get("album") or "",
-                "thumbnail": "",
+                "album": album_value,
+                "thumbnail": thumbnail_candidates[0] if thumbnail_candidates else "",
+                "thumbnail_candidates": thumbnail_candidates,
+                "ytm_metadata": metadata,
                 "source_url": f"https://www.youtube.com/watch?v={video_id}",
                 "ytmusic_liked_entry": True,
                 "status": "Pending",
