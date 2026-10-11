@@ -209,7 +209,7 @@ try {
     $manifestLines += @("", "SHA-256 hashes:")
     foreach ($file in $requiredFiles) {
         $hash = Get-FileHash -LiteralPath $file -Algorithm SHA256
-        $relative = $file.Substring($PSScriptRoot.Length).TrimStart("\")
+        $relative = $file.Substring($PSScriptRoot.Length + 1)
         $manifestLines += ($hash.Hash + "  " + $relative)
     }
     Set-Content -LiteralPath $ManifestPath -Value $manifestLines -Encoding UTF8
