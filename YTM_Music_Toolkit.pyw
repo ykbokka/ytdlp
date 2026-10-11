@@ -5,6 +5,7 @@ import time
 import sys
 import subprocess
 import threading
+from queue import Empty, Queue
 import shutil
 import traceback
 import urllib.parse
@@ -227,9 +228,9 @@ def get_ytdlp_runtime_args(performance_mode=None):
 
     mode = str(performance_mode or "aggressive").strip().lower()
     profiles = {
-        "conservative": {"buffer": "1M", "connections": 4, "split": "4M", "http_chunk": "5M"},
-        "balanced": {"buffer": "2M", "connections": 8, "split": "2M", "http_chunk": "10M"},
-        "aggressive": {"buffer": "4M", "connections": 16, "split": "1M", "http_chunk": "16M"},
+        "conservative": {"buffer": "1M", "connections": 4, "split": "4M"},
+        "balanced": {"buffer": "2M", "connections": 8, "split": "2M"},
+        "aggressive": {"buffer": "4M", "connections": 16, "split": "1M"},
     }
     profile = profiles.get(mode, profiles["aggressive"])
     args.extend(["--buffer-size", profile["buffer"], "--resize-buffer"])
@@ -247,8 +248,8 @@ def get_ytdlp_runtime_args(performance_mode=None):
             "--file-allocation=none --no-conf=true "
             "--max-download-limit=0 --max-overall-download-limit=0",
         ])
-    else:
-        args.extend(["--http-chunk-size", profile["http_chunk"]])
+    # Without aria2c, keep yt-dlp's native HTTP request strategy untouched.
+    # Forced HTTP chunking can leave some YouTube media streams stalled mid-download.
 
     return args
 
@@ -256,12 +257,6 @@ def get_ytdlp_runtime_args(performance_mode=None):
 def build_native_ytdlp_fallback_command(command, performance_mode="aggressive"):
     """Remove aria2c routing and fall back to yt-dlp's native HTTP downloader."""
     source = list(command or [])
-    mode = str(performance_mode or "aggressive").strip().lower()
-    chunk_size = {
-        "conservative": "5M",
-        "balanced": "10M",
-        "aggressive": "16M",
-    }.get(mode, "16M")
     fallback = []
     i = 0
 
@@ -286,11 +281,8 @@ def build_native_ytdlp_fallback_command(command, performance_mode="aggressive"):
     if fallback == source or not fallback:
         return None
 
-    # This fallback is used only after an aria2c-specific failure. Chunked HTTP
-    # is experimental, but gives the native downloader a different strategy.
-    if "--http-chunk-size" not in fallback:
-        fallback[1:1] = ["--http-chunk-size", chunk_size]
-
+    # Do not force HTTP chunk boundaries in the native fallback.
+    # Let yt-dlp use its default HTTP request strategy instead.
     return fallback
 
 
@@ -934,7 +926,16 @@ def _audio_track_sort_key(fmt):
         "mp3": 2,
     }.get(codec, 1)
 
+    # DRC (dynamic-range-compressed) streams can appear alongside the
+    # normal stream with otherwise equivalent metadata. Prefer the normal one.
+    format_id = str(fmt.get("format_id") or "").lower()
+    format_note = str(fmt.get("format_note") or "").lower()
+    is_drc = format_id.endswith("-drc") or any(
+        part.strip() == "drc" for part in format_note.split(",")
+    )
+
     return (
+        0 if is_drc else 1,
         number(fmt.get("abr")),
         integer(fmt.get("asr")),
         number(fmt.get("quality")),
@@ -5512,24 +5513,64 @@ class YTMMusicToolkit(ctk.CTk):
             ) from exc
 
         output_lines = []
-        while True:
-            if self.stop_requested and process.poll() is None:
-                try:
-                    process.terminate()
-                except Exception:
-                    pass
+        output_queue = Queue()
 
-            line = process.stdout.readline()
-            if not line and process.poll() is not None:
-                break
-            if not line:
+        def read_process_output():
+            try:
+                for output_line in process.stdout:
+                    output_queue.put(output_line)
+            except Exception as reader_exc:
+                output_queue.put(f"[toolkit output reader warning] {reader_exc}\n")
+            finally:
+                output_queue.put(None)
+
+        reader_thread = threading.Thread(
+            target=read_process_output,
+            daemon=True,
+        )
+        reader_thread.start()
+
+        output_finished = False
+        terminate_requested_at = None
+        kill_sent = False
+        last_logged_progress = None
+
+        while not output_finished:
+            if self.stop_requested and process.poll() is None:
+                if terminate_requested_at is None:
+                    terminate_requested_at = time.monotonic()
+                    try:
+                        process.terminate()
+                    except Exception:
+                        pass
+                elif (
+                    not kill_sent
+                    and time.monotonic() - terminate_requested_at >= 2.0
+                ):
+                    kill_sent = True
+                    try:
+                        process.kill()
+                    except Exception:
+                        pass
+
+            try:
+                line = output_queue.get(timeout=0.2)
+            except Empty:
+                if process.poll() is not None and not reader_thread.is_alive():
+                    break
+                continue
+
+            if line is None:
+                output_finished = True
                 continue
 
             clean_line = line.strip()
-            output_lines.append(clean_line)
+            if not clean_line:
+                continue
 
-            if len(output_lines) <= 20:
-                self.append_log(self.dl_log, clean_line)
+            output_lines.append(clean_line)
+            lower_line = clean_line.lower()
+            should_log_line = len(output_lines) <= 20
 
             match = re.search(r"(\d+(?:\.\d+)?)%", clean_line)
             if match:
@@ -5541,8 +5582,24 @@ class YTMMusicToolkit(ctk.CTk):
                     f"{stage_name.title()} — downloading...",
                     taskbar=True,
                 )
+                if (
+                    last_logged_progress is None
+                    or percent >= last_logged_progress + 1.0
+                    or percent >= 100.0
+                ):
+                    should_log_line = True
+                    last_logged_progress = percent
 
-        return_code = process.poll()
+            if any(marker in lower_line for marker in (
+                "error", "warning", "retry", "403", "429", "forbidden",
+                "timed out", "timeout", "http error", "traceback",
+            )):
+                should_log_line = True
+
+            if should_log_line:
+                self.append_log(self.dl_log, clean_line)
+
+        return_code = process.wait()
         self.active_process = None
 
         if self.stop_requested:
@@ -6841,6 +6898,8 @@ class YTMMusicToolkit(ctk.CTk):
                     progress_start=local_start,
                     progress_end=local_end,
                 )
+            except DownloadCancelled:
+                raise
             except Exception as exc:
                 log_path = write_failure_log(
                     "download_audio_track",
