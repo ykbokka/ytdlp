@@ -179,6 +179,16 @@ class QtBackendCoreTests(unittest.TestCase):
         self.assertNotIn("--downloader-args", commands[1])
         self.assertTrue(any("__YT_PROGRESS__" in line for line in result))
 
+    def test_audio_language_is_recovered_from_format_notes(self):
+        app = self.make_backend()
+        english = {"language": "und", "format_note": "English original (default), medium"}
+        arabic = {"language": "", "format_note": "Arabic original (default), high"}
+        self.assertEqual(app._audio_language_name(english), "English")
+        self.assertEqual(app._audio_language_key(english), "en")
+        self.assertEqual(app._audio_language_key(arabic), "ar")
+        self.assertEqual(app._language_iso639("English"), "eng")
+        self.assertEqual(app._language_iso639("Arabic"), "ara")
+
     def test_ytmusic_enrichment_rejects_different_video_ids(self):
         app = self.make_backend()
         info = {
