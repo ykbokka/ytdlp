@@ -415,16 +415,25 @@ font.bold: true }
         }
     }
 
+    MessageDialog {
+        id: confirmFullOverhaulDialog
+        title: "Run full FLAC overhaul?"
+        text: "This operation changes metadata and artwork in the selected FLAC library."
+        informativeText: "YouTube Music matches will replace ARTIST, ALBUM and DATE, update matched cover art when available, and crop covers to square. A backup of your current files is recommended."
+        buttons: MessageDialog.Ok | MessageDialog.Cancel
+        onAccepted: backend.runFullOverhaul(root.libraryFolder)
+    }
+
     FileDialog {
         id: metadataFileDialog
-        title: "Choose media file"
-        nameFilters: ["Supported media (*.flac *.mp3 *.m4a *.mp4 *.mkv *.webm *.opus *.ogg *.wav *.aac)", "All files (*)"]
+        title: "Choose tagged media file"
+        nameFilters: ["Supported tagged media (*.flac *.mp3 *.m4a *.mp4 *.m4v *.mov *.opus *.ogg *.wav *.aac *.wma)", "All files (*)"]
         onAccepted: backend.inspectMediaFile(selectedFile.toLocalFile())
     }
     FileDialog {
         id: coverMediaDialog
         title: "Choose media file to update"
-        nameFilters: ["Supported media (*.flac *.mp3 *.m4a *.mp4 *.mkv *.webm *.opus *.ogg *.wav *.aac)", "All files (*)"]
+        nameFilters: ["Supported media (*.flac *.mp3 *.m4a *.mp4 *.m4v *.mov *.mkv *.opus *.ogg *.wav *.aac *.wma)", "All files (*)"]
         onAccepted: root.coverMediaPathValue = selectedFile.toLocalFile()
     }
     FileDialog {
@@ -1440,7 +1449,7 @@ color: root.textColor
 font.pixelSize: 15
 font.bold: true }
                     Text { anchors.horizontalCenter: parent.horizontalCenter
-text: "FLAC · MP3 · M4A audio · MKV attachments"
+text: "FLAC · MP3 · M4A · MP4 · MKV and MOV covers"
 color: root.mutedColor
 font.pixelSize: 11 }
                 }
@@ -1733,19 +1742,39 @@ font.bold: true }
                     }
                 }
             }
-            Button {
-                text: "Apply Reviewed Changes"
-                Layout.preferredHeight: 42
-                enabled: root.libraryRows.length > 0
-                onClicked: backend.applyLibraryOverhaul(root.libraryRows, root.rewriteTitles)
-                background: Rectangle { radius: 12
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 10
+                Button {
+                    text: "Apply Reviewed Changes"
+                    Layout.preferredHeight: 42
+                    enabled: root.libraryRows.length > 0
+                    onClicked: backend.applyLibraryOverhaul(root.libraryRows, root.rewriteTitles)
+                    background: Rectangle { radius: 12
 color: parent.enabled ? "#3475EE" : root.borderColor }
-                contentItem: Text { text: parent.text
+                    contentItem: Text { text: parent.text
 color: parent.enabled ? "white" : root.mutedColor
 font.pixelSize: 11
 font.bold: true
 horizontalAlignment: Text.AlignHCenter
 verticalAlignment: Text.AlignVCenter }
+                }
+                Button {
+                    text: "Full FLAC Overhaul…"
+                    Layout.preferredHeight: 42
+                    enabled: root.libraryFolder.length > 0
+                    onClicked: confirmFullOverhaulDialog.open()
+                    background: Rectangle { radius: 12
+color: parent.enabled ? (root.darkMode ? "#5A3A16" : "#FFF0D8") : root.borderColor
+border.width: 1
+border.color: root.darkMode ? "#85521D" : "#E6C28A" }
+                    contentItem: Text { text: parent.text
+color: parent.enabled ? (root.darkMode ? "#FFD08A" : "#8A4E00") : root.mutedColor
+font.pixelSize: 11
+font.bold: true
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter }
+                }
             }
         }
     }
