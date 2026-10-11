@@ -116,7 +116,7 @@ class QtBackendCoreTests(unittest.TestCase):
     def test_format_ceiling_and_audio_format_are_selected(self):
         app = self.make_backend()
         args = app._format_args("Video (MP4)", "1080p", "FLAC")
-        self.assertIn("bestvideo[height<=1080][ext=mp4]", args)
+        self.assertIn("bestvideo[height<=1080][ext=mp4]", args[1])
         self.assertIn("--merge-output-format", args)
         audio = app._format_args("Audio only", "Best available", "FLAC")
         self.assertIn("--audio-format", audio)
