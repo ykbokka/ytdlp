@@ -850,9 +850,9 @@ class ToolkitBackend(QObject):
             for input_index in range(1, len(audio_paths) + 1):
                 merge_cmd.extend(["-map", f"{input_index}:a:0"])
             merge_cmd.extend(["-c:v", "copy", "-c:a", "copy", "-metadata", f"title={title}"])
-            source_artist = str(info.get("artist") or info.get("creator") or info.get("uploader") or info.get("channel") or "").strip()
-            source_album = str(info.get("album") or "").strip()
-            source_year = str(info.get("release_year") or info.get("upload_date") or "").strip()[:4]
+            source_artist = str(metadata.get("artist") or info.get("artist") or info.get("creator") or info.get("uploader") or info.get("channel") or "").strip()
+            source_album = str(metadata.get("album") or info.get("album") or "").strip()
+            source_year = str(metadata.get("year") or info.get("release_year") or info.get("upload_date") or "").strip()[:4]
             if source_artist:
                 merge_cmd.extend(["-metadata", f"artist={source_artist}"])
             if source_album:
@@ -927,8 +927,9 @@ class ToolkitBackend(QObject):
             info = self._extract(url, flat=False, track_process=True)
             if self.cancel_event.is_set():
                 raise InterruptedError("Download cancelled.")
-            title = str(info.get("title") or info.get("id") or "Untitled")
-            video_id = str(info.get("id") or uuid.uuid4().hex[:8])
+            metadata = self._metadata_for_source(info, url, metadata_result)
+            title = str(metadata.get("title") or info.get("track") or info.get("title") or info.get("id") or "Untitled")
+            video_id = str(info.get("id") or metadata.get("video_id") or uuid.uuid4().hex[:8])
             guessed_stem = self._safe_name(f"{title} [{video_id}]")
             expected_extension = {
                 "FLAC": ".flac", "MP3": ".mp3", "M4A": ".m4a", "Opus": ".opus"
