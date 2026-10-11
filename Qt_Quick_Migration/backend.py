@@ -315,9 +315,17 @@ class ToolkitBackend(QObject):
     @Slot(str, str)
     def _worker_error(self, key, trace):
         last = trace.strip().splitlines()[-1] if trace.strip() else "Unknown error"
+        if "InterruptedError" in trace and "cancelled" in trace.lower():
+            message = "Download stopped by user."
+            self._log(f"{key} stopped by user.")
+            self.statusChanged.emit(message)
+            self.operationFinished.emit(key, False, message)
+            self._record_history(key.split("-", 1)[0], False, message)
+            return
         self._log(f"{key} failed: {last}")
         self.statusChanged.emit(f"Operation failed: {last}")
         self.operationFinished.emit(key, False, last)
+        self._record_history(key.split("-", 1)[0], False, last)
 
     @Slot(str)
     def _worker_finished(self, key):
