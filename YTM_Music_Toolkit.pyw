@@ -2838,14 +2838,12 @@ class YTMMusicToolkit(ctk.CTk):
         self.minsize(860, 760)
         self.configure(fg_color=APPLE_ROOT_BG)
 
-        self._startup_alpha_enabled = False
         self._window_restore_pending = False
         self._window_intro_started = False
-        try:
-            self.attributes("-alpha", 0.0)
-            self._startup_alpha_enabled = True
-        except Exception:
-            pass
+        self._ui_is_resizing = False
+        self._ui_resize_idle_job = None
+        self._ui_last_size = None
+        self.bind("<Configure>", self._on_window_configure_for_resize, add="+")
 
         icon_path = os.path.join(RESOURCE_DIR, "app.ico")
 
@@ -3856,10 +3854,27 @@ class YTMMusicToolkit(ctk.CTk):
                 pass
 
         started = time.perf_counter()
+        paused_at = None
         duration = max(1, duration_ms) / 1000.0
 
         def tick():
-            elapsed = time.perf_counter() - started
+            nonlocal started, paused_at
+            now = time.perf_counter()
+
+            # During interactive window resizing, avoid reconfiguring dozens of
+            # widgets every frame. Pause animation time and resume from the same
+            # point once Windows finishes resizing the window.
+            if getattr(self, "_ui_is_resizing", False):
+                if paused_at is None:
+                    paused_at = now
+                self._animation_jobs[key] = self.after(80, tick)
+                return
+
+            if paused_at is not None:
+                started += now - paused_at
+                paused_at = None
+
+            elapsed = now - started
             t = min(1.0, elapsed / duration)
             eased = 1.0 - (1.0 - t) ** 3
 
@@ -3881,6 +3896,40 @@ class YTMMusicToolkit(ctk.CTk):
 
         tick()
 
+
+    def _on_window_configure_for_resize(self, event=None):
+        if event is not None and getattr(event, "widget", self) is not self:
+            return
+
+        try:
+            if event is not None:
+                size = (int(event.width), int(event.height))
+            else:
+                size = (int(self.winfo_width()), int(self.winfo_height()))
+
+            previous = self._ui_last_size
+            self._ui_last_size = size
+            if previous is None or size == previous:
+                return
+
+            self._ui_is_resizing = True
+            if self._ui_resize_idle_job:
+                try:
+                    self.after_cancel(self._ui_resize_idle_job)
+                except Exception:
+                    pass
+            self._ui_resize_idle_job = self.after(
+                170,
+                self._finish_window_resize,
+            )
+        except Exception:
+            pass
+
+
+    def _finish_window_resize(self):
+        self._ui_is_resizing = False
+        self._ui_resize_idle_job = None
+
     def finish_ui_startup(self):
         try:
             self.install_transitions()
@@ -3895,26 +3944,13 @@ class YTMMusicToolkit(ctk.CTk):
             return
         self._window_intro_started = True
 
+        # Keep the native window fully opaque for responsive resizing. The
+        # polished entrance is handled by the content panels, not window alpha.
         try:
-            if not getattr(self, "_startup_alpha_enabled", False):
-                self.attributes("-alpha", 0.0)
             self.update_idletasks()
+            self.animate_tab_in(self.tabs.get())
         except Exception:
-            return
-
-        def update(amount):
-            try:
-                self.attributes("-alpha", amount)
-            except Exception:
-                pass
-
-        def done():
-            try:
-                self.attributes("-alpha", 1.0)
-            except Exception:
-                pass
-
-        self._animate("window_alpha", 360, update, done)
+            pass
 
 
     def remember_window_minimize(self, event=None):
@@ -3946,23 +3982,14 @@ class YTMMusicToolkit(ctk.CTk):
             if str(self.state()).lower() == "iconic":
                 self._window_restore_pending = True
                 return
-            self.attributes("-alpha", 0.86)
+            self.update_idletasks()
+            current_tab = self.tabs.get()
         except Exception:
             return
 
-        def update(amount):
-            try:
-                self.attributes("-alpha", 0.86 + (0.14 * amount))
-            except Exception:
-                pass
-
-        def done():
-            try:
-                self.attributes("-alpha", 1.0)
-            except Exception:
-                pass
-
-        self._animate("window_restore", 190, update, done)
+        # Do not fade the top-level window on restore; that can force Windows
+        # to composite a translucent window while the user resizes it.
+        self.after_idle(lambda name=current_tab: self.animate_tab_in(name))
 
     def animate_widget_color(
         self,
