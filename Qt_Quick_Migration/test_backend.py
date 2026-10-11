@@ -106,6 +106,32 @@ class QtBackendCoreTests(unittest.TestCase):
         self.assertEqual(saved["audio_format"], "FLAC")
         self.assertEqual(saved["subtitle_mode"], "Auto subtitles")
 
+    def test_queue_item_captures_current_download_options(self):
+        app = self.make_backend()
+        tasks = {}
+        def capture_worker(label, fn):
+            tasks["work"] = fn
+            return "test-queue-add"
+        with patch.object(app, "_extract", return_value={
+            "id": "vid123",
+            "title": "Test song",
+            "webpage_url": "https://www.youtube.com/watch?v=vid123",
+            "formats": [],
+        }), patch.object(app, "_run_async", side_effect=capture_worker):
+            app.addQueueUrl(
+                "https://www.youtube.com/watch?v=vid123",
+                "Video (MP4)",
+                "720p",
+                "M4A",
+                "Auto subtitles",
+            )
+        payload = tasks["work"]()
+        item = payload["items"][-1]
+        self.assertEqual(item["file_type"], "Video (MP4)")
+        self.assertEqual(item["quality"], "720p")
+        self.assertEqual(item["audio_format"], "M4A")
+        self.assertEqual(item["subtitle_mode"], "Auto subtitles")
+
     def test_playlist_and_liked_music_url_detection(self):
         app = self.make_backend()
         self.assertTrue(app._is_playlist_url("https://www.youtube.com/playlist?list=PL123"))
