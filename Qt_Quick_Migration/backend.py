@@ -783,12 +783,56 @@ class ToolkitBackend(QObject):
         base = parts[0].lower() if parts else "und"
         return names.get(base, value if value and value != "und" else "Unknown language")
 
+    def _audio_language_name(self, fmt):
+        code = str(fmt.get("language") or "").strip()
+        base = code.replace("_", "-").split("-")[0].lower()
+        if base not in {"", "und", "unknown", "none"}:
+            label = self._language_label(code)
+            if label != "Unknown language":
+                return label
+
+        note = str(fmt.get("format_note") or "").strip()
+        prefix = note.split(",", 1)[0].strip()
+        prefix = re.sub(r"\([^)]*\)", "", prefix)
+        prefix = re.sub(r"\b(?:audio|track|original|default|medium|low|high)\b", " ", prefix, flags=re.I)
+        prefix = re.sub(r"\s+", " ", prefix).strip(" -:")
+        if prefix and len(prefix) <= 60:
+            return prefix.title()
+        return self._language_label(code)
+
+    def _audio_language_key(self, fmt):
+        code = str(fmt.get("language") or "").strip()
+        base = code.replace("_", "-").split("-")[0].lower()
+        if base not in {"", "und", "unknown", "none"}:
+            return base
+
+        label = self._audio_language_name(fmt)
+        reverse = {
+            "english": "en", "arabic": "ar", "spanish": "es", "french": "fr",
+            "german": "de", "italian": "it", "portuguese": "pt", "russian": "ru",
+            "japanese": "ja", "korean": "ko", "chinese": "zh", "hindi": "hi",
+            "turkish": "tr", "indonesian": "id", "thai": "th", "vietnamese": "vi",
+            "polish": "pl", "dutch": "nl", "swedish": "sv", "ukrainian": "uk",
+            "persian": "fa", "urdu": "ur", "bengali": "bn", "tamil": "ta", "telugu": "te",
+        }
+        normalized = label.casefold().strip()
+        if normalized in reverse:
+            return reverse[normalized]
+        if normalized and normalized != "unknown language":
+            return "name:" + clean_text(normalized)
+        return "und"
+
     @staticmethod
     def _language_iso639(code):
         base = str(code or "").replace("_", "-").split("-")[0].lower()
         mapping = {"en":"eng","ar":"ara","es":"spa","fr":"fra","de":"deu","it":"ita","pt":"por","ru":"rus",
                    "ja":"jpn","ko":"kor","zh":"zho","hi":"hin","tr":"tur","id":"ind","th":"tha","vi":"vie",
-                   "pl":"pol","nl":"nld","sv":"swe","uk":"ukr","fa":"fas","ur":"urd","bn":"ben","ta":"tam","te":"tel"}
+                   "pl":"pol","nl":"nld","sv":"swe","uk":"ukr","fa":"fas","ur":"urd","bn":"ben","ta":"tam","te":"tel",
+                   "english":"eng","arabic":"ara","spanish":"spa","french":"fra","german":"deu","italian":"ita",
+                   "portuguese":"por","russian":"rus","japanese":"jpn","korean":"kor","chinese":"zho","hindi":"hin",
+                   "turkish":"tur","indonesian":"ind","thai":"tha","vietnamese":"vie","polish":"polish",
+                   "dutch":"nld","swedish":"swe","ukrainian":"ukr","persian":"fas","urdu":"urd","bengali":"ben",
+                   "tamil":"tam","telugu":"tel"}
         return mapping.get(base, "und")
 
     def _download_mkv_with_flac_tracks(self, url, quality, subtitles, preserve_temp=False, metadata_result=None):
@@ -847,21 +891,38 @@ class ToolkitBackend(QObject):
             # Select one highest-quality audio rendition for each language, not
             # every bitrate/codec duplicate exposed by the extractor.
             by_language = {}
-            for fmt in audio_formats:
-                language = str(fmt.get("language") or "und").strip().lower()
-                rank = (
-                    int(fmt.get("language_preference") or 0),
-                    float(fmt.get("abr") or 0),
-                    int(fmt.get("asr") or 0),
-                    int(fmt.get("audio_channels") or 0),
-                )
-                previous = by_language.get(language)
+            for source_fmt in audio_formats:
+                fmt = dict(source_fmt)
+                language_key = self._audio_language_key(fmt)
+                fmt["_toolkit_language_key"] = language_key
+                fmt["_toolkit_language_label"] = self._audio_language_name(fmt)
+                format_id = str(fmt.get("format_id") or "").lower()
+                format_note = str(fmt.get("format_note") or "").lower()
+                is_drc = format_id.endswith("-drc") or any(part.strip() == "drc" for part in format_note.split(","))
+                try:
+                    abr = float(fmt.get("abr") or 0)
+                except (TypeError, ValueError):
+                    abr = 0.0
+                try:
+                    asr = int(fmt.get("asr") or 0)
+                except (TypeError, ValueError):
+                    asr = 0
+                try:
+                    channels = int(fmt.get("audio_channels") or 0)
+                except (TypeError, ValueError):
+                    channels = 0
+                try:
+                    total_bitrate = float(fmt.get("tbr") or 0)
+                except (TypeError, ValueError):
+                    total_bitrate = 0.0
+                rank = (0 if is_drc else 1, abr, asr, channels, total_bitrate)
+                previous = by_language.get(language_key)
                 if previous is None or rank > previous[0]:
-                    by_language[language] = (rank, fmt)
+                    by_language[language_key] = (rank, fmt)
             tracks = [pair[1] for pair in by_language.values()]
             tracks.sort(key=lambda fmt: (
                 0 if fmt.get("language_preference", 0) and float(fmt.get("language_preference") or 0) > 0 else 1,
-                str(fmt.get("language") or "und").lower(),
+                str(fmt.get("_toolkit_language_label") or "Unknown language").lower(),
             ))
             tracks = tracks[:12]
             if not tracks:
@@ -888,8 +949,9 @@ class ToolkitBackend(QObject):
                 if self.cancel_event.is_set():
                     raise InterruptedError("Download cancelled.")
                 language = str(fmt.get("language") or "und")
-                safe_language = re.sub(r"[^a-zA-Z0-9_-]+", "_", language)[:18] or f"track{index}"
-                audio_target = temp / f"audio_{safe_language}.%(ext)s"
+                language_label = str(fmt.get("_toolkit_language_label") or self._language_label(language))
+                safe_language = re.sub(r"[^a-zA-Z0-9_-]+", "_", language_label.casefold())[:18] or f"track{index}"
+                audio_target = temp / f"audio_{index:02d}_{safe_language}.%(ext)s"
                 audio_cmd = self._base_command(True) + [
                     "--no-playlist", "--no-embed-thumbnail", "--no-embed-metadata",
                     "--no-write-thumbnail", "--format", str(fmt["format_id"]),
@@ -900,16 +962,16 @@ class ToolkitBackend(QObject):
                 ]
                 start = 45 + (35 * (index - 1) / len(tracks))
                 span = 35 / len(tracks)
-                label = self._language_label(language)
+                label = language_label
                 self._log(f"Downloading {label} audio track ({index}/{len(tracks)})")
                 self._run_stage(audio_cmd, label, start, span)
-                matches = [p for p in temp.glob(f"audio_{safe_language}.*") if p.is_file() and p.suffix.lower() == ".flac"]
+                matches = [p for p in temp.glob(f"audio_{index:02d}_{safe_language}.*") if p.is_file() and p.suffix.lower() == ".flac"]
                 if not matches:
                     raise RuntimeError(f"The {label} audio track did not produce a FLAC file.")
                 audio_paths.append(matches[0])
                 track_meta = dict(metadata)
                 self._apply_ytmusic_flac_metadata(matches[0], track_meta, embed_cover=True)
-                track_labels.append((label, self._language_iso639(language)))
+                track_labels.append((label, self._language_iso639(language if language.lower() not in {"", "und", "unknown"} else label)))
 
             cover_path = temp / "cover.jpg"
             thumbnail_url = str(metadata.get("cover_url") or info.get("thumbnail") or "")
