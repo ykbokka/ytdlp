@@ -35,15 +35,22 @@ The repository also includes a manually triggered Windows x64 build workflow at 
 - The CustomTkinter theme resources and its companion packages.
 - ytmusicapi's locale files at the package-relative path expected by gettext.
 - The certifi root CA bundle used for HTTPS requests.
-- yt-dlp, Deno, FFmpeg, and FFprobe as bundled helper executables in the one-file payload.
+- yt-dlp, Deno, FFmpeg, FFprobe, and aria2c as bundled helper executables in the one-file payload.
+- aria2's GPL license text, copied into the EXE payload under the `licenses` folder.
 
 The official yt-dlp standalone executable includes its EJS challenge-solver scripts; those do not need to be installed separately. See the [official yt-dlp EJS guide](https://github.com/yt-dlp/yt-dlp/wiki/ejs).
+
+### Download-speed strategy
+
+When aria2c is present, direct HTTP/HTTPS media downloads use aria2c with up to 16 connections, a 1 MiB split size, and the bundled executable. This can improve throughput on servers that support ranged downloads, but it is not guaranteed to beat the server or network's limits. If aria2c is absent when running the source directly, the app falls back to yt-dlp's experimental 10 MiB HTTP chunk option.
+
+DASH and HLS/M3U8 manifest downloads are deliberately kept on yt-dlp's native downloader; aria2c is assigned to direct HTTP/FTP only. This is a compatibility and safety boundary, not an arbitrary performance setting.
 
 The spec intentionally fails if required helper executables, ytmusicapi locale data, or the certificate bundle are missing.
 
 ## What standalone means
 
-The target PC should not need a separate Python, Deno, yt-dlp, FFmpeg, or FFprobe installation. PyInstaller extracts its embedded one-file payload into a temporary runtime directory when the EXE launches; that is normal and does not mean the user must install the bundled parts.
+The target PC should not need a separate Python, Deno, yt-dlp, FFmpeg, FFprobe, or aria2c installation. PyInstaller extracts its embedded one-file payload into a temporary runtime directory when the EXE launches; that is normal and does not mean the user must install the bundled parts.
 
 The app still needs:
 - Internet access for YouTube / YouTube Music and other online services.
@@ -61,6 +68,7 @@ The project has not yet been validated on a clean Windows machine as part of the
 ## Licensing and security
 
 - FFmpeg is sourced from Gyan's Windows builds. Review the applicable license terms before redistributing the EXE.
+- aria2 is GPL-2.0. The build includes its license text; review the corresponding-source and redistribution requirements before distributing the EXE. The upstream source is available at [aria2 on GitHub](https://github.com/aria2/aria2/tree/release-1.37.0).
 - yt-dlp, Deno, Python, and the bundled Python libraries have their own license terms.
 - Unsigned PyInstaller executables may be flagged for inspection by Windows Defender or other antivirus software. Test the output before distributing it.
 
@@ -70,5 +78,5 @@ The project has not yet been validated on a clean Windows machine as part of the
 - `Download-Requirements.ps1` — downloads tools, prepares the build virtual environment, smoke-tests dependencies, and records a manifest.
 - `Build.bat` — one-click entry point for assembling the EXE only.
 - `Build-EXE.ps1` — offline preflight checks and PyInstaller assembly.
-- `YTM_Music_Toolkit.spec` — high-coverage package/data/native-binary collection rules.
+- `YTM_Music_Toolkit.spec` — high-coverage package/data/native-binary collection rules, including aria2c and its license.
 - `requirements-build.txt` — packages needed by the build environment and runtime collection.
