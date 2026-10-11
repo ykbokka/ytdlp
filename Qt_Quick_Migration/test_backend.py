@@ -297,6 +297,24 @@ class QtBackendCoreTests(unittest.TestCase):
         self.assertEqual(backend.ToolkitBackend._language_label("ar"), "Arabic")
         self.assertEqual(backend.ToolkitBackend._language_iso639("en-US"), "eng")
 
+    def test_arabic_media_filename_isolated_without_reversing_title(self):
+        title = "لا تصارخ ولا راح تموت🤫 _ Fears to Fathom #2"
+        stem = backend.ToolkitBackend._media_stem(title, "5Bj2JKH1xEQ")
+        self.assertTrue(stem.startswith("\u2067"))
+        self.assertTrue(stem.endswith("\u2069 [5Bj2JKH1xEQ]"))
+        self.assertIn(title, stem)
+        self.assertEqual(
+            backend.derive_title_from_filename(stem + ".mkv"),
+            title,
+            "Invisible direction marks must not leak into metadata tags."
+        )
+
+    def test_english_media_filename_remains_unchanged(self):
+        self.assertEqual(
+            backend.ToolkitBackend._media_stem("Example Video", "abc123"),
+            "Example Video [abc123]"
+        )
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
