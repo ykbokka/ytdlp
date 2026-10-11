@@ -8076,7 +8076,8 @@ class YTMMusicToolkit(ctk.CTk):
                         if used_ytm_matching
                         else "Download complete. Source YouTube metadata/artwork was used directly."
                     )
-                messagebox.showinfo("Success", message)
+                if not getattr(self, "_v3_queue_active", False):
+                    messagebox.showinfo("Success", message)
 
             self._last_download_outcome = "success"
             self.after(0, finish_success)
@@ -8103,13 +8104,14 @@ class YTMMusicToolkit(ctk.CTk):
                 self.dl_log,
                 f"[ERROR] {exc} | Failure log: {log_path or FAILURE_LOG_DIR}",
             )
-            self.after(
-                0,
-                lambda e=str(exc), p=(log_path or FAILURE_LOG_DIR): messagebox.showerror(
-                    "Download Error",
-                    f"{e}\n\nFailure log:\n{p}",
-                ),
-            )
+            if not getattr(self, "_v3_queue_active", False):
+                self.after(
+                    0,
+                    lambda e=str(exc), p=(log_path or FAILURE_LOG_DIR): messagebox.showerror(
+                        "Download Error",
+                        f"{e}\n\nFailure log:\n{p}",
+                    ),
+                )
             self.set_operation_progress(
                 "dl",
                 0,
@@ -11773,6 +11775,7 @@ _QUEUE_ORIGINAL_STOP_ACTIVE_PROCESS = YTMMusicToolkit.stop_active_process
 _QUEUE_ORIGINAL_SET_OPERATION_PROGRESS = YTMMusicToolkit.set_operation_progress
 
 YTMMusicToolkit.build_queue_tab = _queue_build_queue_tab
+YTMMusicToolkit._queue_set_status = _queue_set_status
 YTMMusicToolkit.open_queue_tab = _queue_open_tab
 YTMMusicToolkit._queue_render_queue = _queue_render_queue
 YTMMusicToolkit._queue_refresh_ui = _queue_refresh_ui
