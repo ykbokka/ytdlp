@@ -34,5 +34,6 @@ The build machine needs a supported Python 3.10–3.14 installation and internet
 ## Files
 
 - `Build.bat` — double-click entry point.
-- `Build-EXE.ps1` — downloads build assets and runs PyInstaller.
+- `Build-EXE.ps1` — downloads build assets and invokes PyInstaller using the spec file.
+- `YTM_Music_Toolkit.spec` — defines the one-file EXE, collected Python packages, and bundled media executables.
 - `requirements-build.txt` — Python build dependencies.
