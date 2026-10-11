@@ -1,6 +1,26 @@
 # YTM Music Toolkit — One-File EXE Build Kit
 
-This kit builds a **single-file Windows GUI executable** at `dist\\YTM Music Toolkit.exe`. The intended end-user machine does not need Python, pip, Deno, yt-dlp, FFmpeg, or FFprobe installed separately.
+This kit builds a **single-file Windows GUI executable** at `dist\YTM Music Toolkit.exe`. The intended end-user machine does not need Python, pip, Deno, yt-dlp, FFmpeg, or FFprobe installed separately.
+
+## Two-step build workflow
+
+### Step 1 — Download and prepare everything
+
+Double-click `Download-Requirements.bat`.
+
+It downloads the app source, yt-dlp, Deno, FFmpeg/FFprobe, creates the isolated build virtual environment, and installs the Python build dependencies listed in `requirements-build.txt`. It also checks that the files needed for building are present.
+
+Run this again only when you want to refresh the downloaded source/tools or prepare a new build environment. It needs internet access and a supported Python 3.10–3.14 installation on the build PC.
+
+### Step 2 — Assemble the EXE
+
+Double-click `Build.bat`.
+
+This step **only invokes PyInstaller using the already-prepared files**. It does not download the source, download media tools, create a virtual environment, or install Python packages. If something is missing, it stops and tells you to run `Download-Requirements.bat` first.
+
+The finished file is placed at `EXE_Build_Kit\dist\YTM Music Toolkit.exe`.
+
+Keep the `build_workspace` folder intact between preparation and assembly.
 
 ## What the EXE bundles
 
@@ -14,24 +34,16 @@ This kit builds a **single-file Windows GUI executable** at `dist\\YTM Music Too
 
 The spec intentionally fails the build if required helper executables or the expected `ytmusicapi` locale directory are missing.
 
-## Build
+## Build-machine vs. end-user requirements
 
-1. Download the repository ZIP and extract it.
-2. Run `EXE_Build_Kit\\Build.bat`.
-3. Wait for the builder to download its build-time assets and create the isolated build environment.
-4. Find the result at `EXE_Build_Kit\\dist\\YTM Music Toolkit.exe`.
+The **build machine** needs internet access and Python 3.10–3.14 to prepare and compile the EXE. The **end-user machine** does not need Python installed separately.
 
-The **build machine** needs a supported Python 3.10–3.14 installation and internet access. That is only for compiling the EXE; the **end-user machine** does not need Python installed.
-
-## What "standalone" means — and what it cannot mean
-
-The application is packaged to run on a fresh, supported Windows 11 installation without separately installing its software dependencies. The EXE still needs:
-
+The application still needs:
 - Internet access for YouTube / YouTube Music and other online services.
 - A valid user session or authentication when a feature accesses account-specific content such as Liked Music. A Windows reset removes browser sessions and local authentication files; the EXE cannot recreate or preserve those credentials.
 - Normal Windows facilities and permissions, including access to a writable temporary directory and a destination for downloads.
 
-User-specific settings, authentication files, downloads, and failure logs are intentionally kept outside the EXE. They are created or supplied at runtime and are not build dependencies. Do not embed personal cookies or account credentials in a distributable EXE.
+User-specific settings, authentication files, downloads, and failure logs are intentionally kept outside the EXE. Do not embed personal cookies or account credentials in a distributable EXE.
 
 ## One-file behavior
 
@@ -41,7 +53,7 @@ PyInstaller extracts bundled files into a temporary runtime directory when the E
 
 A successful build alone does not prove portability. Test the resulting EXE on a clean Windows 11 VM or another Windows installation without Python, Deno, yt-dlp, or FFmpeg installed. Verify launch, YouTube Music Liked Music access after authentication, a download, metadata, cover art, and media merging. Also check that no dependency is accidentally being loaded from the build folder or system PATH.
 
-The script has not itself run a clean-machine validation. Do not call the build fully verified until that test passes.
+The scripts have not themselves run a clean-machine validation. Do not call the build fully verified until that test passes.
 
 ## Licensing and security
 
@@ -51,7 +63,9 @@ The script has not itself run a clean-machine validation. Do not call the build 
 
 ## Files
 
-- `Build.bat` — double-click entry point.
-- `Build-EXE.ps1` — downloads build assets and invokes PyInstaller.
+- `Download-Requirements.bat` — one-click download and setup of all build requirements.
+- `Download-Requirements.ps1` — downloads tools, prepares the build virtual environment, and installs dependencies.
+- `Build.bat` — one-click entry point for assembling the EXE only.
+- `Build-EXE.ps1` — runs PyInstaller using the prepared files only.
 - `YTM_Music_Toolkit.spec` — defines the one-file executable and collected resources.
 - `requirements-build.txt` — dependencies used only to build the EXE.
