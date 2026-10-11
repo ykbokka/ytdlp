@@ -10136,6 +10136,31 @@ _V6_ORIGINAL_RUN_DOWNLOAD_WORKER = YTMMusicToolkit.run_download_worker
 _V6_ORIGINAL_EXECUTE_DOWNLOAD = YTMMusicToolkit.execute_download_for_result
 
 
+def _v6_remove_temp_workspace(temp_root, context="download_temp_workspace_cleanup"):
+    """Remove tempytm reliably on Windows and log any leftovers instead of hiding them."""
+    root = Path(temp_root)
+    if not root.exists():
+        return True
+
+    last_error = None
+    for attempt in range(4):
+        try:
+            shutil.rmtree(root)
+            return True
+        except FileNotFoundError:
+            return True
+        except Exception as exc:
+            last_error = exc
+            time.sleep(0.15 * (attempt + 1))
+
+    log_path = write_failure_log(
+        context,
+        last_error or RuntimeError("Temporary workspace could not be removed"),
+        details=f"Temporary workspace: {root}",
+    )
+    return False
+
+
 def _v6_clear_temp_contents(temp_root):
     root = Path(temp_root)
     if not root.exists():
@@ -10201,7 +10226,8 @@ def _v6_run_download_worker(self, user_input):
     try:
         destination.mkdir(parents=True, exist_ok=True)
         if temp_root.exists():
-            shutil.rmtree(temp_root)
+            if not _v6_remove_temp_workspace(temp_root, "download_temp_workspace_stale_cleanup"):
+                raise RuntimeError(f"Could not clear the previous temporary workspace: {temp_root}")
         temp_root.mkdir(parents=True, exist_ok=True)
     except Exception as exc:
         log_path = write_failure_log(
@@ -10226,10 +10252,7 @@ def _v6_run_download_worker(self, user_input):
         # The worker catches cancellation and download failures internally, so
         # this finally block also handles Stop, errors, and playlist early exits.
         self.paths["downloader"] = original_output_path
-        try:
-            shutil.rmtree(temp_root, ignore_errors=True)
-        except Exception as exc:
-            write_failure_log("download_temp_workspace_final_cleanup", exc, details=f"Path: {temp_root}")
+        _v6_remove_temp_workspace(temp_root, "download_temp_workspace_final_cleanup")
         self._v6_download_destination = None
         self._v6_download_temp_root = None
 
@@ -10247,7 +10270,8 @@ def _v6_execute_through_temp(self, result, item_index=1, item_total=1, selected_
     if owns_workspace:
         destination.mkdir(parents=True, exist_ok=True)
         if temp_root.exists():
-            shutil.rmtree(temp_root, ignore_errors=True)
+            if not _v6_remove_temp_workspace(temp_root, "download_temp_workspace_item_stale_cleanup"):
+                raise RuntimeError(f"Could not clear the previous temporary workspace: {temp_root}")
         temp_root.mkdir(parents=True, exist_ok=True)
         self._v6_download_destination = destination
         self._v6_download_temp_root = temp_root
@@ -10339,16 +10363,13 @@ def _v6_execute_through_temp(self, result, item_index=1, item_total=1, selected_
         # playlist, keep the empty root available for the next item and remove it
         # only when the playlist worker exits (including Stop/cancellation).
         if not is_playlist_item:
-            shutil.rmtree(temp_root, ignore_errors=True)
+            _v6_remove_temp_workspace(temp_root, "download_temp_workspace_single_cleanup")
 
         return final_output_path
     finally:
         self.paths["downloader"] = original_output_path
         if owns_workspace:
-            try:
-                shutil.rmtree(temp_root, ignore_errors=True)
-            except Exception as exc:
-                write_failure_log("download_temp_workspace_item_cleanup", exc, details=f"Path: {temp_root}")
+            _v6_remove_temp_workspace(temp_root, "download_temp_workspace_item_cleanup")
             self._v6_download_destination = None
             self._v6_download_temp_root = None
 
