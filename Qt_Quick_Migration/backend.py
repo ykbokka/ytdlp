@@ -775,11 +775,41 @@ class ToolkitBackend(QObject):
     def _language_label(code):
         value = str(code or "und").replace("_", "-").strip()
         parts = value.split("-")
-        names = {"en": "English", "ar": "Arabic", "es": "Spanish", "fr": "French", "de": "German",
-                 "it": "Italian", "pt": "Portuguese", "ru": "Russian", "ja": "Japanese", "ko": "Korean",
-                 "zh": "Chinese", "hi": "Hindi", "tr": "Turkish", "id": "Indonesian", "th": "Thai",
-                 "vi": "Vietnamese", "pl": "Polish", "nl": "Dutch", "sv": "Swedish", "uk": "Ukrainian",
-                 "fa": "Persian", "ur": "Urdu", "bn": "Bengali", "ta": "Tamil", "te": "Telugu"}
+        names = {
+            "ab": "Abkhazian", "aa": "Afar", "af": "Afrikaans", "ak": "Akan",
+            "sq": "Albanian", "am": "Amharic", "ar": "Arabic", "hy": "Armenian",
+            "as": "Assamese", "ay": "Aymara", "az": "Azerbaijani", "bm": "Bambara",
+            "eu": "Basque", "be": "Belarusian", "bn": "Bengali", "bh": "Bihari",
+            "bs": "Bosnian", "br": "Breton", "bg": "Bulgarian", "my": "Burmese",
+            "ca": "Catalan", "ceb": "Cebuano", "zh": "Chinese", "co": "Corsican",
+            "hr": "Croatian", "cs": "Czech", "da": "Danish", "nl": "Dutch",
+            "en": "English", "eo": "Esperanto", "et": "Estonian", "ee": "Ewe",
+            "fo": "Faroese", "fa": "Persian", "fj": "Fijian", "fi": "Finnish",
+            "fr": "French", "fy": "Frisian", "ff": "Fulah", "gl": "Galician",
+            "lg": "Ganda", "ka": "Georgian", "de": "German", "el": "Greek",
+            "gn": "Guarani", "gu": "Gujarati", "ht": "Haitian Creole", "ha": "Hausa",
+            "haw": "Hawaiian", "he": "Hebrew", "hi": "Hindi", "hu": "Hungarian",
+            "is": "Icelandic", "ig": "Igbo", "id": "Indonesian", "ia": "Interlingua",
+            "ga": "Irish", "it": "Italian", "ja": "Japanese", "jv": "Javanese",
+            "kn": "Kannada", "kk": "Kazakh", "km": "Khmer", "rw": "Kinyarwanda",
+            "ko": "Korean", "ku": "Kurdish", "ky": "Kyrgyz", "lo": "Lao",
+            "la": "Latin", "lv": "Latvian", "ln": "Lingala", "lt": "Lithuanian",
+            "lb": "Luxembourgish", "mk": "Macedonian", "mg": "Malagasy", "ms": "Malay",
+            "ml": "Malayalam", "mt": "Maltese", "mi": "Maori", "mr": "Marathi",
+            "mn": "Mongolian", "ne": "Nepali", "no": "Norwegian", "ny": "Nyanja",
+            "or": "Odia", "om": "Oromo", "ps": "Pashto", "pl": "Polish",
+            "pt": "Portuguese", "pa": "Punjabi", "ro": "Romanian", "ru": "Russian",
+            "sm": "Samoan", "sa": "Sanskrit", "gd": "Scottish Gaelic", "sr": "Serbian",
+            "sn": "Shona", "sd": "Sindhi", "si": "Sinhala", "sk": "Slovak",
+            "sl": "Slovenian", "so": "Somali", "es": "Spanish", "su": "Sundanese",
+            "sw": "Swahili", "sv": "Swedish", "tl": "Tagalog", "tg": "Tajik",
+            "ta": "Tamil", "tt": "Tatar", "te": "Telugu", "th": "Thai",
+            "bo": "Tibetan", "ti": "Tigrinya", "to": "Tongan", "tr": "Turkish",
+            "tk": "Turkmen", "uk": "Ukrainian", "ur": "Urdu", "ug": "Uyghur",
+            "uz": "Uzbek", "vi": "Vietnamese", "cy": "Welsh", "wo": "Wolof",
+            "xh": "Xhosa", "yi": "Yiddish", "yo": "Yoruba", "zu": "Zulu",
+            "ja": "Japanese", "zh": "Chinese", "uk": "Ukrainian", "fa": "Persian",
+        }
         base = parts[0].lower() if parts else "und"
         return names.get(base, value if value and value != "und" else "Unknown language")
 
@@ -830,7 +860,7 @@ class ToolkitBackend(QObject):
                    "pl":"pol","nl":"nld","sv":"swe","uk":"ukr","fa":"fas","ur":"urd","bn":"ben","ta":"tam","te":"tel",
                    "english":"eng","arabic":"ara","spanish":"spa","french":"fra","german":"deu","italian":"ita",
                    "portuguese":"por","russian":"rus","japanese":"jpn","korean":"kor","chinese":"zho","hindi":"hin",
-                   "turkish":"tur","indonesian":"ind","thai":"tha","vietnamese":"vie","polish":"polish",
+                   "turkish":"tur","indonesian":"ind","thai":"tha","vietnamese":"vie","polish":"pol",
                    "dutch":"nld","swedish":"swe","ukrainian":"ukr","persian":"fas","urdu":"urd","bengali":"ben",
                    "tamil":"tam","telugu":"tel"}
         return mapping.get(base, "und")
