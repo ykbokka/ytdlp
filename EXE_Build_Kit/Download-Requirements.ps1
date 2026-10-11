@@ -146,7 +146,29 @@ try {
         Copy-Item $found.FullName (Join-Path $AssetsRoot $tool) -Force
     }
 
-    Write-Host "[5/7] Creating the isolated 64-bit Python build environment..." -ForegroundColor Cyan
+    Write-Host "[5/8] Downloading aria2c for parallel HTTP downloads..." -ForegroundColor Cyan
+    $ariaZip = Join-Path $WorkRoot "aria2.zip"
+    $ariaUrl = "https://github.com/aria2/aria2/releases/download/release-1.37.0/aria2-1.37.0-win-64bit-build1.zip"
+    Download-File $ariaUrl $ariaZip
+
+    # Validate the official archive checksum before extracting/running the binary.
+    $expectedAriaHash = "67D015301EEF0B612191212D564C5BB0A14B5B9C4796B76454276A4D28D9B288"
+    $actualAriaHash = (Get-FileHash -LiteralPath $ariaZip -Algorithm SHA256).Hash
+    if ($actualAriaHash -ne $expectedAriaHash) {
+        throw "aria2 archive SHA-256 verification failed. The archive may be corrupted or changed."
+    }
+
+    $ariaExtract = Join-Path $WorkRoot "aria2_extract"
+    if (Test-Path $ariaExtract) { Remove-Item $ariaExtract -Recurse -Force }
+    Expand-Archive -Path $ariaZip -DestinationPath $ariaExtract -Force
+    $ariaExe = Get-ChildItem -Path $ariaExtract -Filter "aria2c.exe" -Recurse | Select-Object -First 1
+    if (-not $ariaExe) { throw "aria2 archive did not contain aria2c.exe." }
+    Copy-Item $ariaExe.FullName (Join-Path $AssetsRoot "aria2c.exe") -Force
+
+    # Bundle the matching upstream license text with the application.
+    Download-File "https://raw.githubusercontent.com/aria2/aria2/release-1.37.0/COPYING" (Join-Path $AssetsRoot "aria2-LICENSE.txt")
+
+    Write-Host "[6/8] Creating the isolated 64-bit Python build environment..." -ForegroundColor Cyan
     if (Test-Path $VenvRoot) { Remove-Item $VenvRoot -Recurse -Force }
     $pythonArgs = @()
     if ($python.Prefix.Count -gt 0) { $pythonArgs += $python.Prefix }
@@ -158,11 +180,12 @@ try {
     Invoke-Checked $venvPython @("-m", "pip", "install", "-r", $Requirements) "Could not install build dependencies."
     Invoke-Checked $venvPython @("-m", "pip", "check") "The installed Python environment has dependency conflicts."
 
-    Write-Host "[6/7] Running tool and package startup checks..." -ForegroundColor Cyan
+    Write-Host "[7/8] Running tool and package startup checks..." -ForegroundColor Cyan
     $ytDlpVersion = Get-ToolVersion $ytDlpPath @("--version")
     $denoVersion = Get-ToolVersion (Join-Path $AssetsRoot "deno.exe") @("--version")
     $ffmpegVersion = Get-ToolVersion (Join-Path $AssetsRoot "ffmpeg.exe") @("-version")
     $ffprobeVersion = Get-ToolVersion (Join-Path $AssetsRoot "ffprobe.exe") @("-version")
+    $aria2Version = Get-ToolVersion (Join-Path $AssetsRoot "aria2c.exe") @("--version")
 
     $smokeCode = "import customtkinter, comtypes, ytmusicapi, requests, PIL, mutagen, certifi, charset_normalizer, idna, urllib3, psutil, darkdetect, packaging, typing_extensions; import os; assert os.path.isfile(certifi.where()); assert os.path.isdir(os.path.join(os.path.dirname(ytmusicapi.__file__), 'locales'))"
     Invoke-Checked $venvPython @("-c", $smokeCode) "A required Python package or resource failed its import check."
@@ -170,13 +193,15 @@ try {
     $syntaxCode = "import ast, pathlib; ast.parse(pathlib.Path(r'$SourcePath').read_text(encoding='utf-8-sig'))"
     Invoke-Checked $venvPython @("-c", $syntaxCode) "The downloaded app source failed its Python syntax check."
 
-    Write-Host "[7/7] Creating a build manifest and checking required files..." -ForegroundColor Cyan
+    Write-Host "[8/8] Creating a build manifest and checking required files..." -ForegroundColor Cyan
     $requiredFiles = @(
         $SourcePath,
         $ytDlpPath,
         (Join-Path $AssetsRoot "deno.exe"),
         (Join-Path $AssetsRoot "ffmpeg.exe"),
         (Join-Path $AssetsRoot "ffprobe.exe"),
+        (Join-Path $AssetsRoot "aria2c.exe"),
+        (Join-Path $AssetsRoot "aria2-LICENSE.txt"),
         $venvPython,
         (Join-Path $PSScriptRoot "YTM_Music_Toolkit.spec"),
         $Requirements
@@ -202,6 +227,7 @@ try {
         "Deno: $denoVersion",
         "FFmpeg: $ffmpegVersion",
         "FFprobe: $ffprobeVersion",
+        "aria2c: $aria2Version",
         "",
         "Installed Python packages (pip freeze --all):"
     )
