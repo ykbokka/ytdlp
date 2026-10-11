@@ -287,7 +287,7 @@ class QtBackendCoreTests(unittest.TestCase):
                 "No subtitles",
             )
 
-        result = output / "Raw title [vid123].mp4"
+        result = output / "Raw title.mp4"
         self.assertTrue(result.is_file(), "A completed media file should have been exported to the final folder.")
         self.assertEqual(result.read_bytes(), b"mock-media")
         self.assertFalse((output / "tempytm").exists(), "A single-download tempytm workspace should be removed.")
@@ -299,23 +299,24 @@ class QtBackendCoreTests(unittest.TestCase):
 
     def test_arabic_media_filename_isolated_without_reversing_title(self):
         title = "لا تصارخ ولا راح تموت🤫 _ Fears to Fathom #2"
-        stem = backend.ToolkitBackend._media_stem(title, "5Bj2JKH1xEQ")
+        stem = backend.ToolkitBackend._media_stem(title)
         self.assertTrue(stem.startswith("\u2067"))
-        self.assertTrue(stem.endswith("\u2069 [5Bj2JKH1xEQ]"))
+        self.assertTrue(stem.endswith("\u2069"))
+        self.assertNotIn("5Bj2JKH1xEQ", stem)
         self.assertIn(title, stem)
         derived = backend.derive_title_from_filename(stem + ".mkv")
-        self.assertNotIn("\\u2067", derived)
-        self.assertNotIn("\\u2069", derived)
+        self.assertNotIn("\u2067", derived)
+        self.assertNotIn("\u2069", derived)
         self.assertEqual(
             derived,
-            "لا تصارخ ولا راح تموت🤫 Fears to Fathom #2 [5Bj2JKH1xEQ]",
-            "The logical Arabic/Latin text must stay in order after invisible RTL marks are stripped."
+            "لا تصارخ ولا راح تموت🤫 Fears to Fathom #2",
+            "The final filename should contain the title only, without the opaque YouTube ID."
         )
 
-    def test_english_media_filename_remains_unchanged(self):
+    def test_english_media_filename_remains_clean(self):
         self.assertEqual(
-            backend.ToolkitBackend._media_stem("Example Video", "abc123"),
-            "Example Video [abc123]"
+            backend.ToolkitBackend._media_stem("Example Video"),
+            "Example Video"
         )
 
 
