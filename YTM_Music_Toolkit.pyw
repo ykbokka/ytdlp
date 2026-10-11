@@ -7766,6 +7766,7 @@ class YTMMusicToolkit(ctk.CTk):
 
     def run_download_worker(self, user_input):
         self._last_download_outcome = "running"
+        queue_run = bool(getattr(self, "_v3_queue_active", False))
         used_ytm_matching = (
             not is_youtube_url(user_input)
             or is_youtube_music_url(user_input)
@@ -8076,7 +8077,7 @@ class YTMMusicToolkit(ctk.CTk):
                         if used_ytm_matching
                         else "Download complete. Source YouTube metadata/artwork was used directly."
                     )
-                if not getattr(self, "_v3_queue_active", False):
+                if not queue_run:
                     messagebox.showinfo("Success", message)
 
             self._last_download_outcome = "success"
@@ -8104,7 +8105,7 @@ class YTMMusicToolkit(ctk.CTk):
                 self.dl_log,
                 f"[ERROR] {exc} | Failure log: {log_path or FAILURE_LOG_DIR}",
             )
-            if not getattr(self, "_v3_queue_active", False):
+            if not queue_run:
                 self.after(
                     0,
                     lambda e=str(exc), p=(log_path or FAILURE_LOG_DIR): messagebox.showerror(
@@ -11373,6 +11374,8 @@ def _queue_process_queue(self):
     self._v3_queue_active = True
     self._v3_queue_stop_requested = False
     self._v3_queue_batch_total = len(items)
+    self._v3_queue_item_index = 1
+    self._v3_queue_item_total = len(items)
     self._v3_queue_completed = 0
     self._v3_queue_failed = 0
     self.stop_requested = False
