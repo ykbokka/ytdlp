@@ -56,16 +56,29 @@ function Download-File {
     $lastError = ""
 
     for ($attempt = 1; $attempt -le 3; $attempt++) {
+        $oldProgressPreference = $ProgressPreference
+        $timer = [System.Diagnostics.Stopwatch]::StartNew()
+
         try {
             if (Test-Path $partial) { Remove-Item $partial -Force }
             Write-Host "Downloading $([System.IO.Path]::GetFileName($Destination)) (attempt $attempt/3)..." -ForegroundColor Cyan
-            Invoke-WebRequest -Uri $Url -OutFile $partial -UseBasicParsing -TimeoutSec 300
+
+            # Windows PowerShell 5.1's per-transfer progress rendering can
+            # drastically slow large Invoke-WebRequest downloads. Disable the
+            # progress UI during the transfer, then show the measured result.
+            $ProgressPreference = "SilentlyContinue"
+            Invoke-WebRequest -Uri $Url -OutFile $partial -UseBasicParsing -TimeoutSec 900
 
             if (-not (Test-Path $partial) -or (Get-Item $partial).Length -lt 1024) {
                 throw "Download appears incomplete."
             }
 
             Move-Item $partial $Destination -Force
+            $timer.Stop()
+            $sizeBytes = (Get-Item $Destination).Length
+            $seconds = [Math]::Max($timer.Elapsed.TotalSeconds, 0.01)
+            $speedMiB = ($sizeBytes / 1MB) / $seconds
+            Write-Host ("Downloaded {0:N1} MiB in {1:N1}s ({2:N1} MiB/s)." -f ($sizeBytes / 1MB), $seconds, $speedMiB) -ForegroundColor Green
             return
         }
         catch {
@@ -75,6 +88,10 @@ function Download-File {
                 Write-Host "Download attempt failed: $lastError" -ForegroundColor Yellow
                 Start-Sleep -Seconds (2 * $attempt)
             }
+        }
+        finally {
+            $ProgressPreference = $oldProgressPreference
+            if ($timer.IsRunning) { $timer.Stop() }
         }
     }
 
@@ -176,8 +193,10 @@ try {
     Invoke-Checked $python.Command $pythonArgs "Could not create the build virtual environment."
 
     $venvPython = Join-Path $VenvRoot "Scripts\python.exe"
-    Invoke-Checked $venvPython @("-m", "pip", "install", "--upgrade", "pip") "Could not upgrade pip."
-    Invoke-Checked $venvPython @("-m", "pip", "install", "-r", $Requirements) "Could not install build dependencies."
+    # Keep pip output light; repeated terminal progress redraws add overhead
+    # and make the installer noisier without making the downloads faster.
+    Invoke-Checked $venvPython @("-m", "pip", "install", "--disable-pip-version-check", "--progress-bar", "off", "--upgrade", "pip") "Could not upgrade pip."
+    Invoke-Checked $venvPython @("-m", "pip", "install", "--disable-pip-version-check", "--progress-bar", "off", "--prefer-binary", "-r", $Requirements) "Could not install build dependencies."
     Invoke-Checked $venvPython @("-m", "pip", "check") "The installed Python environment has dependency conflicts."
 
     Write-Host "[7/8] Running tool and package startup checks..." -ForegroundColor Cyan
