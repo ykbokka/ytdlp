@@ -57,10 +57,14 @@ ApplicationWindow {
     property color hoverColor: darkMode ? "#222A3A" : "#EDF1F8"
     property color successColor: darkMode ? "#52D6A0" : "#218653"
 
-    Behavior on textColor { ColorAnimation { duration: 240; easing.type: Easing.OutCubic } }
-    Behavior on mutedColor { ColorAnimation { duration: 240; easing.type: Easing.OutCubic } }
-    Behavior on accentColor { ColorAnimation { duration: 240; easing.type: Easing.OutCubic } }
-    Behavior on successColor { ColorAnimation { duration: 240; easing.type: Easing.OutCubic } }
+    Behavior on textColor { ColorAnimation { duration: 240
+easing.type: Easing.OutCubic } }
+    Behavior on mutedColor { ColorAnimation { duration: 240
+easing.type: Easing.OutCubic } }
+    Behavior on accentColor { ColorAnimation { duration: 240
+easing.type: Easing.OutCubic } }
+    Behavior on successColor { ColorAnimation { duration: 240
+easing.type: Easing.OutCubic } }
     property var navItems: [
         {title:"Downloader", icon:"↓"},
         {title:"Queue", icon:"≡"},
@@ -103,7 +107,8 @@ ApplicationWindow {
 
     background: Rectangle {
         color: root.bgColor
-        Behavior on color { ColorAnimation { duration: 260; easing.type: Easing.OutCubic } }
+        Behavior on color { ColorAnimation { duration: 260
+easing.type: Easing.OutCubic } }
     }
 
     ColumnLayout {
@@ -121,7 +126,8 @@ ApplicationWindow {
             border.color: root.borderColor
             opacity: 0
             y: -9
-            Behavior on color { ColorAnimation { duration: 260; easing.type: Easing.OutCubic } }
+            Behavior on color { ColorAnimation { duration: 260
+easing.type: Easing.OutCubic } }
             Behavior on border.color { ColorAnimation { duration: 260 } }
 
             RowLayout {
@@ -148,8 +154,13 @@ ApplicationWindow {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 1
-                    Text { text: "YouTube Toolkit"; color: root.textColor; font.pixelSize: 21; font.bold: true }
-                    Text { text: "Downloads, metadata, artwork & library tools"; color: root.mutedColor; font.pixelSize: 11 }
+                    Text { text: "YouTube Toolkit"
+color: root.textColor
+font.pixelSize: 21
+font.bold: true }
+                    Text { text: "Downloads, metadata, artwork & library tools"
+color: root.mutedColor
+font.pixelSize: 11 }
                 }
                 Rectangle {
                     Layout.preferredWidth: 100
@@ -162,8 +173,16 @@ ApplicationWindow {
                     Row {
                         anchors.centerIn: parent
                         spacing: 7
-                        Rectangle { width: 6; height: 6; radius: 3; anchors.verticalCenter: parent.verticalCenter; color: root.successColor }
-                        Text { text: "QT QUICK"; color: root.successColor; font.pixelSize: 9; font.bold: true; anchors.verticalCenter: parent.verticalCenter }
+                        Rectangle { width: 6
+height: 6
+radius: 3
+anchors.verticalCenter: parent.verticalCenter
+color: root.successColor }
+                        Text { text: "QT QUICK"
+color: root.successColor
+font.pixelSize: 9
+font.bold: true
+anchors.verticalCenter: parent.verticalCenter }
                     }
                 }
                 Button {
@@ -182,9 +201,14 @@ ApplicationWindow {
                         border.color: root.borderColor
                         Behavior on color { ColorAnimation { duration: 180 } }
                     }
-                    contentItem: Text { text: themeButton.text; color: root.textColor; font.pixelSize: 20; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                    contentItem: Text { text: themeButton.text
+color: root.textColor
+font.pixelSize: 20
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter }
                     scale: down ? 0.94 : 1
-                    Behavior on scale { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
+                    Behavior on scale { NumberAnimation { duration: 110
+easing.type: Easing.OutCubic } }
                     ToolTip.visible: hovered
                     ToolTip.text: "Toggle appearance"
                 }
@@ -236,7 +260,8 @@ ApplicationWindow {
                                 anchors.fill: parent
                                 radius: 12
                                 color: root.currentPage === navItem.index ? root.accentSoftColor : navMouse.containsMouse ? root.hoverColor : "transparent"
-                                Behavior on color { ColorAnimation { duration: 170; easing.type: Easing.OutCubic } }
+                                Behavior on color { ColorAnimation { duration: 170
+easing.type: Easing.OutCubic } }
                             }
                             Rectangle {
                                 width: 3
@@ -278,7 +303,8 @@ ApplicationWindow {
                                 onClicked: root.currentPage = navItem.index
                             }
                             scale: navMouse.pressed ? 0.98 : 1
-                            Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
+                            Behavior on scale { NumberAnimation { duration: 100
+easing.type: Easing.OutCubic } }
                         }
                     }
                     Item { Layout.fillHeight: true }
@@ -294,9 +320,18 @@ ApplicationWindow {
                             anchors.fill: parent
                             anchors.margins: 11
                             spacing: 5
-                            Text { text: "BACKEND"; color: root.mutedColor; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
-                            Text { text: "Python · yt-dlp"; color: root.textColor; font.pixelSize: 11; font.bold: true }
-                            Text { text: "Async operations"; color: root.successColor; font.pixelSize: 10 }
+                            Text { text: "BACKEND"
+color: root.mutedColor
+font.pixelSize: 9
+font.bold: true
+font.letterSpacing: 1 }
+                            Text { text: "Python · yt-dlp"
+color: root.textColor
+font.pixelSize: 11
+font.bold: true }
+                            Text { text: "Async operations"
+color: root.successColor
+font.pixelSize: 10 }
                         }
                     }
                 }
@@ -311,7 +346,8 @@ ApplicationWindow {
                 border.width: 1
                 border.color: root.borderColor
                 clip: true
-                Behavior on color { ColorAnimation { duration: 260; easing.type: Easing.OutCubic } }
+                Behavior on color { ColorAnimation { duration: 260
+easing.type: Easing.OutCubic } }
                 Behavior on border.color { ColorAnimation { duration: 260 } }
 
                 Loader {
@@ -325,9 +361,24 @@ ApplicationWindow {
                 }
                 ParallelAnimation {
                     id: pageAnimation
-                    NumberAnimation { target: pageLoader; property: "opacity"; from: 0; to: 1; duration: 260; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: pageLoader; property: "y"; from: 15; to: 0; duration: 320; easing.type: Easing.OutCubic }
-                    NumberAnimation { target: pageLoader; property: "scale"; from: 0.992; to: 1; duration: 320; easing.type: Easing.OutCubic }
+                    NumberAnimation { target: pageLoader
+property: "opacity"
+from: 0
+to: 1
+duration: 260
+easing.type: Easing.OutCubic }
+                    NumberAnimation { target: pageLoader
+property: "y"
+from: 15
+to: 0
+duration: 320
+easing.type: Easing.OutCubic }
+                    NumberAnimation { target: pageLoader
+property: "scale"
+from: 0.992
+to: 1
+duration: 320
+easing.type: Easing.OutCubic }
                 }
             }
         }
@@ -336,9 +387,21 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.preferredHeight: 22
             spacing: 8
-            Rectangle { width: 6; height: 6; radius: 3; color: root.downloadPercent > 0 && root.downloadPercent < 100 ? root.accentColor : root.successColor; Layout.alignment: Qt.AlignVCenter }
-            Text { Layout.fillWidth: true; text: root.statusMessage; color: root.mutedColor; font.pixelSize: 10; elide: Text.ElideRight; verticalAlignment: Text.AlignVCenter }
-            Text { text: root.downloadPercent > 0 ? Math.round(root.downloadPercent) + "%" : "READY"; color: root.accentColor; font.pixelSize: 9; font.bold: true }
+            Rectangle { width: 6
+height: 6
+radius: 3
+color: root.downloadPercent > 0 && root.downloadPercent < 100 ? root.accentColor : root.successColor
+Layout.alignment: Qt.AlignVCenter }
+            Text { Layout.fillWidth: true
+text: root.statusMessage
+color: root.mutedColor
+font.pixelSize: 10
+elide: Text.ElideRight
+verticalAlignment: Text.AlignVCenter }
+            Text { text: root.downloadPercent > 0 ? Math.round(root.downloadPercent) + "%" : "READY"
+color: root.accentColor
+font.pixelSize: 9
+font.bold: true }
         }
     }
 
@@ -430,7 +493,8 @@ ApplicationWindow {
             if (ok && root.downloadPercent < 100)
                 root.downloadPercent = 100
         }
-        function onMetadataLoaded(data) { root.metadataValues = data; if (data.thumbnail) root.metadataThumbnail = data.thumbnail }
+        function onMetadataLoaded(data) { root.metadataValues = data
+if (data.thumbnail) root.metadataThumbnail = data.thumbnail }
         function onLibraryScanReady(data) {
             root.libraryFolder = data.folder || root.libraryFolder
             root.libraryRows = data.rows || []
@@ -447,8 +511,18 @@ ApplicationWindow {
 
     ParallelAnimation {
         id: introAnimation
-        NumberAnimation { target: header; property: "opacity"; from: 0; to: 1; duration: 400; easing.type: Easing.OutCubic }
-        NumberAnimation { target: header; property: "y"; from: -9; to: 0; duration: 430; easing.type: Easing.OutCubic }
+        NumberAnimation { target: header
+property: "opacity"
+from: 0
+to: 1
+duration: 400
+easing.type: Easing.OutCubic }
+        NumberAnimation { target: header
+property: "y"
+from: -9
+to: 0
+duration: 430
+easing.type: Easing.OutCubic }
         onFinished: root.introComplete = true
     }
 
@@ -467,8 +541,13 @@ ApplicationWindow {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 3
-                    Text { text: "Downloader"; color: root.textColor; font.pixelSize: 24; font.bold: true }
-                    Text { text: "Preview a source, choose the output, and download in the background."; color: root.mutedColor; font.pixelSize: 11 }
+                    Text { text: "Downloader"
+color: root.textColor
+font.pixelSize: 24
+font.bold: true }
+                    Text { text: "Preview a source, choose the output, and download in the background."
+color: root.mutedColor
+font.pixelSize: 11 }
                 }
                 Rectangle {
                     Layout.fillWidth: true
@@ -485,7 +564,11 @@ ApplicationWindow {
                         anchors.top: parent.top
                         anchors.margins: 15
                         spacing: 10
-                        Text { text: "SOURCE URL"; color: root.mutedColor; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
+                        Text { text: "SOURCE URL"
+color: root.mutedColor
+font.pixelSize: 9
+font.bold: true
+font.letterSpacing: 1 }
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 8
@@ -511,16 +594,34 @@ ApplicationWindow {
                             Button {
                                 id: previewButton
                                 text: "Preview"
-                                onClicked: { root.downloadUrl = urlField.text; backend.preview(urlField.text) }
-                                background: Rectangle { radius: 12; color: previewButton.down ? "#2859B9" : previewButton.hovered ? "#4C83F3" : "#3475EE"; Behavior on color { ColorAnimation { duration: 120 } } }
-                                contentItem: Text { text: previewButton.text; color: "white"; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                                onClicked: { root.downloadUrl = urlField.text
+backend.preview(urlField.text) }
+                                background: Rectangle { radius: 12
+color: previewButton.down ? "#2859B9" : previewButton.hovered ? "#4C83F3" : "#3475EE"
+Behavior on color { ColorAnimation { duration: 120 } } }
+                                contentItem: Text { text: previewButton.text
+color: "white"
+font.pixelSize: 11
+font.bold: true
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter }
                             }
                             Button {
                                 id: addQueueButton
                                 text: "Add to Queue"
-                                onClicked: { root.downloadUrl = urlField.text; backend.addQueueUrl(urlField.text) }
-                                background: Rectangle { radius: 12; color: addQueueButton.hovered ? root.hoverColor : root.panelColor; border.width: 1; border.color: root.borderColor; Behavior on color { ColorAnimation { duration: 120 } } }
-                                contentItem: Text { text: addQueueButton.text; color: root.textColor; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                                onClicked: { root.downloadUrl = urlField.text
+backend.addQueueUrl(urlField.text) }
+                                background: Rectangle { radius: 12
+color: addQueueButton.hovered ? root.hoverColor : root.panelColor
+border.width: 1
+border.color: root.borderColor
+Behavior on color { ColorAnimation { duration: 120 } } }
+                                contentItem: Text { text: addQueueButton.text
+color: root.textColor
+font.pixelSize: 11
+font.bold: true
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter }
                             }
                         }
                     }
@@ -532,29 +633,55 @@ ApplicationWindow {
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 5
-                        Text { text: "FILE TYPE"; color: root.mutedColor; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
+                        Text { text: "FILE TYPE"
+color: root.mutedColor
+font.pixelSize: 9
+font.bold: true
+font.letterSpacing: 1 }
                         ComboBox {
                             id: fileTypeBox
                             Layout.fillWidth: true
                             model: ["Video (MKV)", "Video (MP4)", "Audio only"]
                             currentIndex: 0
                             onActivated: { root.fileType = currentText }
-                            contentItem: Text { leftPadding: 12; rightPadding: 28; text: fileTypeBox.displayText; color: root.textColor; font.pixelSize: 11; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight }
-                            background: Rectangle { radius: 11; color: root.inputColor; border.width: 1; border.color: root.borderColor }
+                            contentItem: Text { leftPadding: 12
+rightPadding: 28
+text: fileTypeBox.displayText
+color: root.textColor
+font.pixelSize: 11
+verticalAlignment: Text.AlignVCenter
+elide: Text.ElideRight }
+                            background: Rectangle { radius: 11
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor }
                         }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 5
-                        Text { text: "QUALITY CEILING"; color: root.mutedColor; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
+                        Text { text: "QUALITY CEILING"
+color: root.mutedColor
+font.pixelSize: 9
+font.bold: true
+font.letterSpacing: 1 }
                         ComboBox {
                             id: qualityBox
                             Layout.fillWidth: true
                             model: root.qualityOptions
                             currentIndex: Math.max(0, root.qualityOptions.indexOf(root.quality))
                             onActivated: root.quality = currentText
-                            contentItem: Text { leftPadding: 12; rightPadding: 28; text: qualityBox.displayText; color: root.textColor; font.pixelSize: 11; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight }
-                            background: Rectangle { radius: 11; color: root.inputColor; border.width: 1; border.color: root.borderColor }
+                            contentItem: Text { leftPadding: 12
+rightPadding: 28
+text: qualityBox.displayText
+color: root.textColor
+font.pixelSize: 11
+verticalAlignment: Text.AlignVCenter
+elide: Text.ElideRight }
+                            background: Rectangle { radius: 11
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor }
                         }
                     }
                 }
@@ -565,7 +692,11 @@ ApplicationWindow {
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 5
-                        Text { text: "AUDIO FORMAT"; color: root.mutedColor; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
+                        Text { text: "AUDIO FORMAT"
+color: root.mutedColor
+font.pixelSize: 9
+font.bold: true
+font.letterSpacing: 1 }
                         ComboBox {
                             id: audioFormatBox
                             Layout.fillWidth: true
@@ -574,22 +705,43 @@ ApplicationWindow {
                             enabled: fileTypeBox.currentText === "Audio only"
                             opacity: enabled ? 1 : 0.55
                             onActivated: root.audioFormat = currentText
-                            contentItem: Text { leftPadding: 12; rightPadding: 28; text: audioFormatBox.displayText; color: root.textColor; font.pixelSize: 11; verticalAlignment: Text.AlignVCenter }
-                            background: Rectangle { radius: 11; color: root.inputColor; border.width: 1; border.color: root.borderColor }
+                            contentItem: Text { leftPadding: 12
+rightPadding: 28
+text: audioFormatBox.displayText
+color: root.textColor
+font.pixelSize: 11
+verticalAlignment: Text.AlignVCenter }
+                            background: Rectangle { radius: 11
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor }
                         }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 5
-                        Text { text: "SUBTITLES"; color: root.mutedColor; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
+                        Text { text: "SUBTITLES"
+color: root.mutedColor
+font.pixelSize: 9
+font.bold: true
+font.letterSpacing: 1 }
                         ComboBox {
                             id: subtitleBox
                             Layout.fillWidth: true
                             model: ["No subtitles", "Auto subtitles", "Manual subtitles"]
                             currentIndex: 0
                             onActivated: root.subtitleMode = currentText
-                            contentItem: Text { leftPadding: 12; rightPadding: 28; text: subtitleBox.displayText; color: root.textColor; font.pixelSize: 11; verticalAlignment: Text.AlignVCenter; elide: Text.ElideRight }
-                            background: Rectangle { radius: 11; color: root.inputColor; border.width: 1; border.color: root.borderColor }
+                            contentItem: Text { leftPadding: 12
+rightPadding: 28
+text: subtitleBox.displayText
+color: root.textColor
+font.pixelSize: 11
+verticalAlignment: Text.AlignVCenter
+elide: Text.ElideRight }
+                            background: Rectangle { radius: 11
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor }
                         }
                     }
                 }
@@ -613,15 +765,36 @@ ApplicationWindow {
                             radius: 10
                             color: root.inputColor
                             clip: true
-                            Image { anchors.fill: parent; source: root.previewData.thumbnail || ""; fillMode: Image.PreserveAspectCrop; asynchronous: true; cache: true }
-                            Text { anchors.centerIn: parent; visible: !root.previewData.thumbnail; text: "♫"; color: root.mutedColor; font.pixelSize: 22 }
+                            Image { anchors.fill: parent
+source: root.previewData.thumbnail || ""
+fillMode: Image.PreserveAspectCrop
+asynchronous: true
+cache: true }
+                            Text { anchors.centerIn: parent
+visible: !root.previewData.thumbnail
+text: "♫"
+color: root.mutedColor
+font.pixelSize: 22 }
                         }
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 4
-                            Text { text: root.previewData.title || "No source preview yet"; color: root.textColor; font.pixelSize: 13; font.bold: true; elide: Text.ElideRight; Layout.fillWidth: true }
-                            Text { text: (root.previewData.uploader || "—") + "   •   " + (root.previewData.duration || "—"); color: root.mutedColor; font.pixelSize: 10; elide: Text.ElideRight; Layout.fillWidth: true }
-                            Text { text: root.previewData.heights ? root.previewData.heights.join("p  ·  ") + "p available" : "Choose Preview to inspect available formats"; color: root.accentColor; font.pixelSize: 10; elide: Text.ElideRight; Layout.fillWidth: true }
+                            Text { text: root.previewData.title || "No source preview yet"
+color: root.textColor
+font.pixelSize: 13
+font.bold: true
+elide: Text.ElideRight
+Layout.fillWidth: true }
+                            Text { text: (root.previewData.uploader || "—") + "   •   " + (root.previewData.duration || "—")
+color: root.mutedColor
+font.pixelSize: 10
+elide: Text.ElideRight
+Layout.fillWidth: true }
+                            Text { text: root.previewData.heights ? root.previewData.heights.join("p  ·  ") + "p available" : "Choose Preview to inspect available formats"
+color: root.accentColor
+font.pixelSize: 10
+elide: Text.ElideRight
+Layout.fillWidth: true }
                         }
                     }
                 }
@@ -640,19 +813,34 @@ ApplicationWindow {
                         spacing: 7
                         RowLayout {
                             Layout.fillWidth: true
-                            Text { text: "DOWNLOAD PROGRESS"; color: root.mutedColor; font.pixelSize: 9; font.bold: true; font.letterSpacing: 0.8 }
+                            Text { text: "DOWNLOAD PROGRESS"
+color: root.mutedColor
+font.pixelSize: 9
+font.bold: true
+font.letterSpacing: 0.8 }
                             Item { Layout.fillWidth: true }
-                            Text { text: root.progressText; color: root.accentColor; font.pixelSize: 10; elide: Text.ElideRight; Layout.maximumWidth: 230 }
+                            Text { text: root.progressText
+color: root.accentColor
+font.pixelSize: 10
+elide: Text.ElideRight
+Layout.maximumWidth: 230 }
                         }
                         ProgressBar {
                             Layout.fillWidth: true
                             from: 0
                             to: 100
                             value: root.downloadPercent
-                            background: Rectangle { implicitHeight: 7; radius: 4; color: root.borderColor }
+                            background: Rectangle { implicitHeight: 7
+radius: 4
+color: root.borderColor }
                             contentItem: Item {
                                 implicitHeight: 7
-                                Rectangle { width: parent.width * Math.max(0, Math.min(1, root.downloadPercent / 100)); height: parent.height; radius: 4; color: root.accentColor; Behavior on width { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } } }
+                                Rectangle { width: parent.width * Math.max(0, Math.min(1, root.downloadPercent / 100))
+height: parent.height
+radius: 4
+color: root.accentColor
+Behavior on width { NumberAnimation { duration: 100
+easing.type: Easing.OutCubic } } }
                             }
                         }
                     }
@@ -673,29 +861,58 @@ ApplicationWindow {
                             else
                                 root.startDownload()
                         }
-                        background: Rectangle { radius: 12; color: downloadButton.down ? "#2859B9" : downloadButton.hovered ? "#4C83F3" : "#3475EE"; Behavior on color { ColorAnimation { duration: 130 } } }
-                        contentItem: Text { text: downloadButton.text; color: "white"; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                        background: Rectangle { radius: 12
+color: downloadButton.down ? "#2859B9" : downloadButton.hovered ? "#4C83F3" : "#3475EE"
+Behavior on color { ColorAnimation { duration: 130 } } }
+                        contentItem: Text { text: downloadButton.text
+color: "white"
+font.pixelSize: 11
+font.bold: true
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter }
                         scale: down ? 0.98 : 1
-                        Behavior on scale { NumberAnimation { duration: 100; easing.type: Easing.OutCubic } }
+                        Behavior on scale { NumberAnimation { duration: 100
+easing.type: Easing.OutCubic } }
                     }
                     Button {
                         id: pauseButton
                         text: root.isPaused ? "Resume" : "Pause"
                         Layout.preferredHeight: 43
                         onClicked: root.isPaused = backend.togglePause()
-                        background: Rectangle { radius: 12; color: pauseButton.hovered ? root.hoverColor : root.elevatedColor; border.width: 1; border.color: root.borderColor }
-                        contentItem: Text { text: pauseButton.text; color: root.textColor; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                        background: Rectangle { radius: 12
+color: pauseButton.hovered ? root.hoverColor : root.elevatedColor
+border.width: 1
+border.color: root.borderColor }
+                        contentItem: Text { text: pauseButton.text
+color: root.textColor
+font.pixelSize: 11
+font.bold: true
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter }
                     }
                     Button {
                         id: stopButton
                         text: "Stop"
                         Layout.preferredHeight: 43
-                        onClicked: { root.isPaused = false; backend.stopDownload() }
-                        background: Rectangle { radius: 12; color: stopButton.hovered ? (root.darkMode ? "#42242A" : "#FBE7E8") : root.elevatedColor; border.width: 1; border.color: root.borderColor }
-                        contentItem: Text { text: stopButton.text; color: root.darkMode ? "#FF8D99" : "#B42332"; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                        onClicked: { root.isPaused = false
+backend.stopDownload() }
+                        background: Rectangle { radius: 12
+color: stopButton.hovered ? (root.darkMode ? "#42242A" : "#FBE7E8") : root.elevatedColor
+border.width: 1
+border.color: root.borderColor }
+                        contentItem: Text { text: stopButton.text
+color: root.darkMode ? "#FF8D99" : "#B42332"
+font.pixelSize: 11
+font.bold: true
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter }
                     }
                     Item { Layout.fillWidth: true }
-                    Text { text: root.downloadDirectory ? "Save to: " + root.downloadDirectory : "Set the download folder in Settings"; color: root.mutedColor; font.pixelSize: 9; elide: Text.ElideMiddle; Layout.maximumWidth: 270 }
+                    Text { text: root.downloadDirectory ? "Save to: " + root.downloadDirectory : "Set the download folder in Settings"
+color: root.mutedColor
+font.pixelSize: 9
+elide: Text.ElideMiddle
+Layout.maximumWidth: 270 }
                 }
             }
         }
@@ -705,16 +922,64 @@ ApplicationWindow {
         id: queuePage
         ColumnLayout {
             spacing: 12
-            Text { text: "Download Queue"; color: root.textColor; font.pixelSize: 24; font.bold: true }
-            Text { text: "Add a single URL or expand a playlist, then process items sequentially."; color: root.mutedColor; font.pixelSize: 11 }
+            Text { text: "Download Queue"
+color: root.textColor
+font.pixelSize: 24
+font.bold: true }
+            Text { text: "Add a single URL or expand a playlist, then process items sequentially."
+color: root.mutedColor
+font.pixelSize: 11 }
             RowLayout {
                 Layout.fillWidth: true
-                Button { text: "Start Pending"; onClicked: { root.downloadPercent = 0; backend.startQueue(root.fileType, root.quality, root.audioFormat, root.subtitleMode) }; background: Rectangle { radius: 11; color: "#3475EE" }; contentItem: Text { text: parent.text; color: "white"; font.bold: true; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
-                Button { text: root.isPaused ? "Resume" : "Pause"; onClicked: root.isPaused = backend.togglePause(); background: Rectangle { radius: 11; color: root.elevatedColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
-                Button { text: "Stop"; onClicked: { root.isPaused = false; backend.stopDownload() }; background: Rectangle { radius: 11; color: root.darkMode ? "#42242A" : "#FBE7E8"; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.darkMode ? "#FF8D99" : "#B42332"; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
-                Button { text: "Clear Queue"; onClicked: backend.clearQueue(); background: Rectangle { radius: 11; color: root.elevatedColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                Button { text: "Start Pending"
+onClicked: { root.downloadPercent = 0
+backend.startQueue(root.fileType, root.quality, root.audioFormat, root.subtitleMode) }
+background: Rectangle { radius: 11
+color: "#3475EE" }
+contentItem: Text { text: parent.text
+color: "white"
+font.bold: true
+font.pixelSize: 11
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter } }
+                Button { text: root.isPaused ? "Resume" : "Pause"
+onClicked: root.isPaused = backend.togglePause()
+background: Rectangle { radius: 11
+color: root.elevatedColor
+border.width: 1
+border.color: root.borderColor }
+contentItem: Text { text: parent.text
+color: root.textColor
+font.pixelSize: 11
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter } }
+                Button { text: "Stop"
+onClicked: { root.isPaused = false
+backend.stopDownload() }
+background: Rectangle { radius: 11
+color: root.darkMode ? "#42242A" : "#FBE7E8"
+border.width: 1
+border.color: root.borderColor }
+contentItem: Text { text: parent.text
+color: root.darkMode ? "#FF8D99" : "#B42332"
+font.pixelSize: 11
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter } }
+                Button { text: "Clear Queue"
+onClicked: backend.clearQueue()
+background: Rectangle { radius: 11
+color: root.elevatedColor
+border.width: 1
+border.color: root.borderColor }
+contentItem: Text { text: parent.text
+color: root.textColor
+font.pixelSize: 11
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter } }
                 Item { Layout.fillWidth: true }
-                Text { text: root.queueItems.length + " item(s)"; color: root.mutedColor; font.pixelSize: 10 }
+                Text { text: root.queueItems.length + " item(s)"
+color: root.mutedColor
+font.pixelSize: 10 }
             }
             ListView {
                 id: queueList
@@ -736,18 +1001,37 @@ ApplicationWindow {
                         anchors.fill: parent
                         anchors.margins: 11
                         spacing: 10
-                        Rectangle { Layout.preferredWidth: 34; Layout.preferredHeight: 34; radius: 11; color: root.accentSoftColor; Text { anchors.centerIn: parent; text: "♫"; color: root.accentColor; font.pixelSize: 17 } }
+                        Rectangle { Layout.preferredWidth: 34
+Layout.preferredHeight: 34
+radius: 11
+color: root.accentSoftColor
+Text { anchors.centerIn: parent
+text: "♫"
+color: root.accentColor
+font.pixelSize: 17 } }
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 3
-                            Text { text: modelData.title || modelData.url; color: root.textColor; font.pixelSize: 11; font.bold: true; elide: Text.ElideRight; Layout.fillWidth: true }
-                            Text { text: (modelData.status || "Pending") + "  •  " + (modelData.duration || "—"); color: modelData.status === "Failed" ? "#FF7B86" : root.mutedColor; font.pixelSize: 10 }
+                            Text { text: modelData.title || modelData.url
+color: root.textColor
+font.pixelSize: 11
+font.bold: true
+elide: Text.ElideRight
+Layout.fillWidth: true }
+                            Text { text: (modelData.status || "Pending") + "  •  " + (modelData.duration || "—")
+color: modelData.status === "Failed" ? "#FF7B86" : root.mutedColor
+font.pixelSize: 10 }
                         }
                         Button {
                             text: "Remove"
                             onClicked: backend.removeQueueItem(modelData.id)
-                            background: Rectangle { radius: 9; color: parent.hovered ? root.hoverColor : "transparent" }
-                            contentItem: Text { text: parent.text; color: root.mutedColor; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                            background: Rectangle { radius: 9
+color: parent.hovered ? root.hoverColor : "transparent" }
+                            contentItem: Text { text: parent.text
+color: root.mutedColor
+font.pixelSize: 10
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter }
                         }
                     }
                 }
@@ -763,9 +1047,19 @@ ApplicationWindow {
                     Column {
                         anchors.centerIn: parent
                         spacing: 8
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "≡"; color: root.accentColor; font.pixelSize: 27 }
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Your queue is empty"; color: root.textColor; font.pixelSize: 14; font.bold: true }
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Use Add to Queue on the Downloader page."; color: root.mutedColor; font.pixelSize: 10 }
+                        Text { anchors.horizontalCenter: parent.horizontalCenter
+text: "≡"
+color: root.accentColor
+font.pixelSize: 27 }
+                        Text { anchors.horizontalCenter: parent.horizontalCenter
+text: "Your queue is empty"
+color: root.textColor
+font.pixelSize: 14
+font.bold: true }
+                        Text { anchors.horizontalCenter: parent.horizontalCenter
+text: "Use Add to Queue on the Downloader page."
+color: root.mutedColor
+font.pixelSize: 10 }
                     }
                 }
             }
@@ -783,48 +1077,161 @@ ApplicationWindow {
                 id: metadataContent
                 width: parent.width
                 spacing: 12
-                Text { text: "Metadata Editor"; color: root.textColor; font.pixelSize: 24; font.bold: true }
-                Text { text: "Read and update common tags on supported audio files."; color: root.mutedColor; font.pixelSize: 11 }
+                Text { text: "Metadata Editor"
+color: root.textColor
+font.pixelSize: 24
+font.bold: true }
+                Text { text: "Read and update common tags on supported audio files."
+color: root.mutedColor
+font.pixelSize: 11 }
                 RowLayout {
                     Layout.fillWidth: true
-                    TextField { id: metadataPath; Layout.fillWidth: true; placeholderText: "Choose a media file…"; text: root.metadataValues.path || ""; color: root.textColor; placeholderTextColor: root.mutedColor; selectByMouse: true; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
-                    Button { text: "Browse"; onClicked: metadataFileDialog.open(); background: Rectangle { radius: 10; color: root.elevatedColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                    TextField { id: metadataPath
+Layout.fillWidth: true
+placeholderText: "Choose a media file…"
+text: root.metadataValues.path || ""
+color: root.textColor
+placeholderTextColor: root.mutedColor
+selectByMouse: true
+background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor } }
+                    Button { text: "Browse"
+onClicked: metadataFileDialog.open()
+background: Rectangle { radius: 10
+color: root.elevatedColor
+border.width: 1
+border.color: root.borderColor }
+contentItem: Text { text: parent.text
+color: root.textColor
+font.pixelSize: 11
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter } }
                 }
                 GridLayout {
                     Layout.fillWidth: true
                     columns: 2
                     columnSpacing: 12
                     rowSpacing: 10
-                    Text { text: "Title"; color: root.mutedColor; font.pixelSize: 10 }
-                    Text { text: "Artist"; color: root.mutedColor; font.pixelSize: 10 }
-                    TextField { id: metaTitle; Layout.fillWidth: true; text: root.metadataValues.title || ""; placeholderText: "Title"; color: root.textColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor }; onTextEdited: root.metadataValues.title = text }
-                    TextField { id: metaArtist; Layout.fillWidth: true; text: root.metadataValues.artist || ""; placeholderText: "Artist"; color: root.textColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor }; onTextEdited: root.metadataValues.artist = text }
-                    Text { text: "Album"; color: root.mutedColor; font.pixelSize: 10 }
-                    Text { text: "Year / Date"; color: root.mutedColor; font.pixelSize: 10 }
-                    TextField { id: metaAlbum; Layout.fillWidth: true; text: root.metadataValues.album || ""; placeholderText: "Album"; color: root.textColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor }; onTextEdited: root.metadataValues.album = text }
-                    TextField { id: metaDate; Layout.fillWidth: true; text: root.metadataValues.date || ""; placeholderText: "2025"; color: root.textColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor }; onTextEdited: root.metadataValues.date = text }
-                    Text { text: "Genre"; color: root.mutedColor; font.pixelSize: 10 }
-                    Text { text: "Comment"; color: root.mutedColor; font.pixelSize: 10 }
-                    TextField { id: metaGenre; Layout.fillWidth: true; text: root.metadataValues.genre || ""; placeholderText: "Genre"; color: root.textColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor }; onTextEdited: root.metadataValues.genre = text }
-                    TextField { id: metaComment; Layout.fillWidth: true; text: root.metadataValues.comment || ""; placeholderText: "Comment"; color: root.textColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor }; onTextEdited: root.metadataValues.comment = text }
+                    Text { text: "Title"
+color: root.mutedColor
+font.pixelSize: 10 }
+                    Text { text: "Artist"
+color: root.mutedColor
+font.pixelSize: 10 }
+                    TextField { id: metaTitle
+Layout.fillWidth: true
+text: root.metadataValues.title || ""
+placeholderText: "Title"
+color: root.textColor
+background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor }
+onTextEdited: root.metadataValues.title = text }
+                    TextField { id: metaArtist
+Layout.fillWidth: true
+text: root.metadataValues.artist || ""
+placeholderText: "Artist"
+color: root.textColor
+background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor }
+onTextEdited: root.metadataValues.artist = text }
+                    Text { text: "Album"
+color: root.mutedColor
+font.pixelSize: 10 }
+                    Text { text: "Year / Date"
+color: root.mutedColor
+font.pixelSize: 10 }
+                    TextField { id: metaAlbum
+Layout.fillWidth: true
+text: root.metadataValues.album || ""
+placeholderText: "Album"
+color: root.textColor
+background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor }
+onTextEdited: root.metadataValues.album = text }
+                    TextField { id: metaDate
+Layout.fillWidth: true
+text: root.metadataValues.date || ""
+placeholderText: "2025"
+color: root.textColor
+background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor }
+onTextEdited: root.metadataValues.date = text }
+                    Text { text: "Genre"
+color: root.mutedColor
+font.pixelSize: 10 }
+                    Text { text: "Comment"
+color: root.mutedColor
+font.pixelSize: 10 }
+                    TextField { id: metaGenre
+Layout.fillWidth: true
+text: root.metadataValues.genre || ""
+placeholderText: "Genre"
+color: root.textColor
+background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor }
+onTextEdited: root.metadataValues.genre = text }
+                    TextField { id: metaComment
+Layout.fillWidth: true
+text: root.metadataValues.comment || ""
+placeholderText: "Comment"
+color: root.textColor
+background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor }
+onTextEdited: root.metadataValues.comment = text }
                 }
                 RowLayout {
                     Layout.fillWidth: true
                     Button {
                         text: "Lookup on YouTube Music"
                         onClicked: backend.lookupYtMusicMetadata(metadataPath.text, metaArtist.text, metaTitle.text, metaAlbum.text)
-                        background: Rectangle { radius: 11; color: root.accentSoftColor }
-                        contentItem: Text { text: parent.text; color: root.accentColor; font.pixelSize: 10; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                        background: Rectangle { radius: 11
+color: root.accentSoftColor }
+                        contentItem: Text { text: parent.text
+color: root.accentColor
+font.pixelSize: 10
+font.bold: true
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter }
                     }
-                    Button { text: "Read Tags"; onClicked: backend.inspectMediaFile(metadataPath.text); background: Rectangle { radius: 11; color: root.elevatedColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                    Button { text: "Read Tags"
+onClicked: backend.inspectMediaFile(metadataPath.text)
+background: Rectangle { radius: 11
+color: root.elevatedColor
+border.width: 1
+border.color: root.borderColor }
+contentItem: Text { text: parent.text
+color: root.textColor
+font.pixelSize: 11
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter } }
                     Button {
                         text: "Save Metadata"
                         onClicked: {
                             root.metadataValues = {path:metadataPath.text, title:metaTitle.text, artist:metaArtist.text, album:metaAlbum.text, date:metaDate.text, genre:metaGenre.text, comment:metaComment.text}
                             backend.saveMetadata(metadataPath.text, root.metadataValues)
                         }
-                        background: Rectangle { radius: 11; color: "#3475EE" }
-                        contentItem: Text { text: parent.text; color: "white"; font.bold: true; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                        background: Rectangle { radius: 11
+color: "#3475EE" }
+                        contentItem: Text { text: parent.text
+color: "white"
+font.bold: true
+font.pixelSize: 11
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter }
                     }
                 }
                 Rectangle {
@@ -839,19 +1246,54 @@ ApplicationWindow {
                         anchors.fill: parent
                         anchors.margins: 13
                         spacing: 8
-                        Text { text: "BATCH FLAC METADATA + ARTWORK"; color: root.mutedColor; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
-                        Text { text: "Match each FLAC file against YouTube Music using contributing artist, title, and album. Review on a copy of your library first."; color: root.mutedColor; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                        Text { text: "BATCH FLAC METADATA + ARTWORK"
+color: root.mutedColor
+font.pixelSize: 9
+font.bold: true
+font.letterSpacing: 1 }
+                        Text { text: "Match each FLAC file against YouTube Music using contributing artist, title, and album. Review on a copy of your library first."
+color: root.mutedColor
+font.pixelSize: 10
+wrapMode: Text.WordWrap
+Layout.fillWidth: true }
                         RowLayout {
                             Layout.fillWidth: true
-                            TextField { id: metadataFolder; Layout.fillWidth: true; text: root.metadataFolderPath; placeholderText: "Folder containing FLAC files…"; color: root.textColor; placeholderTextColor: root.mutedColor; selectByMouse: true; onTextEdited: root.metadataFolderPath = text; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
-                            Button { text: "Browse"; onClicked: metadataFolderDialog.open(); background: Rectangle { radius: 10; color: root.panelColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                            TextField { id: metadataFolder
+Layout.fillWidth: true
+text: root.metadataFolderPath
+placeholderText: "Folder containing FLAC files…"
+color: root.textColor
+placeholderTextColor: root.mutedColor
+selectByMouse: true
+onTextEdited: root.metadataFolderPath = text
+background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor } }
+                            Button { text: "Browse"
+onClicked: metadataFolderDialog.open()
+background: Rectangle { radius: 10
+color: root.panelColor
+border.width: 1
+border.color: root.borderColor }
+contentItem: Text { text: parent.text
+color: root.textColor
+font.pixelSize: 10
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter } }
                         }
                         Button {
                             text: "Rewrite Folder from YouTube Music"
                             Layout.preferredHeight: 39
                             onClicked: backend.rewriteFolderMetadata(metadataFolder.text)
-                            background: Rectangle { radius: 10; color: "#3475EE" }
-                            contentItem: Text { text: parent.text; color: "white"; font.pixelSize: 10; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                            background: Rectangle { radius: 10
+color: "#3475EE" }
+                            contentItem: Text { text: parent.text
+color: "white"
+font.pixelSize: 10
+font.bold: true
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter }
                         }
                     }
                 }
@@ -882,17 +1324,62 @@ ApplicationWindow {
                 id: coverContent
                 width: parent.width
                 spacing: 12
-            Text { text: "Cover Art"; color: root.textColor; font.pixelSize: 24; font.bold: true }
-            Text { text: "Embed a local image or image URL into audio or supported MKV files."; color: root.mutedColor; font.pixelSize: 11 }
+            Text { text: "Cover Art"
+color: root.textColor
+font.pixelSize: 24
+font.bold: true }
+            Text { text: "Embed a local image or image URL into audio or supported MKV files."
+color: root.mutedColor
+font.pixelSize: 11 }
             RowLayout {
                 Layout.fillWidth: true
-                TextField { id: coverMediaPath; Layout.fillWidth: true; text: root.coverMediaPathValue; onTextEdited: root.coverMediaPathValue = text; placeholderText: "Media file path"; color: root.textColor; placeholderTextColor: root.mutedColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
-                Button { text: "Browse media"; onClicked: coverMediaDialog.open(); background: Rectangle { radius: 10; color: root.elevatedColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                TextField { id: coverMediaPath
+Layout.fillWidth: true
+text: root.coverMediaPathValue
+onTextEdited: root.coverMediaPathValue = text
+placeholderText: "Media file path"
+color: root.textColor
+placeholderTextColor: root.mutedColor
+background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor } }
+                Button { text: "Browse media"
+onClicked: coverMediaDialog.open()
+background: Rectangle { radius: 10
+color: root.elevatedColor
+border.width: 1
+border.color: root.borderColor }
+contentItem: Text { text: parent.text
+color: root.textColor
+font.pixelSize: 10
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter } }
             }
             RowLayout {
                 Layout.fillWidth: true
-                TextField { id: coverSource; Layout.fillWidth: true; text: root.coverSourcePath || root.metadataThumbnail; onTextEdited: root.coverSourcePath = text; placeholderText: "Image file path or https:// image URL"; color: root.textColor; placeholderTextColor: root.mutedColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
-                Button { text: "Browse image"; onClicked: coverImageDialog.open(); background: Rectangle { radius: 10; color: root.elevatedColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                TextField { id: coverSource
+Layout.fillWidth: true
+text: root.coverSourcePath || root.metadataThumbnail
+onTextEdited: root.coverSourcePath = text
+placeholderText: "Image file path or https:// image URL"
+color: root.textColor
+placeholderTextColor: root.mutedColor
+background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor } }
+                Button { text: "Browse image"
+onClicked: coverImageDialog.open()
+background: Rectangle { radius: 10
+color: root.elevatedColor
+border.width: 1
+border.color: root.borderColor }
+contentItem: Text { text: parent.text
+color: root.textColor
+font.pixelSize: 10
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter } }
             }
             Rectangle {
                 Layout.fillWidth: true
@@ -905,17 +1392,33 @@ ApplicationWindow {
                 Column {
                     anchors.centerIn: parent
                     spacing: 8
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "▧"; color: root.accentColor; font.pixelSize: 33 }
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "JPEG artwork embedding"; color: root.textColor; font.pixelSize: 15; font.bold: true }
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "FLAC · MP3 · M4A audio · MKV attachments"; color: root.mutedColor; font.pixelSize: 11 }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter
+text: "▧"
+color: root.accentColor
+font.pixelSize: 33 }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter
+text: "JPEG artwork embedding"
+color: root.textColor
+font.pixelSize: 15
+font.bold: true }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter
+text: "FLAC · MP3 · M4A audio · MKV attachments"
+color: root.mutedColor
+font.pixelSize: 11 }
                 }
             }
             Button {
                 text: "Embed Artwork"
                 Layout.preferredHeight: 43
                 onClicked: backend.embedArtwork(coverMediaPath.text, coverSource.text)
-                background: Rectangle { radius: 12; color: "#3475EE" }
-                contentItem: Text { text: parent.text; color: "white"; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                background: Rectangle { radius: 12
+color: "#3475EE" }
+                contentItem: Text { text: parent.text
+color: "white"
+font.pixelSize: 11
+font.bold: true
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter }
             }
             Rectangle {
                 Layout.fillWidth: true
@@ -929,19 +1432,54 @@ ApplicationWindow {
                     anchors.fill: parent
                     anchors.margins: 13
                     spacing: 8
-                    Text { text: "BATCH COVER UPGRADE"; color: root.mutedColor; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
-                    Text { text: "Find matching YouTube Music artwork and replace embedded FLAC covers."; color: root.mutedColor; font.pixelSize: 10; wrapMode: Text.WordWrap; Layout.fillWidth: true }
+                    Text { text: "BATCH COVER UPGRADE"
+color: root.mutedColor
+font.pixelSize: 9
+font.bold: true
+font.letterSpacing: 1 }
+                    Text { text: "Find matching YouTube Music artwork and replace embedded FLAC covers."
+color: root.mutedColor
+font.pixelSize: 10
+wrapMode: Text.WordWrap
+Layout.fillWidth: true }
                     RowLayout {
                         Layout.fillWidth: true
-                        TextField { id: coverFolder; Layout.fillWidth: true; text: root.coverFolderPath; placeholderText: "Folder containing FLAC files…"; color: root.textColor; placeholderTextColor: root.mutedColor; selectByMouse: true; onTextEdited: root.coverFolderPath = text; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
-                        Button { text: "Browse"; onClicked: coverFolderDialog.open(); background: Rectangle { radius: 10; color: root.panelColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                        TextField { id: coverFolder
+Layout.fillWidth: true
+text: root.coverFolderPath
+placeholderText: "Folder containing FLAC files…"
+color: root.textColor
+placeholderTextColor: root.mutedColor
+selectByMouse: true
+onTextEdited: root.coverFolderPath = text
+background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor } }
+                        Button { text: "Browse"
+onClicked: coverFolderDialog.open()
+background: Rectangle { radius: 10
+color: root.panelColor
+border.width: 1
+border.color: root.borderColor }
+contentItem: Text { text: parent.text
+color: root.textColor
+font.pixelSize: 10
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter } }
                     }
                     Button {
                         text: "Upgrade Folder Covers"
                         Layout.preferredHeight: 39
                         onClicked: backend.upgradeFolderCovers(coverFolder.text)
-                        background: Rectangle { radius: 10; color: "#3475EE" }
-                        contentItem: Text { text: parent.text; color: "white"; font.pixelSize: 10; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                        background: Rectangle { radius: 10
+color: "#3475EE" }
+                        contentItem: Text { text: parent.text
+color: "white"
+font.pixelSize: 10
+font.bold: true
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter }
                     }
                 }
             }
@@ -953,17 +1491,57 @@ ApplicationWindow {
         id: cropPage
         ColumnLayout {
             spacing: 12
-            Text { text: "Crop Artwork"; color: root.textColor; font.pixelSize: 24; font.bold: true }
-            Text { text: "Create a clean square JPEG using a center or edge-biased crop."; color: root.mutedColor; font.pixelSize: 11 }
+            Text { text: "Crop Artwork"
+color: root.textColor
+font.pixelSize: 24
+font.bold: true }
+            Text { text: "Create a clean square JPEG using a center or edge-biased crop."
+color: root.mutedColor
+font.pixelSize: 11 }
             RowLayout {
                 Layout.fillWidth: true
-                TextField { id: cropSource; Layout.fillWidth: true; text: root.cropSourcePath; onTextEdited: root.cropSourcePath = text; placeholderText: "Source image path"; color: root.textColor; placeholderTextColor: root.mutedColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
-                Button { text: "Browse"; onClicked: cropImageDialog.open(); background: Rectangle { radius: 10; color: root.elevatedColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                TextField { id: cropSource
+Layout.fillWidth: true
+text: root.cropSourcePath
+onTextEdited: root.cropSourcePath = text
+placeholderText: "Source image path"
+color: root.textColor
+placeholderTextColor: root.mutedColor
+background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor } }
+                Button { text: "Browse"
+onClicked: cropImageDialog.open()
+background: Rectangle { radius: 10
+color: root.elevatedColor
+border.width: 1
+border.color: root.borderColor }
+contentItem: Text { text: parent.text
+color: root.textColor
+font.pixelSize: 11
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter } }
             }
             RowLayout {
                 Layout.fillWidth: true
-                Text { text: "Crop position"; color: root.mutedColor; font.pixelSize: 11 }
-                ComboBox { id: cropPosition; model: ["Center", "Top", "Bottom", "Left", "Right"]; currentIndex: Math.max(0, model.indexOf(root.cropPositionValue)); onActivated: root.cropPositionValue = currentText; Layout.preferredWidth: 150; contentItem: Text { leftPadding: 11; text: cropPosition.displayText; color: root.textColor; font.pixelSize: 11; verticalAlignment: Text.AlignVCenter }; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
+                Text { text: "Crop position"
+color: root.mutedColor
+font.pixelSize: 11 }
+                ComboBox { id: cropPosition
+model: ["Center", "Top", "Bottom", "Left", "Right"]
+currentIndex: Math.max(0, model.indexOf(root.cropPositionValue))
+onActivated: root.cropPositionValue = currentText
+Layout.preferredWidth: 150
+contentItem: Text { leftPadding: 11
+text: cropPosition.displayText
+color: root.textColor
+font.pixelSize: 11
+verticalAlignment: Text.AlignVCenter }
+background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor } }
             }
             Rectangle {
                 Layout.fillWidth: true
@@ -976,17 +1554,33 @@ ApplicationWindow {
                 Column {
                     anchors.centerIn: parent
                     spacing: 9
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "□"; color: root.accentColor; font.pixelSize: 37 }
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Square crop"; color: root.textColor; font.pixelSize: 16; font.bold: true }
-                    Text { anchors.horizontalCenter: parent.horizontalCenter; text: "Saved as high-quality JPEG, quality 100."; color: root.mutedColor; font.pixelSize: 11 }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter
+text: "□"
+color: root.accentColor
+font.pixelSize: 37 }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter
+text: "Square crop"
+color: root.textColor
+font.pixelSize: 16
+font.bold: true }
+                    Text { anchors.horizontalCenter: parent.horizontalCenter
+text: "Saved as high-quality JPEG, quality 100."
+color: root.mutedColor
+font.pixelSize: 11 }
                 }
             }
             Button {
                 text: "Choose Output and Crop"
                 Layout.preferredHeight: 43
                 onClicked: cropSaveDialog.open()
-                background: Rectangle { radius: 12; color: "#3475EE" }
-                contentItem: Text { text: parent.text; color: "white"; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                background: Rectangle { radius: 12
+color: "#3475EE" }
+                contentItem: Text { text: parent.text
+color: "white"
+font.pixelSize: 11
+font.bold: true
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter }
             }
         }
     }
@@ -995,18 +1589,47 @@ ApplicationWindow {
         id: libraryPage
         ColumnLayout {
             spacing: 11
-            Text { text: "Library Overhaul"; color: root.textColor; font.pixelSize: 24; font.bold: true }
-            Text { text: "Scan a folder, review suggested titles, then apply changes deliberately."; color: root.mutedColor; font.pixelSize: 11 }
+            Text { text: "Library Overhaul"
+color: root.textColor
+font.pixelSize: 24
+font.bold: true }
+            Text { text: "Scan a folder, review suggested titles, then apply changes deliberately."
+color: root.mutedColor
+font.pixelSize: 11 }
             RowLayout {
                 Layout.fillWidth: true
-                TextField { id: libraryPath; Layout.fillWidth: true; text: root.libraryFolder; placeholderText: "Choose media library folder…"; color: root.textColor; placeholderTextColor: root.mutedColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
-                Button { text: "Browse & Scan"; onClicked: libraryFolderDialog.open(); background: Rectangle { radius: 10; color: root.elevatedColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 11; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                TextField { id: libraryPath
+Layout.fillWidth: true
+text: root.libraryFolder
+placeholderText: "Choose media library folder…"
+color: root.textColor
+placeholderTextColor: root.mutedColor
+background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor } }
+                Button { text: "Browse & Scan"
+onClicked: libraryFolderDialog.open()
+background: Rectangle { radius: 10
+color: root.elevatedColor
+border.width: 1
+border.color: root.borderColor }
+contentItem: Text { text: parent.text
+color: root.textColor
+font.pixelSize: 11
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter } }
             }
             RowLayout {
                 Layout.fillWidth: true
-                Switch { id: rewriteTitlesSwitch; text: "Rewrite titles from filenames"; checked: false; onToggled: root.rewriteTitles = checked }
+                Switch { id: rewriteTitlesSwitch
+text: "Rewrite titles from filenames"
+checked: false
+onToggled: root.rewriteTitles = checked }
                 Item { Layout.fillWidth: true }
-                Text { text: root.libraryRows.length + " files"; color: root.mutedColor; font.pixelSize: 10 }
+                Text { text: root.libraryRows.length + " files"
+color: root.mutedColor
+font.pixelSize: 10 }
             }
             ListView {
                 id: libraryList
@@ -1031,10 +1654,21 @@ ApplicationWindow {
                         ColumnLayout {
                             Layout.fillWidth: true
                             spacing: 3
-                            Text { text: modelData.name; color: root.textColor; font.pixelSize: 10; font.bold: true; elide: Text.ElideRight; Layout.fillWidth: true }
-                            Text { text: (modelData.title || "(no title)") + (modelData.removeAlbumArtist ? "  •  album-artist tag will be removed" : ""); color: root.mutedColor; font.pixelSize: 9; elide: Text.ElideRight; Layout.fillWidth: true }
+                            Text { text: modelData.name
+color: root.textColor
+font.pixelSize: 10
+font.bold: true
+elide: Text.ElideRight
+Layout.fillWidth: true }
+                            Text { text: (modelData.title || "(no title)") + (modelData.removeAlbumArtist ? "  •  album-artist tag will be removed" : "")
+color: root.mutedColor
+font.pixelSize: 9
+elide: Text.ElideRight
+Layout.fillWidth: true }
                         }
-                        Text { text: modelData.status; color: modelData.status === "Ready" ? root.successColor : "#D18B48"; font.pixelSize: 9 }
+                        Text { text: modelData.status
+color: modelData.status === "Ready" ? root.successColor : "#D18B48"
+font.pixelSize: 9 }
                     }
                 }
                 Rectangle {
@@ -1049,8 +1683,15 @@ ApplicationWindow {
                     Column {
                         anchors.centerIn: parent
                         spacing: 6
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "♫"; color: root.accentColor; font.pixelSize: 26 }
-                        Text { anchors.horizontalCenter: parent.horizontalCenter; text: "No scan results yet"; color: root.textColor; font.pixelSize: 13; font.bold: true }
+                        Text { anchors.horizontalCenter: parent.horizontalCenter
+text: "♫"
+color: root.accentColor
+font.pixelSize: 26 }
+                        Text { anchors.horizontalCenter: parent.horizontalCenter
+text: "No scan results yet"
+color: root.textColor
+font.pixelSize: 13
+font.bold: true }
                     }
                 }
             }
@@ -1059,8 +1700,14 @@ ApplicationWindow {
                 Layout.preferredHeight: 42
                 enabled: root.libraryRows.length > 0
                 onClicked: backend.applyLibraryOverhaul(root.libraryRows, root.rewriteTitles)
-                background: Rectangle { radius: 12; color: parent.enabled ? "#3475EE" : root.borderColor }
-                contentItem: Text { text: parent.text; color: parent.enabled ? "white" : root.mutedColor; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter }
+                background: Rectangle { radius: 12
+color: parent.enabled ? "#3475EE" : root.borderColor }
+                contentItem: Text { text: parent.text
+color: parent.enabled ? "white" : root.mutedColor
+font.pixelSize: 11
+font.bold: true
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter }
             }
         }
     }
@@ -1076,8 +1723,13 @@ ApplicationWindow {
                 id: settingsContent
                 width: parent.width
                 spacing: 14
-                Text { text: "Settings"; color: root.textColor; font.pixelSize: 24; font.bold: true }
-                Text { text: "These choices are saved to your existing toolkit configuration file."; color: root.mutedColor; font.pixelSize: 11 }
+                Text { text: "Settings"
+color: root.textColor
+font.pixelSize: 24
+font.bold: true }
+                Text { text: "These choices are saved to your existing toolkit configuration file."
+color: root.mutedColor
+font.pixelSize: 11 }
                 Rectangle {
                     Layout.fillWidth: true
                     radius: 15
@@ -1090,11 +1742,32 @@ ApplicationWindow {
                         anchors.fill: parent
                         anchors.margins: 13
                         spacing: 8
-                        Text { text: "DOWNLOAD LOCATION"; color: root.mutedColor; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
+                        Text { text: "DOWNLOAD LOCATION"
+color: root.mutedColor
+font.pixelSize: 9
+font.bold: true
+font.letterSpacing: 1 }
                         RowLayout {
                             Layout.fillWidth: true
-                            TextField { id: settingsOutputPath; Layout.fillWidth: true; text: root.downloadDirectory; readOnly: true; color: root.textColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
-                            Button { text: "Choose"; onClicked: outputFolderDialog.open(); background: Rectangle { radius: 10; color: root.accentSoftColor }; contentItem: Text { text: parent.text; color: root.accentColor; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                            TextField { id: settingsOutputPath
+Layout.fillWidth: true
+text: root.downloadDirectory
+readOnly: true
+color: root.textColor
+background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor } }
+                            Button { text: "Choose"
+onClicked: outputFolderDialog.open()
+background: Rectangle { radius: 10
+color: root.accentSoftColor }
+contentItem: Text { text: parent.text
+color: root.accentColor
+font.pixelSize: 11
+font.bold: true
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter } }
                         }
                     }
                 }
@@ -1110,42 +1783,100 @@ ApplicationWindow {
                         anchors.fill: parent
                         anchors.margins: 13
                         spacing: 8
-                        Text { text: "YOUTUBE SESSION"; color: root.mutedColor; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
-                        Text { Layout.fillWidth: true; text: root.hasCookies ? "Cookie file configured: " + root.cookiePath : "No cookies.txt file configured. Public videos may still work."; color: root.hasCookies ? root.successColor : "#D18B48"; font.pixelSize: 10; wrapMode: Text.WrapAnywhere }
+                        Text { text: "YOUTUBE SESSION"
+color: root.mutedColor
+font.pixelSize: 9
+font.bold: true
+font.letterSpacing: 1 }
+                        Text { Layout.fillWidth: true
+text: root.hasCookies ? "Cookie file configured: " + root.cookiePath : "No cookies.txt file configured. Public videos may still work."
+color: root.hasCookies ? root.successColor : "#D18B48"
+font.pixelSize: 10
+wrapMode: Text.WrapAnywhere }
                         RowLayout {
                             Layout.fillWidth: true
-                            TextField { id: settingsCookiePath; Layout.fillWidth: true; text: root.cookiePath; placeholderText: "Netscape-format cookies.txt path"; color: root.textColor; placeholderTextColor: root.mutedColor; background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor } }
-                            Button { text: "Browse"; onClicked: cookieFileDialog.open(); background: Rectangle { radius: 10; color: root.accentSoftColor }; contentItem: Text { text: parent.text; color: root.accentColor; font.pixelSize: 11; font.bold: true; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                            TextField { id: settingsCookiePath
+Layout.fillWidth: true
+text: root.cookiePath
+placeholderText: "Netscape-format cookies.txt path"
+color: root.textColor
+placeholderTextColor: root.mutedColor
+background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor } }
+                            Button { text: "Browse"
+onClicked: cookieFileDialog.open()
+background: Rectangle { radius: 10
+color: root.accentSoftColor }
+contentItem: Text { text: parent.text
+color: root.accentColor
+font.pixelSize: 11
+font.bold: true
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter } }
                         }
-                        Button { text: "Save Cookie Path"; onClicked: backend.setCookieFile(settingsCookiePath.text); background: Rectangle { radius: 10; color: root.panelColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                        Button { text: "Save Cookie Path"
+onClicked: backend.setCookieFile(settingsCookiePath.text)
+background: Rectangle { radius: 10
+color: root.panelColor
+border.width: 1
+border.color: root.borderColor }
+contentItem: Text { text: parent.text
+color: root.textColor
+font.pixelSize: 10
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter } }
                     }
                 }
                 RowLayout {
                     Layout.fillWidth: true
                     ColumnLayout {
                         Layout.fillWidth: true
-                        Text { text: "PERFORMANCE"; color: root.mutedColor; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
+                        Text { text: "PERFORMANCE"
+color: root.mutedColor
+font.pixelSize: 9
+font.bold: true
+font.letterSpacing: 1 }
                         ComboBox {
                             id: performanceBox
                             Layout.fillWidth: true
                             model: ["conservative", "balanced", "aggressive"]
                             currentIndex: Math.max(0, model.indexOf(root.performanceMode))
                             onActivated: backend.setPerformanceMode(currentText)
-                            contentItem: Text { leftPadding: 11; text: performanceBox.displayText; color: root.textColor; font.pixelSize: 11; verticalAlignment: Text.AlignVCenter }
-                            background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor }
+                            contentItem: Text { leftPadding: 11
+text: performanceBox.displayText
+color: root.textColor
+font.pixelSize: 11
+verticalAlignment: Text.AlignVCenter }
+                            background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor }
                         }
                     }
                     ColumnLayout {
                         Layout.fillWidth: true
-                        Text { text: "EXISTING FILES"; color: root.mutedColor; font.pixelSize: 9; font.bold: true; font.letterSpacing: 1 }
+                        Text { text: "EXISTING FILES"
+color: root.mutedColor
+font.pixelSize: 9
+font.bold: true
+font.letterSpacing: 1 }
                         ComboBox {
                             id: conflictBox
                             Layout.fillWidth: true
                             model: ["rename", "skip", "replace"]
                             currentIndex: Math.max(0, model.indexOf(root.conflictMode))
                             onActivated: backend.setConflictMode(currentText)
-                            contentItem: Text { leftPadding: 11; text: conflictBox.displayText; color: root.textColor; font.pixelSize: 11; verticalAlignment: Text.AlignVCenter }
-                            background: Rectangle { radius: 10; color: root.inputColor; border.width: 1; border.color: root.borderColor }
+                            contentItem: Text { leftPadding: 11
+text: conflictBox.displayText
+color: root.textColor
+font.pixelSize: 11
+verticalAlignment: Text.AlignVCenter }
+                            background: Rectangle { radius: 10
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor }
                         }
                     }
                 }
@@ -1174,12 +1905,27 @@ ApplicationWindow {
         id: activityPage
         ColumnLayout {
             spacing: 11
-            Text { text: "Activity Log"; color: root.textColor; font.pixelSize: 24; font.bold: true }
+            Text { text: "Activity Log"
+color: root.textColor
+font.pixelSize: 24
+font.bold: true }
             RowLayout {
                 Layout.fillWidth: true
-                Text { text: "Backend messages and download progress diagnostics."; color: root.mutedColor; font.pixelSize: 11 }
+                Text { text: "Backend messages and download progress diagnostics."
+color: root.mutedColor
+font.pixelSize: 11 }
                 Item { Layout.fillWidth: true }
-                Button { text: "Clear"; onClicked: root.logText = ""; background: Rectangle { radius: 9; color: root.elevatedColor; border.width: 1; border.color: root.borderColor }; contentItem: Text { text: parent.text; color: root.textColor; font.pixelSize: 10; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter } }
+                Button { text: "Clear"
+onClicked: root.logText = ""
+background: Rectangle { radius: 9
+color: root.elevatedColor
+border.width: 1
+border.color: root.borderColor }
+contentItem: Text { text: parent.text
+color: root.textColor
+font.pixelSize: 10
+horizontalAlignment: Text.AlignHCenter
+verticalAlignment: Text.AlignVCenter } }
             }
             ScrollView {
                 Layout.fillWidth: true
@@ -1193,7 +1939,10 @@ ApplicationWindow {
                     color: root.textColor
                     font.family: "Consolas"
                     font.pixelSize: 10
-                    background: Rectangle { radius: 13; color: root.inputColor; border.width: 1; border.color: root.borderColor }
+                    background: Rectangle { radius: 13
+color: root.inputColor
+border.width: 1
+border.color: root.borderColor }
                 }
             }
         }
