@@ -35,8 +35,8 @@ def resource_dirs() -> list[Path]:
         roots.append(Path(sys._MEIPASS))
     here = Path(__file__).resolve().parent
     roots.extend([here, here.parent, here.parent.parent,
-                  here.parent.parent / "EXE_Build_Kit" / "assets",
-                  here.parent.parent / "EXE_Build_Kit" / "build_workspace" / "assets",
+                  here.parent / "EXE_Build_Kit" / "assets",
+                  here.parent / "EXE_Build_Kit" / "build_workspace" / "assets",
                   Path.home() / "Documents" / "YTDLP"])
     if getattr(sys, "frozen", False):
         roots.insert(0, Path(sys.executable).resolve().parent)
