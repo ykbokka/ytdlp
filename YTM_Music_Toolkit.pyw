@@ -198,8 +198,16 @@ def get_ytdlp_command():
 
 
 def get_ytdlp_runtime_args():
-    """Enable current EJS scripts and explicitly use Deno when it is installed."""
-    args = ["--remote-components", "ejs:github"]
+    """Enable EJS/Deno and start media downloads with a larger adaptive buffer.
+
+    A 1 MiB starting buffer can reduce per-block overhead on fast connections.
+    Adaptive resizing remains enabled so yt-dlp can adjust it when appropriate.
+    """
+    args = [
+        "--remote-components", "ejs:github",
+        "--buffer-size", "1M",
+        "--resize-buffer",
+    ]
 
     deno = find_executable("deno")
     if not deno:
