@@ -128,7 +128,19 @@ class ToolkitBackend(QObject):
         self.pool = QThreadPool.globalInstance()
         self.pool.setMaxThreadCount(max(3, min(6, os.cpu_count() or 4)))
         self.config = self._load_config()
-        self.download_dir = str(self.config.get("download_dir") or (Path.home() / "Downloads"))
+        saved_paths = self.config.get("paths", {})
+        if not isinstance(saved_paths, dict):
+            saved_paths = {}
+        downloads_default = str(Path.home() / "Downloads")
+        self.path_settings = {
+            "downloader": str(saved_paths.get("downloader") or self.config.get("download_dir") or downloads_default),
+            "metadata": str(saved_paths.get("metadata") or downloads_default),
+            "cover": str(saved_paths.get("cover") or downloads_default),
+            "crop": str(saved_paths.get("crop") or downloads_default),
+            "pipeline": str(saved_paths.get("pipeline") or downloads_default),
+        }
+        self.download_dir = str(self.config.get("download_dir") or self.path_settings["downloader"])
+        self.path_settings["downloader"] = self.download_dir
         self.cookie_path = self._find_cookie_path()
         self.performance_mode = self._valid_choice(self.config.get("performance_mode"), {"conservative", "balanced", "aggressive"}, "aggressive")
         self.conflict_mode = self._valid_choice(self.config.get("conflict_mode"), {"rename", "skip", "replace"}, "rename")
@@ -160,9 +172,12 @@ class ToolkitBackend(QObject):
             return {}
 
     def _save_config(self):
+        self.path_settings["downloader"] = self.download_dir
         self.config.update({"config_version": 6, "download_dir": self.download_dir,
+                            "paths": dict(self.path_settings),
                             "cookie_file_path": self.cookie_path, "performance_mode": self.performance_mode,
-                            "conflict_mode": self.conflict_mode, "appearance_mode": self.appearance_mode, "queue_items": getattr(self, "queue_items", [])})
+                            "conflict_mode": self.conflict_mode, "appearance_mode": self.appearance_mode,
+                            "queue_items": getattr(self, "queue_items", [])})
         try:
             CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
             tmp = CONFIG_FILE.with_suffix(".tmp")
@@ -276,7 +291,9 @@ class ToolkitBackend(QObject):
     def getSettings(self):
         return {"downloadDir": self.download_dir, "cookiePath": self.cookie_path,
                 "hasCookies": bool(self.cookie_path), "performanceMode": self.performance_mode,
-                "conflictMode": self.conflict_mode, "appearanceMode": self.appearance_mode}
+                "conflictMode": self.conflict_mode, "appearanceMode": self.appearance_mode,
+                "metadataDir": self.path_settings["metadata"], "coverDir": self.path_settings["cover"],
+                "cropDir": self.path_settings["crop"], "pipelineDir": self.path_settings["pipeline"]}
 
     @Slot(str)
     def setDownloadDirectory(self, path):
@@ -287,6 +304,21 @@ class ToolkitBackend(QObject):
             self._save_config()
             self.settingsChanged.emit(self.getSettings())
             self.statusChanged.emit("Download folder updated.")
+
+    @Slot(str, str)
+    def setOperationDirectory(self, key, path):
+        key = str(key or "").strip().lower()
+        path = str(path or "").strip().strip('"')
+        if key not in {"metadata", "cover", "crop", "pipeline"} or not path:
+            return
+        try:
+            Path(path).mkdir(parents=True, exist_ok=True)
+            self.path_settings[key] = str(Path(path).resolve())
+            self._save_config()
+            self.settingsChanged.emit(self.getSettings())
+            self.statusChanged.emit(f"{key.title()} folder saved.")
+        except OSError as exc:
+            self.statusChanged.emit(f"Could not save {key} folder: {exc}")
 
     @Slot(str)
     def setCookieFile(self, path):
