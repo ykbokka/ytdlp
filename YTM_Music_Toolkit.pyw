@@ -235,6 +235,41 @@ def get_ytdlp_runtime_args():
     return args
 
 
+def build_native_ytdlp_fallback_command(command):
+    """Remove aria2c routing and fall back to yt-dlp's native HTTP downloader."""
+    source = list(command or [])
+    fallback = []
+    i = 0
+
+    while i < len(source):
+        token = str(source[i])
+
+        if token == "--downloader" and i + 1 < len(source):
+            downloader = str(source[i + 1]).strip().lower()
+            if downloader in {"aria2c", "dash,m3u8:native"}:
+                i += 2
+                continue
+
+        if token == "--downloader-args" and i + 1 < len(source):
+            downloader_args = str(source[i + 1]).strip().lower()
+            if downloader_args.startswith("aria2c:"):
+                i += 2
+                continue
+
+        fallback.append(source[i])
+        i += 1
+
+    if fallback == source or not fallback:
+        return None
+
+    # This fallback is used only after an aria2c-specific failure. Chunked HTTP
+    # is experimental, but gives the native downloader a different strategy.
+    if "--http-chunk-size" not in fallback:
+        fallback[1:1] = ["--http-chunk-size", "10M"]
+
+    return fallback
+
+
 def get_ffmpeg_command():
     exe = find_executable("ffmpeg")
     return exe or "ffmpeg"
@@ -5406,6 +5441,26 @@ class YTMMusicToolkit(ctk.CTk):
             raise DownloadCancelled("Download stopped by user.")
 
         if return_code != 0:
+            aria2_failed = any("aria2c" in line.lower() for line in output_lines)
+            fallback_command = (
+                build_native_ytdlp_fallback_command(command)
+                if aria2_failed
+                else None
+            )
+
+            if fallback_command:
+                self.append_log(
+                    self.dl_log,
+                    "[speed fallback] aria2c failed; retrying once with yt-dlp's native downloader...",
+                )
+                return self.run_ytdlp_logged(
+                    fallback_command,
+                    f"{stage_name} (native fallback)",
+                    output_dir,
+                    progress_start=progress_start,
+                    progress_end=progress_end,
+                )
+
             log_path = write_failure_log(
                 f"download_{stage_name}",
                 RuntimeError(f"yt-dlp exit code {return_code}"),
