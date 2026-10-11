@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
@@ -23,6 +24,8 @@ ApplicationWindow {
     property bool isPaused: false
     property string metadataThumbnail: ""
     property var previewData: ({})
+    property bool previewLoading: false
+    property string pendingPreviewUrl: ""
     property var metadataValues: ({title:"", artist:"", album:"", date:"", genre:"", comment:"", path:""})
     property var queueItems: []
     property var libraryRows: []
@@ -113,6 +116,44 @@ easing.type: Easing.OutCubic } }
     }
     function persistDownloadOptions() {
         backend.setDownloadOptions(fileType, quality, audioFormat, subtitleMode)
+    }
+    function schedulePreview(value) {
+        var raw = String(value || "")
+        var requested = raw.trim()
+        root.downloadUrl = raw
+        root.pendingPreviewUrl = requested
+        previewDebounce.stop()
+        if (!requested) {
+            root.previewLoading = false
+            root.previewData = ({})
+            return
+        }
+        root.previewLoading = true
+        previewDebounce.restart()
+    }
+    function previewNow(value) {
+        var raw = String(value || "")
+        var requested = raw.trim()
+        root.downloadUrl = raw
+        root.pendingPreviewUrl = requested
+        previewDebounce.stop()
+        if (!requested) {
+            root.previewLoading = false
+            return
+        }
+        root.previewLoading = true
+        backend.preview(requested)
+    }
+
+    Timer {
+        id: previewDebounce
+        interval: 850
+        repeat: false
+        onTriggered: {
+            var requested = root.pendingPreviewUrl
+            if (requested && requested === String(root.downloadUrl || "").trim())
+                backend.preview(requested)
+        }
     }
 
     background: Rectangle {
@@ -501,6 +542,8 @@ font.bold: true }
             root.progressText = detail
         }
         function onPreviewReady(data) {
+            if (data._requestedUrl && data._requestedUrl !== root.pendingPreviewUrl) return
+            root.previewLoading = false
             root.previewData = data
             var choices = ["Best available"]
             if (data.heights) {
@@ -515,6 +558,11 @@ font.bold: true }
                 root.quality = choices[0]
             root.persistDownloadOptions()
             root.statusMessage = "Source preview ready: " + (data.title || "")
+        }
+        function onPreviewFailed(requested, message) {
+            if (requested !== root.pendingPreviewUrl) return
+            root.previewLoading = false
+            root.previewData = ({})
         }
         function onQueueChanged(items) { root.queueItems = items }
         function onOperationFinished(id, ok, message) {
@@ -615,7 +663,7 @@ font.letterSpacing: 1 }
                                 placeholderTextColor: root.mutedColor
                                 selectByMouse: true
                                 font.pixelSize: 11
-                                onTextEdited: root.downloadUrl = text
+                                onTextEdited: root.schedulePreview(text)
                                 background: Rectangle {
                                     radius: 12
                                     color: root.inputColor
@@ -627,8 +675,7 @@ font.letterSpacing: 1 }
                             Button {
                                 id: previewButton
                                 text: "Preview"
-                                onClicked: { root.downloadUrl = urlField.text
-backend.preview(urlField.text) }
+                                onClicked: root.previewNow(urlField.text)
                                 background: Rectangle { radius: 12
 color: previewButton.down ? "#2859B9" : previewButton.hovered ? "#4C83F3" : "#3475EE"
 Behavior on color { ColorAnimation { duration: 120 } } }
@@ -799,6 +846,7 @@ border.color: root.borderColor }
                     color: root.elevatedColor
                     border.width: 1
                     border.color: root.borderColor
+                    clip: true
                     implicitHeight: previewRow.implicitHeight + 24
                     Behavior on color { ColorAnimation { duration: 230 } }
                     RowLayout {
@@ -806,6 +854,7 @@ border.color: root.borderColor }
                         anchors.fill: parent
                         anchors.margins: 12
                         spacing: 12
+                        visible: !root.previewLoading
                         Rectangle {
                             Layout.preferredWidth: 116
                             Layout.preferredHeight: 66
@@ -837,11 +886,67 @@ color: root.mutedColor
 font.pixelSize: 10
 elide: Text.ElideRight
 Layout.fillWidth: true }
-                            Text { text: root.previewData.heights ? root.previewData.heights.join("p  ·  ") + "p available" : "Choose Preview to inspect available formats"
+                            Text { text: root.previewData.heights ? root.previewData.heights.join("p  ·  ") + "p available" : "Paste a link to inspect available formats"
 color: root.accentColor
 font.pixelSize: 10
 elide: Text.ElideRight
 Layout.fillWidth: true }
+                        }
+                    }
+                    MultiEffect {
+                        anchors.fill: previewRow
+                        source: previewRow
+                        visible: root.previewLoading
+                        autoPaddingEnabled: false
+                        blurEnabled: true
+                        blurMax: 32
+                        blur: root.previewLoading ? 0.82 : 0.0
+                    }
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 16
+                        visible: root.previewLoading
+                        color: root.darkMode ? "#6610141F" : "#77FFFFFF"
+                        border.width: 1
+                        border.color: root.borderColor
+                        Row {
+                            anchors.centerIn: parent
+                            spacing: 12
+                            Repeater {
+                                model: 3
+                                delegate: Item {
+                                    required property int index
+                                    width: 18
+                                    height: 34
+                                    Rectangle {
+                                        id: loadingDot
+                                        width: 14
+                                        height: 14
+                                        radius: 7
+                                        x: (parent.width - width) / 2
+                                        y: 10
+                                        color: root.accentColor
+                                        SequentialAnimation on y {
+                                            running: root.previewLoading
+                                            loops: Animation.Infinite
+                                            PauseAnimation { duration: index * 125 }
+                                            NumberAnimation {
+                                                from: 10
+                                                to: 0
+                                                duration: 190
+                                                easing.type: Easing.OutCubic
+                                            }
+                                            NumberAnimation {
+                                                from: 0
+                                                to: 10
+                                                duration: 190
+                                                easing.type: Easing.InCubic
+                                            }
+                                            PauseAnimation { duration: 80 }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
