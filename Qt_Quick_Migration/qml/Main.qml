@@ -644,8 +644,11 @@ font.bold: true }
                     root.downloadPercent = 100
             }
         }
-        function onMetadataLoaded(data) { root.metadataValues = data
-if (data.thumbnail) root.metadataThumbnail = data.thumbnail }
+        function onMetadataLoaded(data) {
+            data.path = root.normalizePath(data.path || root.metadataValues.path || "")
+            root.metadataValues = data
+            if (data.thumbnail) root.metadataThumbnail = data.thumbnail
+        }
         function onLibraryScanReady(data) {
             root.libraryFolder = root.normalizePath(data.folder || root.libraryFolder)
             root.libraryRows = data.rows || []
@@ -1525,7 +1528,6 @@ verticalAlignment: Text.AlignVCenter }
                 Connections {
                     target: backend
                     function onMetadataLoaded(data) {
-                        metadataPath.text = data.path || ""
                         metaTitle.text = data.title || ""
                         metaArtist.text = data.artist || ""
                         metaAlbum.text = data.album || ""
