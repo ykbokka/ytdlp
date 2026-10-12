@@ -2201,10 +2201,17 @@ class ToolkitBackend(QObject):
 
     @Slot(str)
     def scanLibrary(self, folder):
+        folder = forward_slash_path(folder)
+
         def work():
-            root = Path(folder)
+            if not folder:
+                raise ValueError("Enter a library folder path or choose Browse.")
+            root = Path(folder).expanduser()
             if not root.is_dir():
-                raise NotADirectoryError("Choose a valid folder.")
+                raise NotADirectoryError(
+                    f"The selected library folder does not exist or is not accessible: {folder}"
+                )
+            root = root.resolve()
             rows = []
             for path in root.rglob("*"):
                 if not path.is_file() or path.suffix.lower() not in MEDIA_EXTENSIONS:
