@@ -329,6 +329,49 @@ class QtBackendCoreTests(unittest.TestCase):
         self.assertEqual(len(result["rows"]), 1)
         self.assertEqual(result["rows"][0]["name"], "track.flac")
 
+    def test_crop_embedded_media_thumbnail_to_square_jpeg(self):
+        app = self.make_backend()
+        media_path = self.root / "sample.mp3"
+        output_path = self.root / "square-cover.jpg"
+
+        image_buffer = io.BytesIO()
+        source_image = backend.Image.new("RGB", (60, 100))
+        for y in range(100):
+            for x in range(60):
+                source_image.putpixel((x, y), (255, 0, 0) if y < 50 else (0, 0, 255))
+        source_image.save(image_buffer, format="PNG")
+
+        media_path.write_bytes(b"fake mp3 audio payload")
+        tags = backend.ID3()
+        tags.add(backend.APIC(
+            encoding=3,
+            mime="image/png",
+            type=3,
+            desc="Cover",
+            data=image_buffer.getvalue(),
+        ))
+        tags.save(str(media_path))
+        original_media = media_path.read_bytes()
+
+        captured = {}
+        def capture_worker(label, fn, context=None):
+            captured["label"] = label
+            captured["work"] = fn
+            return "test-crop-embedded-artwork"
+
+        with patch.object(app, "_run_async", side_effect=capture_worker):
+            app.cropEmbeddedArtwork(str(media_path), str(output_path), "Top")
+
+        self.assertEqual(captured["label"], "crop-embedded-artwork")
+        result = captured["work"]()
+        self.assertTrue(result["ok"])
+        self.assertTrue(output_path.is_file())
+        self.assertEqual(media_path.read_bytes(), original_media, "Cropping a file thumbnail must not modify the source media.")
+        with backend.Image.open(output_path) as cropped:
+            self.assertEqual(cropped.size, (60, 60), "The extracted cover should be cropped to a 1:1 ratio.")
+            red = cropped.convert("RGB").getpixel((30, 5))
+            self.assertGreater(red[0], 180, "Top crop should retain the upper part of the cover.")
+
     def test_forward_slash_path_normalization(self):
         self.assertEqual(
             backend.forward_slash_path(r"C:\Music\Albums\Track.flac"),
