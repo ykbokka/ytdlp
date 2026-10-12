@@ -87,10 +87,43 @@ easing.type: Easing.OutCubic } }
             path = path.slice(1, -1).trim()
         return path
     }
-    function localPath(url) {
-        if (!url) return ""
-        try { return normalizePath(url.toLocalFile()) }
+    function localPath(value) {
+        if (!value) return ""
+
+        // QML's built-in url value is not guaranteed to expose QUrl.toLocalFile()
+        // to JavaScript. Prefer it when available, then safely parse file:// URLs.
+        try {
+            if (typeof value.toLocalFile === "function") {
+                var directPath = value.toLocalFile()
+                if (directPath) return normalizePath(directPath)
+            }
+        } catch (error) {
+        }
+
+        var raw = ""
+        try { raw = String(value).trim() }
         catch (error) { return "" }
+        if (!raw) return ""
+
+        // Accept plain local paths too, which makes this helper safe for reused inputs.
+        if (/^[A-Za-z]:[\\/]/.test(raw) || raw.substring(0, 2) === "\\\\")
+            return normalizePath(raw)
+
+        try {
+            var parsed = new URL(raw)
+            if (parsed.protocol !== "file:") return ""
+            var path = decodeURIComponent(parsed.pathname || "")
+            if (parsed.hostname) {
+                path = "//" + parsed.hostname + path
+            } else if (Qt.platform.os === "windows" && /^\/[A-Za-z]:/.test(path)) {
+                path = path.slice(1)
+            }
+            return normalizePath(path)
+        } catch (error) {
+            // Do not accidentally pass a file:/// URL into Python as if it were a path.
+            if (/^file:/i.test(raw)) return ""
+            return normalizePath(raw)
+        }
     }
     function scanLibraryFolder(value) {
         var path = normalizePath(value)
