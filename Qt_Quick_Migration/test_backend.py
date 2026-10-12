@@ -87,12 +87,13 @@ class QtBackendCoreTests(unittest.TestCase):
         })
 
         settings = app.getSettings()
-        self.assertEqual(settings["downloadDir"], str(download))
-        self.assertEqual(settings["metadataDir"], str(metadata))
-        self.assertEqual(settings["coverDir"], str(covers))
-        self.assertEqual(settings["cropDir"], str(crop))
-        self.assertEqual(settings["pipelineDir"], str(pipeline))
-        self.assertEqual(settings["cookiePath"], str(cookie.resolve()))
+        # The UI/config contract intentionally presents Windows paths with forward slashes.
+        self.assertEqual(settings["downloadDir"], backend.forward_slash_path(download))
+        self.assertEqual(settings["metadataDir"], backend.forward_slash_path(metadata))
+        self.assertEqual(settings["coverDir"], backend.forward_slash_path(covers))
+        self.assertEqual(settings["cropDir"], backend.forward_slash_path(crop))
+        self.assertEqual(settings["pipelineDir"], backend.forward_slash_path(pipeline))
+        self.assertEqual(settings["cookiePath"], backend.forward_slash_path(cookie.resolve()))
         self.assertEqual(settings["performanceMode"], "balanced")
         self.assertEqual(settings["appearanceMode"], "light")
         self.assertEqual(settings["conflictMode"], "skip")
@@ -101,7 +102,10 @@ class QtBackendCoreTests(unittest.TestCase):
 
         app.setDownloadOptions("Audio only", "Best available", "FLAC", "Auto subtitles")
         saved = json.loads(self.config_path.read_text(encoding="utf-8"))
-        self.assertEqual(saved["paths"], paths)
+        self.assertEqual(
+            saved["paths"],
+            {key: backend.forward_slash_path(value) for key, value in paths.items()}
+        )
         self.assertEqual(saved["file_type"], "Audio only")
         self.assertEqual(saved["audio_format"], "FLAC")
         self.assertEqual(saved["subtitle_mode"], "Auto subtitles")
