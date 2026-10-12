@@ -307,6 +307,28 @@ class QtBackendCoreTests(unittest.TestCase):
         self.assertEqual(result.read_bytes(), b"mock-media")
         self.assertFalse((output / "tempytm").exists(), "A single-download tempytm workspace should be removed.")
 
+    def test_scan_library_normalizes_manual_path_and_finds_media(self):
+        app = self.make_backend()
+        library = self.root / "Music Library"
+        library.mkdir()
+        (library / "track.flac").write_bytes(b"test media")
+        typed_path = '"' + str(library).replace("/", "\\") + '"'
+        captured = {}
+
+        def capture_worker(label, fn, context=None):
+            captured["label"] = label
+            captured["work"] = fn
+            return "test-library-scan"
+
+        with patch.object(app, "_run_async", side_effect=capture_worker):
+            app.scanLibrary(typed_path)
+
+        self.assertEqual(captured["label"], "library-scan")
+        result = captured["work"]()
+        self.assertEqual(result["_kind"], "library")
+        self.assertEqual(len(result["rows"]), 1)
+        self.assertEqual(result["rows"][0]["name"], "track.flac")
+
     def test_forward_slash_path_normalization(self):
         self.assertEqual(
             backend.forward_slash_path(r"C:\Music\Albums\Track.flac"),
