@@ -2235,7 +2235,7 @@ class ToolkitBackend(QObject):
                 attached_picture = Path(temporary) / "embedded-cover.jpg"
                 command = [
                     ffmpeg, "-hide_banner", "-loglevel", "error", "-y",
-                    "-i", str(path), "-map", "0:v:m:attached_pic",
+                    "-i", str(path), "-map", "0:v", "-map", "-0:V",
                     "-frames:v", "1", "-an", str(attached_picture),
                 ]
                 try:
