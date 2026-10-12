@@ -9,7 +9,7 @@
 
 YouTube Toolkit brings downloading and music-library utilities together in one desktop application. The project combines Python with **yt-dlp**, **FFmpeg**, and YouTube Music metadata lookup, with a focus on practical workflows: getting media, keeping tags consistent, managing artwork, and cleaning up a collection.
 
-**Development acknowledgement:** Created and maintained by Bokka, with AI-assisted planning, implementation, debugging, and documentation support from **ChatGPT by OpenAI**. The project is built iteratively, with the maintainer directing priorities and reviewing changes.
+**Development acknowledgement:** Created and maintained by Bokka, with AI-assisted planning, implementation, debugging, and documentation support from **ChatGPT (OpenAI)**, **Gemini (Google)**, and **Claude (Anthropic)**. The project is built iteratively, with the maintainer directing priorities and reviewing changes.
 
 > **Project status:** The existing CustomTkinter application is in `YTM_Music_Toolkit.pyw`. The `Qt_Quick_Migration/` directory contains an evolving PySide6 + Qt Quick interface and backend. The Qt Quick version is still a migration project, not yet a guaranteed feature-for-feature replacement. Review the status and known limitations before relying on it for a full library workflow.
 
