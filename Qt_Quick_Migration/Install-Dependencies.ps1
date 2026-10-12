@@ -21,15 +21,33 @@ function Download-File {
         Write-Host "Using cached file: $([IO.Path]::GetFileName($Destination))"
         return
     }
+
     $Partial = "$Destination.partial"
     $LastError = ""
+    $Curl = Get-Command "curl.exe" -ErrorAction SilentlyContinue
     for ($Attempt = 1; $Attempt -le 3; $Attempt++) {
         $OldProgress = $ProgressPreference
+        $OldErrorPreference = $ErrorActionPreference
         try {
             Remove-Item -LiteralPath $Partial -Force -ErrorAction SilentlyContinue
             Write-Host "Downloading $([IO.Path]::GetFileName($Destination)) (attempt $Attempt/3)..."
-            $ProgressPreference = "SilentlyContinue"
-            Invoke-WebRequest -Uri $Url -OutFile $Partial -UseBasicParsing -TimeoutSec 900
+
+            if ($Curl) {
+                # Windows 10/11 includes curl.exe. Its progress meter makes large downloads
+                # visibly active instead of leaving the console on a silent line.
+                $ErrorActionPreference = "Continue"
+                & $Curl.Source --fail --location --show-error --progress-bar --connect-timeout 30 --max-time 900 --output $Partial $Url
+                $DownloadCode = $LASTEXITCODE
+                if ($DownloadCode -ne 0) {
+                    throw "curl.exe failed with exit code $DownloadCode."
+                }
+            }
+            else {
+                # Fallback for uncommon Windows installations without curl.exe.
+                $ProgressPreference = "Continue"
+                Invoke-WebRequest -Uri $Url -OutFile $Partial -UseBasicParsing -TimeoutSec 900
+            }
+
             if (-not (Test-Path -LiteralPath $Partial) -or (Get-Item -LiteralPath $Partial).Length -lt 64) {
                 throw "Downloaded file is empty or incomplete."
             }
@@ -44,7 +62,10 @@ function Download-File {
                 Start-Sleep -Seconds (2 * $Attempt)
             }
         }
-        finally { $ProgressPreference = $OldProgress }
+        finally {
+            $ProgressPreference = $OldProgress
+            $ErrorActionPreference = $OldErrorPreference
+        }
     }
     throw "Could not download $Url. Last error: $LastError"
 }
