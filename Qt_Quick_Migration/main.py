@@ -7,10 +7,15 @@ from pathlib import Path
 os.environ.setdefault("QT_QUICK_CONTROLS_STYLE", "Basic")
 
 from PySide6.QtCore import QUrl
-from PySide6.QtGui import QFont, QGuiApplication
+from PySide6.QtGui import QFont, QGuiApplication, QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 
 from backend import ToolkitBackend, write_failure_log
+
+
+def resource_path(name: str) -> Path:
+    bundle_root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    return bundle_root / name
 
 
 def main() -> int:
@@ -19,12 +24,18 @@ def main() -> int:
     app.setApplicationName("YouTube Toolkit")
     app.setOrganizationName("YouTube Toolkit")
 
+    icon_path = resource_path("app_icon.svg")
+    if icon_path.is_file():
+        app.setWindowIcon(QIcon(str(icon_path)))
+
     engine = QQmlApplicationEngine()
     backend = ToolkitBackend()
     engine.rootContext().setContextProperty("backend", backend)
     engine.rootContext().setContextProperty("bridge", backend)
 
     qml_file = Path(__file__).resolve().parent / "qml" / "Main.qml"
+    if getattr(sys, "frozen", False):
+        qml_file = resource_path("qml/Main.qml")
     engine.load(QUrl.fromLocalFile(str(qml_file)))
 
     if not engine.rootObjects():
