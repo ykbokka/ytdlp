@@ -1754,6 +1754,7 @@ font.pixelSize: 11 }
 Layout.fillWidth: true
 text: root.libraryFolder
 placeholderText: "Choose media library folder…"
+onTextEdited: root.libraryFolder = text
 color: root.textColor
 placeholderTextColor: root.mutedColor
 background: Rectangle { radius: 10
