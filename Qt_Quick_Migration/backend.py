@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import tempfile
 import time
 import traceback
 import uuid
@@ -32,6 +33,28 @@ COOKIE_ENV = "YTM_MUSIC_TOOLKIT_COOKIES"
 def forward_slash_path(value: Any) -> str:
     """Return a filesystem path in consistent forward-slash form for the UI/config."""
     return str(value or "").strip().strip('"').replace("\\", "/")
+
+
+def square_crop_jpeg(image_bytes: bytes, position: str = "Center") -> bytes:
+    """Crop image bytes to a square with selectable edge bias and return a high-quality JPEG."""
+    from io import BytesIO
+
+    with Image.open(BytesIO(image_bytes)) as original:
+        image = ImageOps.exif_transpose(original).convert("RGB")
+        width, height = image.size
+        if width < 1 or height < 1:
+            raise ValueError("The selected image has invalid dimensions.")
+        side = min(width, height)
+        chosen = str(position or "Center").strip().lower()
+        left = 0 if "left" in chosen else (width - side if "right" in chosen else (width - side) // 2)
+        top = 0 if "top" in chosen else (height - side if "bottom" in chosen else (height - side) // 2)
+        output = BytesIO()
+        image.crop((left, top, left + side, top + side)).save(
+            output, format="JPEG", quality=100, subsampling=0
+        )
+        return output.getvalue()
+
+
 MEDIA_EXTENSIONS = {".flac", ".mp3", ".m4a", ".mp4", ".opus", ".ogg", ".wav", ".aac", ".wma", ".m4v", ".mov"}
 AUDIO_EXTENSIONS = {".flac", ".mp3", ".m4a", ".opus", ".ogg", ".wav", ".aac", ".wma"}
 
@@ -2181,23 +2204,117 @@ class ToolkitBackend(QObject):
             return {"_kind": "done", "ok": True, "message": f"Artwork embedded: {path.name}"}
         self._run_async("cover", work)
 
+    def _embedded_artwork_bytes(self, path: Path) -> bytes:
+        """Read the first embedded cover image from a supported media file."""
+        suffix = path.suffix.lower()
+
+        try:
+            if suffix == ".flac":
+                media = FLAC(str(path))
+                if media.pictures:
+                    return bytes(media.pictures[0].data)
+
+            if suffix == ".mp3":
+                pictures = ID3(str(path)).getall("APIC")
+                if pictures:
+                    return bytes(pictures[0].data)
+
+            if suffix in {".m4a", ".mp4", ".m4v", ".mov"}:
+                media = MP4(str(path))
+                covers = (media.tags or {}).get("covr", [])
+                if covers:
+                    return bytes(covers[0])
+        except Exception as exc:
+            self._log(f"Could not read embedded artwork with media tags: {exc}")
+
+        # Video files may store artwork as an attached-picture stream (MP4/MOV)
+        # or as an attachment (MKV). FFmpeg can extract both without altering source.
+        ffmpeg = find_tool("ffmpeg")
+        if ffmpeg and suffix in {".mkv", ".mp4", ".m4v", ".mov"}:
+            with tempfile.TemporaryDirectory(prefix="ytm_crop_art_") as temporary:
+                attached_picture = Path(temporary) / "embedded-cover.jpg"
+                command = [
+                    ffmpeg, "-hide_banner", "-loglevel", "error", "-y",
+                    "-i", str(path), "-map", "0:v:m:attached_pic",
+                    "-frames:v", "1", "-an", str(attached_picture),
+                ]
+                try:
+                    result = subprocess.run(
+                        command, capture_output=True, text=True, timeout=90, **hidden_kwargs()
+                    )
+                    if result.returncode == 0 and attached_picture.is_file() and attached_picture.stat().st_size:
+                        return attached_picture.read_bytes()
+                except Exception as exc:
+                    self._log(f"Attached-picture extraction attempt failed: {exc}")
+
+                if suffix == ".mkv":
+                    attachment = Path(temporary) / "embedded-cover.bin"
+                    command = [
+                        ffmpeg, "-hide_banner", "-loglevel", "error",
+                        "-dump_attachment:t:0", str(attachment),
+                        "-i", str(path), "-f", "null", "-",
+                    ]
+                    try:
+                        result = subprocess.run(
+                            command, capture_output=True, text=True, timeout=90, **hidden_kwargs()
+                        )
+                        if attachment.is_file() and attachment.stat().st_size:
+                            return attachment.read_bytes()
+                        self._log(f"FFmpeg attachment extraction returned no image: {(result.stderr or '').strip()[-500:]}")
+                    except Exception as exc:
+                        self._log(f"Attachment extraction attempt failed: {exc}")
+
+        return b""
+
     @Slot(str, str, str)
     def cropArtwork(self, source, destination, position):
+        source = forward_slash_path(source)
+        destination = forward_slash_path(destination)
+
         def work():
-            if not Path(source).is_file():
-                raise FileNotFoundError("Choose a source image.")
+            source_path = Path(source).expanduser()
+            if not source_path.is_file():
+                raise FileNotFoundError("Choose a valid source image.")
             if not destination:
                 raise ValueError("Choose an output path.")
-            with Image.open(source) as original:
-                image = ImageOps.exif_transpose(original).convert("RGB")
-                w, h = image.size
-                side = min(w, h)
-                p = str(position or "Center").lower()
-                left = 0 if "left" in p else (w-side if "right" in p else (w-side)//2)
-                top = 0 if "top" in p else (h-side if "bottom" in p else (h-side)//2)
-                image.crop((left, top, left+side, top+side)).save(destination, "JPEG", quality=100, subsampling=0)
-            return {"_kind": "done", "ok": True, "message": f"Artwork crop saved: {destination}"}
+            cropped = square_crop_jpeg(source_path.read_bytes(), position)
+            Path(destination).write_bytes(cropped)
+            return {"_kind": "done", "ok": True, "message": f"Square artwork saved: {destination}"}
         self._run_async("crop", work)
+
+    @Slot(str, str, str)
+    def cropEmbeddedArtwork(self, source, destination, position):
+        source = forward_slash_path(source)
+        destination = forward_slash_path(destination)
+
+        def work():
+            source_path = Path(source).expanduser()
+            destination_path = Path(destination).expanduser()
+            if not source_path.is_file():
+                raise FileNotFoundError("Choose a valid media file.")
+            if not destination:
+                raise ValueError("Choose an output path.")
+            try:
+                if source_path.resolve() == destination_path.resolve():
+                    raise ValueError("Choose a separate JPEG output path; the original media file will not be modified.")
+            except OSError:
+                pass
+
+            artwork = self._embedded_artwork_bytes(source_path)
+            if not artwork:
+                raise ValueError(
+                    f"No readable embedded cover artwork was found in '{source_path.name}'. "
+                    "Try the Image file source option if the thumbnail is stored separately."
+                )
+            cropped = square_crop_jpeg(artwork, position)
+            destination_path.write_bytes(cropped)
+            return {
+                "_kind": "done",
+                "ok": True,
+                "message": f"Embedded cover cropped to 1:1 JPEG: {destination_path}",
+            }
+
+        self._run_async("crop-embedded-artwork", work)
 
     @Slot(str)
     def scanLibrary(self, folder):
