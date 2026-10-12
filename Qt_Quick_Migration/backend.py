@@ -2222,9 +2222,15 @@ class ToolkitBackend(QObject):
             root = Path(folder)
             if not root.is_dir():
                 raise NotADirectoryError("Choose a valid library folder.")
-            files = sorted(path for path in root.rglob("*.flac") if path.is_file())
+            files = sorted(
+                path for path in root.rglob("*")
+                if path.is_file() and path.suffix.lower() == ".flac"
+            )
             if not files:
-                raise RuntimeError("No FLAC files were found for the full overhaul.")
+                raise RuntimeError(
+                    f"No FLAC files were found under '{root}'. "
+                    "Check that the selected folder is correct and contains FLAC files."
+                )
 
             resolver = YTMResolver()
             changed = failed = unmatched = 0
