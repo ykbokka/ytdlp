@@ -1,164 +1,137 @@
-# YouTube Toolkit
+# YouTube Toolkit V9 — Final Release
 
-**A Windows-first desktop toolkit for YouTube and YouTube Music workflows — from media downloads to metadata, artwork, and library maintenance.**
+<p align="center">
+  <strong>One toolkit. Your entire media workflow.</strong><br>
+  Download media. Keep your metadata tidy. Manage cover art. Take control of your music library.
+</p>
 
-[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![yt-dlp](https://img.shields.io/badge/powered%20by-yt--dlp-111111)](https://github.com/yt-dlp/yt-dlp)
-[![Last commit](https://img.shields.io/github/last-commit/ykbokka/ytdlp)](https://github.com/ykbokka/ytdlp/commits/main)
-[![Repository size](https://img.shields.io/github/repo-size/ykbokka/ytdlp)](https://github.com/ykbokka/ytdlp)
-
-YouTube Toolkit brings downloading and music-library utilities together in one desktop application. The project combines Python with **yt-dlp**, **FFmpeg**, and YouTube Music metadata lookup, with a focus on practical workflows: getting media, keeping tags consistent, managing artwork, and cleaning up a collection.
-
-**Development acknowledgement:** Created and maintained by Bokka, with AI-assisted planning, implementation, debugging, and documentation support from **ChatGPT (OpenAI)**, **Gemini (Google)**, and **Claude (Anthropic)**. The project is built iteratively, with the maintainer directing priorities and reviewing changes.
-
-> **Project status:** The existing CustomTkinter application is in `YTM_Music_Toolkit.pyw`. The `Qt_Quick_Migration/` directory contains an evolving PySide6 + Qt Quick interface and backend. The Qt Quick version is still a migration project, not yet a guaranteed feature-for-feature replacement. Review the status and known limitations before relying on it for a full library workflow.
+<p align="center">
+  <a href="https://github.com/ykbokka/ytdlp/releases"><strong>⬇️ Get YouTube Toolkit</strong></a>
+  ·
+  <a href="https://github.com/ykbokka/ytdlp/issues">Report a problem</a>
+</p>
 
 ---
 
-## What it does
+YouTube Toolkit is a Windows desktop application that brings media downloading and music-library maintenance into one place. Built around **yt-dlp**, **FFmpeg**, **YouTube Music metadata matching**, and a modern **PySide6 + Qt Quick interface**, it brings together the jobs that usually mean jumping between several different tools.
 
-### Media downloads
-- Download supported YouTube and YouTube Music sources through yt-dlp.
-- Work with video and audio workflows supported by the selected application version.
-- Use quality and format options where the source exposes compatible streams.
-- Use playlist and queue workflows where implemented by the selected interface.
+V9 is the **Final Release** edition of the toolkit: one app for downloading media, managing queues, editing tags, updating artwork, and maintaining a collection.
 
-### Music metadata
+## ✨ What you can do
+
+### 🎬 Download videos and music
+
+- Download supported YouTube and YouTube Music sources.
+- Choose video output formats such as **MKV** and **MP4**, or extract audio to **FLAC, MP3, M4A, or Opus**.
+- Set a quality ceiling so the selected resolution is not exceeded when a lower-quality source is all that is available.
+- Download playlists through a queue, monitor progress, and manage queued items.
+- Choose subtitle options where supported by the source.
+- Select performance and existing-file handling preferences.
+- Keep temporary download and conversion files separate from completed output.
+
+### 🎵 Find and maintain music metadata
+
+- Inspect and edit common tags, including title, artist, album, date, genre, and comment.
 - Use YouTube Music as the primary source for music-oriented matching.
-- Prefer song results with an exact contributing-artist match, then score title/album similarity and use a video-result fallback when needed.
-- Read and edit common audio tags, including title, artist, album, date, genre, and comment.
-- Keep metadata matching tied to the source video where the backend supports source-ID validation.
+- Prioritize exact contributing-artist matches and compare title and album information.
+- Clean up unwanted album-artist tags and derive cleaner titles from filenames when appropriate.
+- Use batch FLAC metadata tools to help keep a music collection consistent.
 
-### Artwork and library utilities
-- Embed or replace artwork for supported media formats.
-- Crop standalone images to high-quality 1:1 JPEGs with Center, Top, Bottom, Left, and Right positioning.
-- Extract embedded artwork from supported media files and crop it to a separate square JPEG without modifying the original media.
-- Scan media folders and review filename/title or tag-cleanup suggestions.
-- Run batch FLAC metadata and artwork workflows in the versions that support them.
+### 🖼️ Manage artwork and crop to 1:1
 
-### Built with care for desktop use
-- Windows-oriented desktop interface and background operations.
-- Saved application settings and download-folder preferences.
-- Failure logs and activity messages to help investigate errors.
-- An experimental Qt Quick interface focused on smoother transitions and a more responsive feel.
+- Embed or replace artwork in supported audio and video files.
+- Upgrade FLAC cover art with YouTube Music artwork where a suitable match is found.
+- Crop a standalone image into a high-quality **square (1:1) JPEG**.
+- Or choose **Embedded artwork in media file** to extract an existing cover from a supported media file and save a cropped JPEG separately.
+- Choose the crop position: **Center, Top, Bottom, Left, or Right**.
 
-**Feature availability can differ between the existing application and the Qt Quick migration.** The migration notes describe what is implemented and what still needs end-to-end testing.
+When cropping embedded artwork, the output is saved separately; the source media file is not meant to be modified by that operation. Embedded-artwork extraction depends on the container, how the cover is stored, and whether the required stream or attachment can be read.
 
----
+### 📚 Scan and overhaul a library
 
-## Choose your version
+- Scan a folder of supported media files and review the results.
+- Review filename-derived title suggestions and tag cleanup before applying changes.
+- Run a full FLAC overhaul that can combine YouTube Music matching, metadata updates, and cover-art processing.
+- Track operation status and review activity messages when troubleshooting.
 
-| Version | Location | Best for |
-| --- | --- | --- |
-| Existing desktop app | [`YTM_Music_Toolkit.pyw`](YTM_Music_Toolkit.pyw) | The current CustomTkinter implementation |
-| Qt Quick migration | [`Qt_Quick_Migration/`](Qt_Quick_Migration/) | Trying the newer PySide6 + QML interface and helping validate parity |
+**Make a backup before running bulk metadata or artwork operations.** A batch operation can change the files in the selected library.
 
-For current migration setup instructions, packaging steps, supported workflows, and known limitations, read the [Qt Quick migration guide](Qt_Quick_Migration/README.md).
+### 🌙 A modern desktop experience
 
----
+- A clean PySide6 + Qt Quick interface with dark and light appearance modes.
+- Dedicated pages for Downloader, Queue, Metadata, Cover Art, Crop Art, Library Overhaul, Settings, and Activity.
+- Saved preferences and configurable media folders.
+- A custom application icon, progress feedback, and diagnostic logs.
 
-## Run the existing app from source
+## ⬇️ Download and launch
 
-The main app is Windows-oriented and requires Python plus the external media tools it invokes.
+1. Open the [GitHub Releases page](https://github.com/ykbokka/ytdlp/releases).
+2. Choose **YouTube Toolkit V9 — Final Release**.
+3. Download the Windows executable attached to that release and launch it.
 
-### 1. Install prerequisites
+The standalone build bundles the application runtime and required helper tools, including yt-dlp, FFmpeg/FFprobe, Deno, and aria2. **A separate Python installation should not be needed to run the released executable.** The build process itself is intended for 64-bit Windows and requires internet access to obtain dependencies.
 
-Install **Python 3.11 or newer** and **FFmpeg**. Ensure `ffmpeg` and `ffprobe` are accessible from your terminal or supplied alongside your application build.
+> **Release note:** Make sure you select the V9 Final Release asset, not an older release marked unstable.
 
-The app invokes yt-dlp as a command-line tool. The included requirements install its Python distribution and command entry point. A Deno runtime is recommended for YouTube extraction flows that need JavaScript challenge support; aria2c is optional and may be used for some download paths.
+## 🔐 Settings, cookies, and privacy
 
-### 2. Download the repository
+- Application settings are stored locally in `~/.ytm_music_toolkit.json` under your user profile.
+- Personal settings and authentication cookies are kept outside the bundled executable.
+- Some sources, bot checks, and private or account-bound playlists may require a valid `cookies.txt` file. Authentication needs can change with YouTube's systems.
+- Treat cookies as passwords. Never upload, commit, or share your cookie file.
+- Diagnostic logs can contain local file paths, source URLs, and other troubleshooting context. Review them before sharing.
 
-```powershell
-git clone https://github.com/ykbokka/ytdlp.git
-cd ytdlp
-```
+YouTube Toolkit does not promise that every source, playlist, format, or account-restricted item will be available. Results depend on the source, your access, connectivity, and the behavior of third-party tools.
 
-### 3. Create an isolated environment
+## 🛠️ Troubleshooting
 
-```powershell
-py -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
+**A download or extraction fails**  
+Check that the source is accessible and that your connection is working. Some sources may need a valid cookie file. Upstream extractor changes can also temporarily affect downloads.
 
-### 4. Launch
+**Audio conversion or merging fails**  
+Confirm that FFmpeg and FFprobe are present in the build or available to the application. Try a short, publicly accessible source before retrying a large playlist.
 
-```powershell
-python .\YTM_Music_Toolkit.pyw
-```
+**Crop Art cannot extract a media file's thumbnail**  
+The image must be embedded in a supported way, such as an audio cover tag, an attached-picture stream, or a readable MKV attachment. If the artwork is stored separately, switch the source type to **Image file**.
 
-You can also launch the `.pyw` file directly after installing the dependencies. If an operation reports that yt-dlp, FFmpeg, or another external executable is missing, check that tool's installation and PATH before troubleshooting the application itself.
+**A library scan finds no supported files**  
+Check the selected folder path. The general scan supports common media types, while some batch operations specifically require FLAC files.
 
----
+**The app reports an error**  
+Check the Activity section and the diagnostic log referenced by the app. When reporting a problem, include the final error text and the operation you were performing—but never include cookie contents or other private authentication data.
 
-## Try the Qt Quick migration
+## 🧰 Built with
 
-The newer interface is kept in its own directory so it can be tested separately from the existing app.
+YouTube Toolkit builds on work from these projects:
 
-1. Download or clone this repository and open `Qt_Quick_Migration/`.
-2. Double-click `Run-Prototype.bat`.
-3. On first launch, the script creates an isolated `.venv`, installs Python dependencies, runs the available backend tests and QML smoke test, then launches the prototype.
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) — media extraction and downloading
+- [FFmpeg](https://ffmpeg.org/) — media processing and stream handling
+- [Deno](https://deno.com/) — JavaScript runtime support for compatible extraction workflows
+- [aria2](https://github.com/aria2/aria2) — alternative download engine
+- [PySide6 / Qt Quick](https://doc.qt.io/qtforpython/) — desktop interface
+- [Mutagen](https://github.com/quodlibet/mutagen) — media metadata
+- [Pillow](https://python-pillow.org/) — image processing
+- [ytmusicapi](https://github.com/sigma67/ytmusicapi) — YouTube Music interface support
 
-To create a self-contained Windows executable, run `Install-Dependencies.bat` followed by `Build-Prototype-EXE.bat` from that directory. The initial setup downloads sizeable tools and needs an internet connection. Build output and further details are covered in the [migration guide](Qt_Quick_Migration/README.md).
+Each third-party component remains subject to its own license and terms.
 
-The smoke tests are useful checks for syntax, backend logic, and QML loading; **they are not proof that every download, audio container, subtitle, account-bound playlist, or metadata workflow works end to end on every Windows system**. Keep backups and use a disposable output folder while evaluating the migration.
+## ❤️ Credits
 
----
+Created and maintained by **Bokka**, with AI-assisted planning, implementation, debugging, and documentation support from **ChatGPT (OpenAI)**, **Gemini (Google)**, and **Claude (Anthropic)**. The product direction, priorities, and release decisions are driven by the project maintainer.
 
-## Configuration, cookies, and privacy
+Thanks to the maintainers of the open-source projects that make this toolkit possible.
 
-- User settings are stored in `~/.ytm_music_toolkit.json` in the current user's home directory.
-- Some YouTube Music or account-bound playlist workflows may require a valid Netscape-format `cookies.txt` file, depending on the source and application version.
-- Treat cookies as authentication credentials. **Never commit or share your cookie file**, and remove cookie values from logs or screenshots before posting them.
-- Failure logs can contain local paths, source URLs, and diagnostic details. Review them for personal information before attaching them to an issue.
-- Download behavior is affected by source availability, network conditions, yt-dlp, extractor changes, and the installed media tools. No specific speed or successful result can be guaranteed for every source.
+## ⚖️ Responsible use and licensing
 
----
+YouTube Toolkit is an independent community project. It is not affiliated with or endorsed by YouTube, YouTube Music, Google, or Apple.
 
-## Troubleshooting
+Use the application only for content you are authorized to access, download, and modify. Respect creators' rights, platform terms, and applicable laws.
 
-**A download fails or YouTube extraction stops working**
-- Update yt-dlp and confirm its command is available in the same environment that launches the app.
-- Check whether the source is public, available, and accessible with your current session.
-- Review the latest failure log. If JavaScript challenge support is involved, verify the Deno runtime and yt-dlp's documented requirements.
-
-**Audio conversion, merging, or cover attachment fails**
-- Confirm that FFmpeg and FFprobe are installed and discoverable.
-- Try a short, public test video and a temporary output folder before retrying a large playlist.
-
-**A batch operation finds no files**
-- Confirm the exact folder path displayed by the app and that it contains files supported by that specific operation. Some workflows only operate on FLAC files, even though the general library scanner recognizes additional media formats.
-
-**The Qt Quick prototype does not start**
-- Run `Run-Prototype.bat` from its own directory and read the console output.
-- If reporting an issue, include the failing step and the final relevant error lines, but never include cookie contents.
+This repository does not currently include a project-level `LICENSE` file. Public visibility alone does not grant permission to redistribute or reuse the project's own source code. Third-party components retain their respective licenses.
 
 ---
 
-## Contributing
-
-Bug reports, reproducible test cases, and thoughtful improvements are welcome.
-
-For a useful issue, include:
-- Windows version and Python version, if running from source.
-- Which application version you tested: the existing app or the Qt Quick migration.
-- The operation you attempted and the exact error message.
-- Relevant failure-log excerpts with personal paths, private URLs, and authentication data removed.
-
-For code changes, keep the existing and migration implementations clearly distinguished unless the change intentionally applies to both. Prefer small, testable changes and describe which manual workflows were verified. Please do not submit cookies, downloaded media, private account data, or other sensitive files.
-
----
-
-## Responsible use
-
-Use the application only for content you have the right to access and download. Respect creators' rights, platform terms, and applicable law. The project is an independent community tool and is not affiliated with or endorsed by YouTube, Google, or the yt-dlp project.
-
-## Credits
-
-This project builds on the work of the Python ecosystem, [yt-dlp](https://github.com/yt-dlp/yt-dlp), [FFmpeg](https://ffmpeg.org/), [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter), [PySide6 / Qt Quick](https://doc.qt.io/qtforpython/), [ytmusicapi](https://github.com/sigma67/ytmusicapi), Pillow, and Mutagen. Visit each upstream project for its license and contribution information.
-
-## License
-
-There is not currently a `LICENSE` file in this repository. Until an explicit license is added, do not assume that public availability grants permission to redistribute or reuse the code. If you maintain this project, adding a clear license is an important next step for welcoming outside contributions.
+<p align="center">
+  <strong>YouTube Toolkit V9 — Final Release</strong><br>
+  <em>Download. Organize. Maintain.</em>
+</p>
