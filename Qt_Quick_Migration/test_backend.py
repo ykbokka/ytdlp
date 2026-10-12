@@ -303,6 +303,16 @@ class QtBackendCoreTests(unittest.TestCase):
         self.assertEqual(result.read_bytes(), b"mock-media")
         self.assertFalse((output / "tempytm").exists(), "A single-download tempytm workspace should be removed.")
 
+    def test_forward_slash_path_normalization(self):
+        self.assertEqual(
+            backend.forward_slash_path(r"C:\Music\Albums\Track.flac"),
+            "C:/Music/Albums/Track.flac"
+        )
+        self.assertEqual(
+            backend.forward_slash_path("C:/Music/Albums"),
+            "C:/Music/Albums"
+        )
+
     def test_safe_filename_and_language_labels(self):
         self.assertEqual(backend.ToolkitBackend._safe_name('a<b>:"c'), "a_b_c")
         self.assertEqual(backend.ToolkitBackend._language_label("ar"), "Arabic")
