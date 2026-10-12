@@ -31,7 +31,8 @@ YouTube Toolkit brings downloading and music-library utilities together in one d
 
 ### Artwork and library utilities
 - Embed or replace artwork for supported media formats.
-- Prepare high-quality square cover images.
+- Crop standalone images to high-quality 1:1 JPEGs with Center, Top, Bottom, Left, and Right positioning.
+- Extract embedded artwork from supported media files and crop it to a separate square JPEG without modifying the original media.
 - Scan media folders and review filename/title or tag-cleanup suggestions.
 - Run batch FLAC metadata and artwork workflows in the versions that support them.
 
