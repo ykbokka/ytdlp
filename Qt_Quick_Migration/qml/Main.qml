@@ -82,12 +82,28 @@ easing.type: Easing.OutCubic } }
     property var pageComponents: [downloaderPage, queuePage, metadataPage, coverPage, cropPage, libraryPage, settingsPage, activityPage]
 
     function normalizePath(value) {
-        return String(value || "").trim().replace(/\\/g, "/")
+        var path = String(value || "").trim().replace(/\\/g, "/")
+        if (path.length >= 2 && path.charAt(0) === "\"" && path.charAt(path.length - 1) === "\"")
+            path = path.slice(1, -1).trim()
+        return path
     }
     function localPath(url) {
         if (!url) return ""
         try { return normalizePath(url.toLocalFile()) }
         catch (error) { return "" }
+    }
+    function scanLibraryFolder(value) {
+        var path = normalizePath(value)
+        if (!path) {
+            statusMessage = "Enter a library folder path or use Browse."
+            appendLog("Library scan skipped: no folder path was supplied.")
+            return
+        }
+        libraryFolder = path
+        libraryRows = []
+        statusMessage = "Scanning library…"
+        appendLog("Scanning library folder: " + path)
+        backend.scanLibrary(path)
     }
     function updateMetadataPath(value) {
         var current = root.metadataValues || ({})
@@ -573,11 +589,13 @@ font.bold: true }
         title: "Choose media library folder"
         onAccepted: {
             var path = root.localPath(libraryFolderDialog.selectedFolder)
-            if (!path) return
-            root.libraryFolder = path
+            if (!path) {
+                root.statusMessage = "The folder picker did not return a local folder path."
+                root.appendLog("Library browse failed: selected folder URL was empty or not a local path.")
+                return
+            }
             root.appendLog("Browse selected library folder: " + path)
-            backend.setOperationDirectory("pipeline", path)
-            backend.scanLibrary(path)
+            root.scanLibraryFolder(path)
         }
     }
     FolderDialog {
@@ -652,7 +670,10 @@ font.bold: true }
         function onLibraryScanReady(data) {
             root.libraryFolder = root.normalizePath(data.folder || root.libraryFolder)
             root.libraryRows = data.rows || []
+            if (root.libraryFolder)
+                backend.setOperationDirectory("pipeline", root.libraryFolder)
             root.statusMessage = "Library scan complete: " + root.libraryRows.length + " file(s)."
+            root.appendLog("Library scan complete: " + root.libraryRows.length + " supported media file(s) found.")
         }
         function onSettingsChanged(settings) { root.applySettings(settings) }
     }
@@ -1840,18 +1861,45 @@ background: Rectangle { radius: 10
 color: root.inputColor
 border.width: 1
 border.color: root.borderColor } }
-                Binding { target: libraryPath; property: "text"; value: root.normalizePath(root.libraryFolder) }
-                Button { text: "Browse & Scan"
-onClicked: libraryFolderDialog.open()
-background: Rectangle { radius: 10
-color: root.elevatedColor
-border.width: 1
-border.color: root.borderColor }
-contentItem: Text { text: parent.text
-color: root.textColor
-font.pixelSize: 11
-horizontalAlignment: Text.AlignHCenter
-verticalAlignment: Text.AlignVCenter } }
+                Binding {
+                    target: libraryPath
+                    property: "text"
+                    value: root.normalizePath(root.libraryFolder)
+                    when: !libraryPath.activeFocus
+                }
+                Button {
+                    text: "Browse"
+                    onClicked: libraryFolderDialog.open()
+                    background: Rectangle {
+                        radius: 10
+                        color: root.elevatedColor
+                        border.width: 1
+                        border.color: root.borderColor
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: root.textColor
+                        font.pixelSize: 11
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
+                Button {
+                    text: "Scan"
+                    onClicked: root.scanLibraryFolder(libraryPath.text)
+                    background: Rectangle {
+                        radius: 10
+                        color: root.accentColor
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: "white"
+                        font.pixelSize: 11
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
             }
             RowLayout {
                 Layout.fillWidth: true
