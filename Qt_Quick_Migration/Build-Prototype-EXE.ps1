@@ -7,6 +7,8 @@ $DistDir = Join-Path $Root "dist"
 $BuildDir = Join-Path $Root "pyinstaller_work"
 $Licenses = Join-Path $Assets "licenses"
 $Icon = Join-Path $Assets "app.ico"
+$IconSource = Join-Path $Root "app_icon.svg"
+$IconGenerator = Join-Path $Root "make_app_icon.py"
 
 function Invoke-Native {
     param([string]$Program, [string[]]$Arguments, [string]$Failure)
@@ -21,6 +23,12 @@ try {
     }
     if (-not (Test-Path -LiteralPath $QmlRoot -PathType Container)) {
         throw "QML interface folder was not found: $QmlRoot"
+    }
+    if (-not (Test-Path -LiteralPath $IconSource -PathType Leaf)) {
+        throw "App icon artwork is missing: $IconSource"
+    }
+    if (-not (Test-Path -LiteralPath $IconGenerator -PathType Leaf)) {
+        throw "App icon generator is missing: $IconGenerator"
     }
 
     $RequiredTools = @(
@@ -47,15 +55,17 @@ try {
     Push-Location $Root
     try {
         Write-Host "Running Python syntax checks, backend tests and QML smoke test..."
-        Invoke-Native $Python @("-m", "compileall", "-q", "main.py", "backend.py", "ytmusic_resolver.py", "smoke_test.py", "test_backend.py", "test_ytmusic_resolver.py") "Python syntax check failed"
+        Invoke-Native $Python @("-m", "compileall", "-q", "main.py", "backend.py", "ytmusic_resolver.py", "smoke_test.py", "test_backend.py", "test_ytmusic_resolver.py", "make_app_icon.py") "Python syntax check failed"
         Invoke-Native $Python @("-m", "unittest", "test_backend.py", "test_ytmusic_resolver.py", "-v") "Backend regression tests failed"
         $OldQtPlatform = $env:QT_QPA_PLATFORM
         $env:QT_QPA_PLATFORM = "offscreen"
         try { Invoke-Native $Python @("smoke_test.py") "Qt Quick QML startup test failed" }
         finally { $env:QT_QPA_PLATFORM = $OldQtPlatform }
+        Invoke-Native $Python @("make_app_icon.py", $IconSource, $Icon) "Could not generate the Windows app icon"
     }
     finally { Pop-Location }
 
+    if (-not (Test-Path -LiteralPath $Icon -PathType Leaf)) { throw "The app icon generator did not create: $Icon" }
     if (-not (Test-Path -LiteralPath $DistDir)) { New-Item -ItemType Directory -Force -Path $DistDir | Out-Null }
     if (Test-Path -LiteralPath $BuildDir) { Remove-Item -LiteralPath $BuildDir -Recurse -Force }
 
@@ -76,6 +86,7 @@ try {
         "--hidden-import", "PySide6.QtQml",
         "--hidden-import", "PySide6.QtQuick",
         "--add-data", "$QmlRoot;qml",
+        "--add-data", "$IconSource;.",
         "--add-binary", "$(Join-Path $Assets 'yt-dlp.exe');.",
         "--add-binary", "$(Join-Path $Assets 'ffmpeg.exe');.",
         "--add-binary", "$(Join-Path $Assets 'ffprobe.exe');.",
@@ -89,10 +100,10 @@ try {
     }
     Get-ChildItem -LiteralPath $Assets -Filter "*.dll" -File -ErrorAction SilentlyContinue |
         ForEach-Object { $PyInstallerArgs += @("--add-binary", "$($_.FullName);.") }
-    if (Test-Path -LiteralPath $Icon -PathType Leaf) { $PyInstallerArgs += @("--icon", $Icon) }
+    $PyInstallerArgs += @("--icon", $Icon)
 
     Write-Host ""
-    Write-Host "Building a one-file app with the Python runtime, Qt/QML UI, app modules, packages, yt-dlp, FFmpeg, FFprobe, Deno, aria2c and helper DLLs..."
+    Write-Host "Building a one-file app with the Python runtime, Qt/QML UI, app icon, app modules, packages, yt-dlp, FFmpeg, FFprobe, Deno, aria2c and helper DLLs..."
     Push-Location $Root
     try { Invoke-Native $Python (@("-m", "PyInstaller") + $PyInstallerArgs) "PyInstaller could not create the standalone EXE" }
     finally { Pop-Location }
