@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#202B43"/>
+      <stop offset="0.48" stop-color="#121A2B"/>
+      <stop offset="1" stop-color="#080D18"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0.12" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.17"/>
+      <stop offset="0.42" stop-color="#FFFFFF" stop-opacity="0.025"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="arrow" x1="0" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#C9D9FF"/>
+    </linearGradient>
+    <linearGradient id="music" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF9A9D"/>
+      <stop offset="1" stop-color="#FF5269"/>
+    </linearGradient>
+    <radialGradient id="blueGlow" cx="0.25" cy="0.08" r="0.9">
+      <stop offset="0" stop-color="#6D91FF" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#6D91FF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="coralGlow" cx="0.7" cy="0.64" r="0.6">
+      <stop offset="0" stop-color="#FF536B" stop-opacity="0.2"/>
+      <stop offset="1" stop-color="#FF536B" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="tileClip">
+      <rect x="28" y="28" width="968" height="968" rx="224"/>
+    </clipPath>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+  </defs>
+  <g clip-path="url(#tileClip)">
+    <rect x="28" y="28" width="968" height="968" rx="224" fill="url(#tile)"/>
+    <rect x="28" y="28" width="968" height="968" fill="url(#blueGlow)"/>
+    <rect x="28" y="28" width="968" height="968" fill="url(#coralGlow)"/>
+    <path d="M28 28 H996 V330 C790 248 510 214 28 370 Z" fill="url(#glass)"/>
+    <path d="M60 665 C215 525 348 530 466 604" fill="none" stroke="#A7BCFF" stroke-opacity="0.08" stroke-width="3"/>
+    <path d="M50 715 C215 565 350 580 475 650" fill="none" stroke="#A7BCFF" stroke-opacity="0.055" stroke-width="3"/>
+    <ellipse cx="615" cy="804" rx="224" ry="52" fill="#000000" opacity="0.28" filter="url(#softShadow)"/>
+    <!-- Musical note: bold, simple silhouette that stays readable at taskbar size. -->
+    <path d="M284 401 L284 651 C284 686 247 714 211 705 C177 697 163 666 181 638 C196 613 230 603 255 616 L255 366 L453 315 L453 562 C453 599 417 625 382 616 C347 607 333 576 352 550 C368 527 400 519 424 531 L424 353 Z"
+          fill="url(#music)" transform="translate(24 22)"/>
+    <!-- Download arrow and tray. -->
+    <path d="M622 342 C622 326 635 313 651 313 C667 313 680 326 680 342 L680 554 L750 484 C762 472 781 472 793 484 C805 496 805 515 793 527 L672 648 C660 660 641 660 629 648 L508 527 C496 515 496 496 508 484 C520 472 539 472 551 484 L622 554 Z"
+          fill="url(#arrow)"/>
+    <path d="M405 699 H596" stroke="#FFFFFF" stroke-opacity="0.22" stroke-width="20" stroke-linecap="round"/>
+    <path d="M400 716 H824 C842 716 856 730 856 748 V779 C856 809 832 833 802 833 H422 C392 833 368 809 368 779 V748 C368 730 382 716 400 716 Z"
+          fill="url(#arrow)"/>
+    <path d="M429 746 H795 V779 C795 783 792 786 788 786 H436 C432 786 429 783 429 779 Z" fill="#172238" opacity="0.92"/>
+    <!-- Subtle top-edge glint and inset border. -->
+    <rect x="29" y="29" width="966" height="966" rx="223" fill="none" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="3"/>
+    <path d="M258 52 H765" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="3" stroke-linecap="round"/>
+  </g>
+</svg>
