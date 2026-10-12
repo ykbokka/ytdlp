@@ -24,7 +24,7 @@ def main() -> int:
     app.setApplicationName("YouTube Toolkit")
     app.setOrganizationName("YouTube Toolkit")
 
-    icon_path = resource_path("app_icon.svg")
+    icon_path = resource_path("app.ico")
     if icon_path.is_file():
         app.setWindowIcon(QIcon(str(icon_path)))
 
