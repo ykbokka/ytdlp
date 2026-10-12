@@ -37,6 +37,7 @@ ApplicationWindow {
     property string coverMediaPathValue: ""
     property string coverSourcePath: ""
     property string cropSourcePath: ""
+    property string cropSourceMode: "Image file"
     property string cropPositionValue: "Center"
     property string cookiePath: ""
     property string cookiePathInput: ""
@@ -573,13 +574,26 @@ font.bold: true }
     }
     FileDialog {
         id: cropImageDialog
-        title: "Choose source artwork"
+        title: "Choose source artwork image"
         nameFilters: ["Images (*.jpg *.jpeg *.png *.webp *.bmp)", "All files (*)"]
         onAccepted: {
             var path = root.localPath(cropImageDialog.selectedFile)
             if (!path) return
+            root.cropSourceMode = "Image file"
             root.cropSourcePath = path
-            root.appendLog("Browse selected crop source: " + path)
+            root.appendLog("Browse selected crop source image: " + path)
+        }
+    }
+    FileDialog {
+        id: cropMediaFileDialog
+        title: "Choose media file with embedded artwork"
+        nameFilters: ["Media with artwork (*.flac *.mp3 *.m4a *.mp4 *.m4v *.mov *.mkv)", "All files (*)"]
+        onAccepted: {
+            var path = root.localPath(cropMediaFileDialog.selectedFile)
+            if (!path) return
+            root.cropSourceMode = "Embedded artwork in media file"
+            root.cropSourcePath = path
+            root.appendLog("Selected embedded-artwork source file: " + path)
         }
     }
     FileDialog {
@@ -591,7 +605,10 @@ font.bold: true }
             var path = root.localPath(cropSaveDialog.selectedFile)
             if (!path) return
             root.appendLog("Browse selected crop destination: " + path)
-            backend.cropArtwork(root.cropSourcePath, path, root.cropPositionValue)
+            if (root.cropSourceMode === "Embedded artwork in media file")
+                backend.cropEmbeddedArtwork(root.cropSourcePath, path, root.cropPositionValue)
+            else
+                backend.cropArtwork(root.cropSourcePath, path, root.cropPositionValue)
         }
     }
     FileDialog {
@@ -1779,34 +1796,92 @@ verticalAlignment: Text.AlignVCenter }
 color: root.textColor
 font.pixelSize: 24
 font.bold: true }
-            Text { text: "Create a clean square JPEG using a center or edge-biased crop."
-color: root.mutedColor
-font.pixelSize: 11 }
+            Text {
+                text: "Save a 1:1 JPEG from an image or from artwork embedded in a media file. The original media stays untouched."
+                color: root.mutedColor
+                font.pixelSize: 11
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
             RowLayout {
                 Layout.fillWidth: true
-                TextField { id: cropSource
-Layout.fillWidth: true
-
-onTextEdited: root.cropSourcePath = root.normalizePath(text)
-placeholderText: "Source image path"
-color: root.textColor
-placeholderTextColor: root.mutedColor
-background: Rectangle { radius: 10
-color: root.inputColor
-border.width: 1
-border.color: root.borderColor } }
-                Binding { target: cropSource; property: "text"; value: root.normalizePath(root.cropSourcePath) }
-                Button { text: "Browse"
-onClicked: cropImageDialog.open()
-background: Rectangle { radius: 10
-color: root.elevatedColor
-border.width: 1
-border.color: root.borderColor }
-contentItem: Text { text: parent.text
-color: root.textColor
-font.pixelSize: 11
-horizontalAlignment: Text.AlignHCenter
-verticalAlignment: Text.AlignVCenter } }
+                Text {
+                    text: "Source type"
+                    color: root.mutedColor
+                    font.pixelSize: 11
+                }
+                ComboBox {
+                    id: cropSourceModeCombo
+                    Layout.fillWidth: true
+                    model: ["Image file", "Embedded artwork in media file"]
+                    currentIndex: Math.max(0, model.indexOf(root.cropSourceMode))
+                    onActivated: {
+                        root.cropSourceMode = currentText
+                        root.cropSourcePath = ""
+                    }
+                    contentItem: Text {
+                        leftPadding: 11
+                        text: cropSourceModeCombo.displayText
+                        color: root.textColor
+                        font.pixelSize: 11
+                        verticalAlignment: Text.AlignVCenter
+                        elide: Text.ElideRight
+                    }
+                    background: Rectangle {
+                        radius: 10
+                        color: root.inputColor
+                        border.width: 1
+                        border.color: root.borderColor
+                    }
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                TextField {
+                    id: cropSource
+                    Layout.fillWidth: true
+                    onTextEdited: root.cropSourcePath = root.normalizePath(text)
+                    placeholderText: root.cropSourceMode === "Image file"
+                        ? "Source image path"
+                        : "Media file containing embedded cover artwork"
+                    color: root.textColor
+                    placeholderTextColor: root.mutedColor
+                    selectByMouse: true
+                    background: Rectangle {
+                        radius: 10
+                        color: root.inputColor
+                        border.width: 1
+                        border.color: root.borderColor
+                    }
+                }
+                Binding {
+                    target: cropSource
+                    property: "text"
+                    value: root.normalizePath(root.cropSourcePath)
+                    when: !cropSource.activeFocus
+                }
+                Button {
+                    text: "Browse"
+                    onClicked: {
+                        if (root.cropSourceMode === "Embedded artwork in media file")
+                            cropMediaFileDialog.open()
+                        else
+                            cropImageDialog.open()
+                    }
+                    background: Rectangle {
+                        radius: 10
+                        color: root.elevatedColor
+                        border.width: 1
+                        border.color: root.borderColor
+                    }
+                    contentItem: Text {
+                        text: parent.text
+                        color: root.textColor
+                        font.pixelSize: 11
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                }
             }
             RowLayout {
                 Layout.fillWidth: true
