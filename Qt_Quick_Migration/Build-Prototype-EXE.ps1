@@ -86,7 +86,7 @@ try {
         "--hidden-import", "PySide6.QtQml",
         "--hidden-import", "PySide6.QtQuick",
         "--add-data", "$QmlRoot;qml",
-        "--add-data", "$IconSource;.",
+        "--add-data", "$Icon;.",
         "--add-binary", "$(Join-Path $Assets 'yt-dlp.exe');.",
         "--add-binary", "$(Join-Path $Assets 'ffmpeg.exe');.",
         "--add-binary", "$(Join-Path $Assets 'ffprobe.exe');.",
