@@ -39,6 +39,7 @@ ApplicationWindow {
     property string cropSourcePath: ""
     property string cropPositionValue: "Center"
     property string cookiePath: ""
+    property string cookiePathInput: ""
     property bool hasCookies: false
     property string performanceMode: "aggressive"
     property string conflictMode: "rename"
@@ -80,7 +81,28 @@ easing.type: Easing.OutCubic } }
     ]
     property var pageComponents: [downloaderPage, queuePage, metadataPage, coverPage, cropPage, libraryPage, settingsPage, activityPage]
 
+    function normalizePath(value) {
+        return String(value || "").trim().replace(/\\/g, "/")
+    }
+    function localPath(url) {
+        if (!url) return ""
+        try { return normalizePath(url.toLocalFile()) }
+        catch (error) { return "" }
+    }
+    function updateMetadataPath(value) {
+        var current = root.metadataValues || ({})
+        root.metadataValues = ({
+            title: current.title || "",
+            artist: current.artist || "",
+            album: current.album || "",
+            date: current.date || "",
+            genre: current.genre || "",
+            comment: current.comment || "",
+            path: root.normalizePath(value)
+        })
+    }
     function appendLog(line) {
+        line = String(line || "").replace(/\\/g, "/")
         logText = (logText + line + "\n").split("\n").slice(-220).join("\n")
     }
     function updatePage() {
@@ -92,11 +114,12 @@ easing.type: Easing.OutCubic } }
     }
     function applySettings(s) {
         if (!s) return
-        downloadDirectory = s.downloadDir || ""
-        metadataFolderPath = s.metadataDir || ""
-        coverFolderPath = s.coverDir || ""
-        libraryFolder = s.pipelineDir || ""
-        cookiePath = s.cookiePath || ""
+        downloadDirectory = normalizePath(s.downloadDir || "")
+        metadataFolderPath = normalizePath(s.metadataDir || "")
+        coverFolderPath = normalizePath(s.coverDir || "")
+        libraryFolder = normalizePath(s.pipelineDir || "")
+        cookiePath = normalizePath(s.cookiePath || "")
+        cookiePathInput = cookiePath
         hasCookies = !!s.hasCookies
         performanceMode = s.performanceMode || "aggressive"
         conflictMode = s.conflictMode || "rename"
@@ -469,73 +492,120 @@ font.bold: true }
         id: metadataFileDialog
         title: "Choose tagged media file"
         nameFilters: ["Supported tagged media (*.flac *.mp3 *.m4a *.mp4 *.m4v *.mov *.opus *.ogg *.wav *.aac *.wma)", "All files (*)"]
-        onAccepted: backend.inspectMediaFile(selectedFile.toLocalFile())
+        onAccepted: {
+            var path = root.localPath(metadataFileDialog.selectedFile)
+            if (!path) return
+            root.updateMetadataPath(path)
+            root.appendLog("Browse selected media file: " + path)
+            backend.inspectMediaFile(path)
+        }
     }
     FileDialog {
         id: coverMediaDialog
         title: "Choose media file to update"
         nameFilters: ["Supported media (*.flac *.mp3 *.m4a *.mp4 *.m4v *.mov *.mkv *.opus *.ogg *.wav *.aac *.wma)", "All files (*)"]
-        onAccepted: root.coverMediaPathValue = selectedFile.toLocalFile()
+        onAccepted: {
+            var path = root.localPath(coverMediaDialog.selectedFile)
+            if (!path) return
+            root.coverMediaPathValue = path
+            root.appendLog("Browse selected media file: " + path)
+        }
     }
     FileDialog {
         id: coverImageDialog
         title: "Choose cover image"
         nameFilters: ["Images (*.jpg *.jpeg *.png *.webp)", "All files (*)"]
-        onAccepted: root.coverSourcePath = selectedFile.toLocalFile()
+        onAccepted: {
+            var path = root.localPath(coverImageDialog.selectedFile)
+            if (!path) return
+            root.coverSourcePath = path
+            root.appendLog("Browse selected cover image: " + path)
+        }
     }
     FileDialog {
         id: cropImageDialog
         title: "Choose source artwork"
         nameFilters: ["Images (*.jpg *.jpeg *.png *.webp *.bmp)", "All files (*)"]
-        onAccepted: root.cropSourcePath = selectedFile.toLocalFile()
+        onAccepted: {
+            var path = root.localPath(cropImageDialog.selectedFile)
+            if (!path) return
+            root.cropSourcePath = path
+            root.appendLog("Browse selected crop source: " + path)
+        }
     }
     FileDialog {
         id: cropSaveDialog
         title: "Save square artwork"
         fileMode: FileDialog.SaveFile
         nameFilters: ["JPEG image (*.jpg)", "All files (*)"]
-        onAccepted: backend.cropArtwork(root.cropSourcePath, selectedFile.toLocalFile(), root.cropPositionValue)
+        onAccepted: {
+            var path = root.localPath(cropSaveDialog.selectedFile)
+            if (!path) return
+            root.appendLog("Browse selected crop destination: " + path)
+            backend.cropArtwork(root.cropSourcePath, path, root.cropPositionValue)
+        }
     }
     FileDialog {
         id: cookieFileDialog
         title: "Choose Netscape cookies.txt"
         nameFilters: ["Cookie files (*.txt)", "All files (*)"]
-        onAccepted: backend.setCookieFile(selectedFile.toLocalFile())
+        onAccepted: {
+            var path = root.localPath(cookieFileDialog.selectedFile)
+            if (!path) return
+            root.cookiePathInput = path
+            root.appendLog("Browse selected cookie file: " + path)
+            backend.setCookieFile(path)
+        }
     }
     FolderDialog {
         id: outputFolderDialog
         title: "Choose download folder"
-        onAccepted: backend.setDownloadDirectory(selectedFolder.toLocalFile())
+        onAccepted: {
+            var path = root.localPath(outputFolderDialog.selectedFolder)
+            if (!path) return
+            root.downloadDirectory = path
+            root.appendLog("Browse selected download folder: " + path)
+            backend.setDownloadDirectory(path)
+        }
     }
     FolderDialog {
         id: libraryFolderDialog
         title: "Choose media library folder"
         onAccepted: {
-            root.libraryFolder = selectedFolder.toLocalFile()
-            backend.setOperationDirectory("pipeline", root.libraryFolder)
-            backend.scanLibrary(root.libraryFolder)
+            var path = root.localPath(libraryFolderDialog.selectedFolder)
+            if (!path) return
+            root.libraryFolder = path
+            root.appendLog("Browse selected library folder: " + path)
+            backend.setOperationDirectory("pipeline", path)
+            backend.scanLibrary(path)
         }
     }
     FolderDialog {
         id: metadataFolderDialog
         title: "Choose FLAC metadata folder"
         onAccepted: {
-            root.metadataFolderPath = selectedFolder.toLocalFile()
-            backend.setOperationDirectory("metadata", root.metadataFolderPath)
+            var path = root.localPath(metadataFolderDialog.selectedFolder)
+            if (!path) return
+            root.metadataFolderPath = path
+            root.appendLog("Browse selected metadata folder: " + path)
+            backend.setOperationDirectory("metadata", path)
         }
     }
     FolderDialog {
         id: coverFolderDialog
         title: "Choose FLAC cover-art folder"
         onAccepted: {
-            root.coverFolderPath = selectedFolder.toLocalFile()
-            backend.setOperationDirectory("cover", root.coverFolderPath)
+            var path = root.localPath(coverFolderDialog.selectedFolder)
+            if (!path) return
+            root.coverFolderPath = path
+            root.appendLog("Browse selected cover-art folder: " + path)
+            backend.setOperationDirectory("cover", path)
         }
     }
 
     Connections {
         target: backend
-        function onStatusChanged(message) { root.statusMessage = message }
+        function onStatusChanged(message) { root.statusMessage = String(message || "").replace(/\\/g, "/") }
         function onLogMessage(message) { root.appendLog(message) }
         function onProgressChanged(percent, detail) {
             root.downloadPercent = percent
@@ -577,7 +647,7 @@ font.bold: true }
         function onMetadataLoaded(data) { root.metadataValues = data
 if (data.thumbnail) root.metadataThumbnail = data.thumbnail }
         function onLibraryScanReady(data) {
-            root.libraryFolder = data.folder || root.libraryFolder
+            root.libraryFolder = root.normalizePath(data.folder || root.libraryFolder)
             root.libraryRows = data.rows || []
             root.statusMessage = "Library scan complete: " + root.libraryRows.length + " file(s)."
         }
@@ -1241,7 +1311,8 @@ font.pixelSize: 11 }
                     TextField { id: metadataPath
 Layout.fillWidth: true
 placeholderText: "Choose a media file…"
-text: root.metadataValues.path || ""
+onTextEdited: root.updateMetadataPath(text)
+
 color: root.textColor
 placeholderTextColor: root.mutedColor
 selectByMouse: true
@@ -1249,6 +1320,7 @@ background: Rectangle { radius: 10
 color: root.inputColor
 border.width: 1
 border.color: root.borderColor } }
+                    Binding { target: metadataPath; property: "text"; value: root.normalizePath(root.metadataValues.path || "") }
                     Button { text: "Browse"
 onClicked: metadataFileDialog.open()
 background: Rectangle { radius: 10
@@ -1412,16 +1484,17 @@ Layout.fillWidth: true }
                             Layout.fillWidth: true
                             TextField { id: metadataFolder
 Layout.fillWidth: true
-text: root.metadataFolderPath
+
 placeholderText: "Folder containing FLAC files…"
 color: root.textColor
 placeholderTextColor: root.mutedColor
 selectByMouse: true
-onTextEdited: root.metadataFolderPath = text
+onTextEdited: root.metadataFolderPath = root.normalizePath(text)
 background: Rectangle { radius: 10
 color: root.inputColor
 border.width: 1
 border.color: root.borderColor } }
+                            Binding { target: metadataFolder; property: "text"; value: root.normalizePath(root.metadataFolderPath) }
                             Button { text: "Browse"
 onClicked: metadataFolderDialog.open()
 background: Rectangle { radius: 10
@@ -1487,8 +1560,8 @@ font.pixelSize: 11 }
                 Layout.fillWidth: true
                 TextField { id: coverMediaPath
 Layout.fillWidth: true
-text: root.coverMediaPathValue
-onTextEdited: root.coverMediaPathValue = text
+
+onTextEdited: root.coverMediaPathValue = root.normalizePath(text)
 placeholderText: "Media file path"
 color: root.textColor
 placeholderTextColor: root.mutedColor
@@ -1496,6 +1569,7 @@ background: Rectangle { radius: 10
 color: root.inputColor
 border.width: 1
 border.color: root.borderColor } }
+                Binding { target: coverMediaPath; property: "text"; value: root.normalizePath(root.coverMediaPathValue) }
                 Button { text: "Browse media"
 onClicked: coverMediaDialog.open()
 background: Rectangle { radius: 10
@@ -1512,8 +1586,8 @@ verticalAlignment: Text.AlignVCenter } }
                 Layout.fillWidth: true
                 TextField { id: coverSource
 Layout.fillWidth: true
-text: root.coverSourcePath || root.metadataThumbnail
-onTextEdited: root.coverSourcePath = text
+
+onTextEdited: root.coverSourcePath = root.normalizePath(text)
 placeholderText: "Image file path or https:// image URL"
 color: root.textColor
 placeholderTextColor: root.mutedColor
@@ -1521,6 +1595,7 @@ background: Rectangle { radius: 10
 color: root.inputColor
 border.width: 1
 border.color: root.borderColor } }
+                Binding { target: coverSource; property: "text"; value: root.normalizePath(root.coverSourcePath || root.metadataThumbnail) }
                 Button { text: "Browse image"
 onClicked: coverImageDialog.open()
 background: Rectangle { radius: 10
@@ -1598,16 +1673,17 @@ Layout.fillWidth: true }
                         Layout.fillWidth: true
                         TextField { id: coverFolder
 Layout.fillWidth: true
-text: root.coverFolderPath
+
 placeholderText: "Folder containing FLAC files…"
 color: root.textColor
 placeholderTextColor: root.mutedColor
 selectByMouse: true
-onTextEdited: root.coverFolderPath = text
+onTextEdited: root.coverFolderPath = root.normalizePath(text)
 background: Rectangle { radius: 10
 color: root.inputColor
 border.width: 1
 border.color: root.borderColor } }
+                        Binding { target: coverFolder; property: "text"; value: root.normalizePath(root.coverFolderPath) }
                         Button { text: "Browse"
 onClicked: coverFolderDialog.open()
 background: Rectangle { radius: 10
@@ -1654,8 +1730,8 @@ font.pixelSize: 11 }
                 Layout.fillWidth: true
                 TextField { id: cropSource
 Layout.fillWidth: true
-text: root.cropSourcePath
-onTextEdited: root.cropSourcePath = text
+
+onTextEdited: root.cropSourcePath = root.normalizePath(text)
 placeholderText: "Source image path"
 color: root.textColor
 placeholderTextColor: root.mutedColor
@@ -1663,6 +1739,7 @@ background: Rectangle { radius: 10
 color: root.inputColor
 border.width: 1
 border.color: root.borderColor } }
+                Binding { target: cropSource; property: "text"; value: root.normalizePath(root.cropSourcePath) }
                 Button { text: "Browse"
 onClicked: cropImageDialog.open()
 background: Rectangle { radius: 10
@@ -1752,15 +1829,16 @@ font.pixelSize: 11 }
                 Layout.fillWidth: true
                 TextField { id: libraryPath
 Layout.fillWidth: true
-text: root.libraryFolder
+
 placeholderText: "Choose media library folder…"
-onTextEdited: root.libraryFolder = text
+onTextEdited: root.libraryFolder = root.normalizePath(text)
 color: root.textColor
 placeholderTextColor: root.mutedColor
 background: Rectangle { radius: 10
 color: root.inputColor
 border.width: 1
 border.color: root.borderColor } }
+                Binding { target: libraryPath; property: "text"; value: root.normalizePath(root.libraryFolder) }
                 Button { text: "Browse & Scan"
 onClicked: libraryFolderDialog.open()
 background: Rectangle { radius: 10
@@ -1924,13 +2002,14 @@ font.letterSpacing: 1 }
                             Layout.fillWidth: true
                             TextField { id: settingsOutputPath
 Layout.fillWidth: true
-text: root.downloadDirectory
+
 readOnly: true
 color: root.textColor
 background: Rectangle { radius: 10
 color: root.inputColor
 border.width: 1
 border.color: root.borderColor } }
+                            Binding { target: settingsOutputPath; property: "text"; value: root.normalizePath(root.downloadDirectory) }
                             Button { text: "Choose"
 onClicked: outputFolderDialog.open()
 background: Rectangle { radius: 10
@@ -1970,14 +2049,16 @@ wrapMode: Text.WrapAnywhere }
                             Layout.fillWidth: true
                             TextField { id: settingsCookiePath
 Layout.fillWidth: true
-text: root.cookiePath
+
 placeholderText: "Netscape-format cookies.txt path"
+onTextEdited: root.cookiePathInput = root.normalizePath(text)
 color: root.textColor
 placeholderTextColor: root.mutedColor
 background: Rectangle { radius: 10
 color: root.inputColor
 border.width: 1
 border.color: root.borderColor } }
+                            Binding { target: settingsCookiePath; property: "text"; value: root.normalizePath(root.cookiePathInput) }
                             Button { text: "Browse"
 onClicked: cookieFileDialog.open()
 background: Rectangle { radius: 10
@@ -1990,7 +2071,7 @@ horizontalAlignment: Text.AlignHCenter
 verticalAlignment: Text.AlignVCenter } }
                         }
                         Button { text: "Save Cookie Path"
-onClicked: backend.setCookieFile(settingsCookiePath.text)
+onClicked: backend.setCookieFile(root.normalizePath(settingsCookiePath.text))
 background: Rectangle { radius: 10
 color: root.panelColor
 border.width: 1
