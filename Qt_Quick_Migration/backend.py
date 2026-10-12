@@ -27,6 +27,11 @@ from ytmusic_resolver import YTMResolver, split_artist_title, canonicalize_thumb
 
 CONFIG_FILE = Path.home() / ".ytm_music_toolkit.json"
 COOKIE_ENV = "YTM_MUSIC_TOOLKIT_COOKIES"
+
+
+def forward_slash_path(value: Any) -> str:
+    """Return a filesystem path in consistent forward-slash form for the UI/config."""
+    return str(value or "").strip().strip('"').replace("\\", "/")
 MEDIA_EXTENSIONS = {".flac", ".mp3", ".m4a", ".mp4", ".opus", ".ogg", ".wav", ".aac", ".wma", ".m4v", ".mov"}
 AUDIO_EXTENSIONS = {".flac", ".mp3", ".m4a", ".opus", ".ogg", ".wav", ".aac", ".wma"}
 
@@ -198,17 +203,17 @@ class ToolkitBackend(QObject):
         saved_paths = self.config.get("paths", {})
         if not isinstance(saved_paths, dict):
             saved_paths = {}
-        downloads_default = str(Path.home() / "Downloads")
+        downloads_default = forward_slash_path(Path.home() / "Downloads")
         self.path_settings = {
-            "downloader": str(saved_paths.get("downloader") or self.config.get("download_dir") or downloads_default),
-            "metadata": str(saved_paths.get("metadata") or downloads_default),
-            "cover": str(saved_paths.get("cover") or downloads_default),
-            "crop": str(saved_paths.get("crop") or downloads_default),
-            "pipeline": str(saved_paths.get("pipeline") or downloads_default),
+            "downloader": forward_slash_path(saved_paths.get("downloader") or self.config.get("download_dir") or downloads_default),
+            "metadata": forward_slash_path(saved_paths.get("metadata") or downloads_default),
+            "cover": forward_slash_path(saved_paths.get("cover") or downloads_default),
+            "crop": forward_slash_path(saved_paths.get("crop") or downloads_default),
+            "pipeline": forward_slash_path(saved_paths.get("pipeline") or downloads_default),
         }
-        self.download_dir = str(self.config.get("download_dir") or self.path_settings["downloader"])
+        self.download_dir = forward_slash_path(self.config.get("download_dir") or self.path_settings["downloader"])
         self.path_settings["downloader"] = self.download_dir
-        self.cookie_path = self._find_cookie_path()
+        self.cookie_path = forward_slash_path(self._find_cookie_path())
         self.performance_mode = self._valid_choice(self.config.get("performance_mode"), {"conservative", "balanced", "aggressive"}, "aggressive")
         saved_file_type = str(self.config.get("file_type") or "Video (MKV)")
         self.file_type = saved_file_type if saved_file_type in {"Video (MKV)", "Video (MP4)", "Audio only"} else "Video (MKV)"
@@ -252,6 +257,9 @@ class ToolkitBackend(QObject):
             return {}
 
     def _save_config(self):
+        self.download_dir = forward_slash_path(self.download_dir)
+        self.cookie_path = forward_slash_path(self.cookie_path)
+        self.path_settings = {key: forward_slash_path(value) for key, value in self.path_settings.items()}
         self.path_settings["downloader"] = self.download_dir
         self.config.update({"config_version": 6, "download_dir": self.download_dir,
                             "paths": dict(self.path_settings),
@@ -412,20 +420,22 @@ class ToolkitBackend(QObject):
 
     @Slot(result="QVariantMap")
     def getSettings(self):
-        return {"downloadDir": self.download_dir, "cookiePath": self.cookie_path,
+        return {"downloadDir": forward_slash_path(self.download_dir), "cookiePath": forward_slash_path(self.cookie_path),
                 "hasCookies": bool(self.cookie_path), "performanceMode": self.performance_mode,
                 "conflictMode": self.conflict_mode, "appearanceMode": self.appearance_mode,
-                "metadataDir": self.path_settings["metadata"], "coverDir": self.path_settings["cover"],
-                "cropDir": self.path_settings["crop"], "pipelineDir": self.path_settings["pipeline"],
+                "metadataDir": forward_slash_path(self.path_settings["metadata"]),
+                "coverDir": forward_slash_path(self.path_settings["cover"]),
+                "cropDir": forward_slash_path(self.path_settings["crop"]),
+                "pipelineDir": forward_slash_path(self.path_settings["pipeline"]),
                 "fileType": self.file_type, "quality": self.quality,
                 "audioFormat": self.audio_format, "subtitleMode": self.subtitle_mode}
 
     @Slot(str)
     def setDownloadDirectory(self, path):
-        path = str(path or "").strip().strip('"')
+        path = forward_slash_path(path)
         if path:
             Path(path).mkdir(parents=True, exist_ok=True)
-            self.download_dir = str(Path(path).resolve())
+            self.download_dir = forward_slash_path(Path(path).resolve())
             self._save_config()
             self.settingsChanged.emit(self.getSettings())
             self.statusChanged.emit("Download folder updated.")
@@ -433,12 +443,12 @@ class ToolkitBackend(QObject):
     @Slot(str, str)
     def setOperationDirectory(self, key, path):
         key = str(key or "").strip().lower()
-        path = str(path or "").strip().strip('"')
+        path = forward_slash_path(path)
         if key not in {"metadata", "cover", "crop", "pipeline"} or not path:
             return
         try:
             Path(path).mkdir(parents=True, exist_ok=True)
-            self.path_settings[key] = str(Path(path).resolve())
+            self.path_settings[key] = forward_slash_path(Path(path).resolve())
             self._save_config()
             self.settingsChanged.emit(self.getSettings())
             self.statusChanged.emit(f"{key.title()} folder saved.")
@@ -447,12 +457,12 @@ class ToolkitBackend(QObject):
 
     @Slot(str)
     def setCookieFile(self, path):
-        path = str(path or "").strip().strip('"')
+        path = forward_slash_path(path)
         if path and not cookie_is_valid(path):
             self.statusChanged.emit("That is not a valid Netscape-format cookies.txt file.")
             return
         if path:
-            self.cookie_path = str(Path(path).resolve())
+            self.cookie_path = forward_slash_path(Path(path).resolve())
             self._save_config()
             self.settingsChanged.emit(self.getSettings())
             self.statusChanged.emit("Cookie file saved.")
